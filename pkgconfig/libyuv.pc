@@ -1,0 +1,5 @@
+Name: libyuv
+Description: YUV conversion and scaling library
+Version: 0
+Libs: -L/usr/lib/x86_64-linux-gnu -lyuv
+Cflags: -I/usr/include

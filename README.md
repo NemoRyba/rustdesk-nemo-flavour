@@ -19,3 +19,13 @@ Company-focused RustDesk fork workspace for high-performance remote access to CA
 1. Validate server build on Linux.
 2. Validate Linux client build on Linux/Docker.
 3. Establish a reproducible Windows client build path, likely pinned CI or Docker-based cross build if supported.
+
+## Ubuntu Build Notes
+
+On Ubuntu 24.04, the Linux client can build without vcpkg by installing `libvpx-dev`, `libyuv-dev`, `libopus-dev`, and `libaom-dev`, then using:
+
+```sh
+PKG_CONFIG_PATH="$PWD/../pkgconfig" cargo build --features linux-pkg-config
+```
+
+The local `pkgconfig/libyuv.pc` shim is needed because Ubuntu's `libyuv-dev` package installs headers/libs but no `libyuv.pc`.
