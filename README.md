@@ -29,3 +29,38 @@ PKG_CONFIG_PATH="$PWD/../pkgconfig" cargo build --features linux-pkg-config
 ```
 
 The local `pkgconfig/libyuv.pc` shim is needed because Ubuntu's `libyuv-dev` package installs headers/libs but no `libyuv.pc`.
+
+Server release build:
+
+```sh
+cd rustdesk-server-nemo
+cargo build --release
+```
+
+Linux client debug build:
+
+```sh
+cd rustdesk-client-nemo
+PKG_CONFIG_PATH="$PWD/../pkgconfig" cargo build --features linux-pkg-config
+```
+
+## Windows Client Build Notes
+
+RustDesk's current Windows client build path is Windows-native rather than Ubuntu cross-compile. The upstream workflow in `rustdesk-client-nemo/.github/workflows/flutter-build.yml` runs on `windows-2022` with:
+
+- Rust `1.75` and target `x86_64-pc-windows-msvc`
+- Flutter `3.24.5` with RustDesk's custom Windows Flutter engine
+- vcpkg triplet `x64-windows-static`
+- MSBuild/MSI packaging and Windows driver artifacts
+
+For reproducible Windows artifacts, use the existing GitHub Actions workflows in the client fork:
+
+- `Flutter Nightly Build` for unsigned nightly artifacts.
+- `Flutter Tag Build` for release/tag artifacts.
+- `Full Flutter CI` for validation without uploading artifacts.
+
+The core Windows command used by the workflow is:
+
+```powershell
+python3 .\build.py --portable --hwcodec --flutter --vram --skip-portable-pack
+```
