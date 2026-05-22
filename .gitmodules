@@ -1,0 +1,6 @@
+[submodule "rustdesk-client-nemo"]
+	path = rustdesk-client-nemo
+	url = https://github.com/NemoRyba/rustdesk-client-nemo.git
+[submodule "rustdesk-server-nemo"]
+	path = rustdesk-server-nemo
+	url = https://github.com/NemoRyba/rustdesk-server-nemo.git

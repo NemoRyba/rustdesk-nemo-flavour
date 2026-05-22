@@ -1,0 +1,10 @@
+/.vscode/
+/tools/
+/vcpkg/
+**/target/
+**/.dart_tool/
+**/build/
+**/flutter/ephemeral/
+**/flutter/generated_plugin_registrant.*
+*.log
+*.tmp
