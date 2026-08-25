@@ -55,6 +55,10 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+# Pin invariant culture so numeric output (establish_ms etc.) always uses a
+# '.' decimal separator regardless of the host locale; a German locale would
+# otherwise emit "1013,607", which corrupts the CSV on round-trip.
+[System.Threading.Thread]::CurrentThread.CurrentCulture = [System.Globalization.CultureInfo]::InvariantCulture
 
 # Rust Duration Debug format -> milliseconds. Examples: "1.2345s", "567.8ms",
 # "12.3µs" / "12.3us", "800ns", "2m 3.4s" (rare for our sub-minute durations).

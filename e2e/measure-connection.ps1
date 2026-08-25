@@ -61,6 +61,8 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+# Invariant culture so CSV numbers use '.' regardless of host locale.
+[System.Threading.Thread]::CurrentThread.CurrentCulture = [System.Globalization.CultureInfo]::InvariantCulture
 
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $analyzer = Join-Path $here 'analyze-connection-log.ps1'

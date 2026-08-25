@@ -1,0 +1,2 @@
+﻿"timestamp","path","direct","establish_ms","punch_ms","punch_type","is_local","peer_nat_type","relay_server","note","label"
+"2026-08-25 22:07:32.701461","relay","False","1013.607","4","TCP","True","","192.168.0.176:21117","headless --server (no cm); direct reached 179:39403 but accept deadline elapsed -> relay","lan-headless-controlled-286395942"
