@@ -8,3 +8,15 @@
 **/flutter/generated_plugin_registrant.*
 *.log
 *.tmp
+
+# Windows client build staging + packaging output
+/run-windows-client/
+/nemo-rustdesk-windows-client-package/
+/package-windows-client-controller-policy/
+/nemo-rustdesk-windows-client-access-key/
+# Packaged client zips (large binaries)
+/nemo-rustdesk-windows-client-*.zip
+/downloads/nemo-rustdesk-windows-client-2026-05-23.zip
+# Runtime DB snapshots + local repair helper
+/server-db-snapshot.sqlite3*
+/repair-claude-code-runtime.ps1

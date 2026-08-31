@@ -14,6 +14,30 @@ Company-focused RustDesk fork workspace for high-performance remote access to CA
 - Evaluate WireGuard/direct IP access as the main production topology.
 - Keep the existing 3D AutoCAD mouse forwarding solution available for later integration.
 
+## Implemented (TBFDesk management layer)
+
+Server-driven management on top of RustDesk, administered from the server dashboard
+(`https://<server>:21120/nemo/admin`, branded **TBFDesk Admin**):
+
+- **LDAP/AD login** (server-side, over LDAPS with certificate pinning): clients log in
+  with Windows-domain credentials and receive a server-populated **address book**
+  filtered per user. HTTPS on the management/login API so credentials never travel in
+  cleartext.
+- **Login-first client**: when login is required, the client shows only a sign-in
+  prompt until an authorized user signs in; a stale session self-heals on the next poll.
+- **ACL tab + Directory-users picker**: search the AD domain and tick which users may
+  use TBFDesk (directory browse needs a read-only service account: a Bind DN + password
+  in Integration → LDAP). Only selected users can sign in; login attempts by others do
+  not populate the allowlist.
+- **Per-user policy + connection ACL** enforced server-side at the rendezvous punch
+  (not just address-book visibility).
+- **Address book shows ID + hostname**: each host reports its hostname via its signed
+  policy poll, so an operator can tell which computer an ID is.
+- Managed (signed) client policy, global client defaults, per-user session permissions,
+  and an adjustable 1/2/3-column dashboard layout.
+
+See `TODO.md` for status and open items.
+
 ## Build Priority
 
 1. Validate server build on Linux.
@@ -46,21 +70,32 @@ PKG_CONFIG_PATH="$PWD/../pkgconfig" cargo build --features linux-pkg-config
 
 ## Windows Client Build Notes
 
-RustDesk's current Windows client build path is Windows-native rather than Ubuntu cross-compile. The upstream workflow in `rustdesk-client-nemo/.github/workflows/flutter-build.yml` runs on `windows-2022` with:
-
-- Rust `1.75` and target `x86_64-pc-windows-msvc`
-- Flutter `3.24.5` with RustDesk's custom Windows Flutter engine
-- vcpkg triplet `x64-windows-static`
-- MSBuild/MSI packaging and Windows driver artifacts
-
-For reproducible Windows artifacts, use the existing GitHub Actions workflows in the client fork:
-
-- `Flutter Nightly Build` for unsigned nightly artifacts.
-- `Flutter Tag Build` for release/tag artifacts.
-- `Full Flutter CI` for validation without uploading artifacts.
-
-The core Windows command used by the workflow is:
+The working Windows client is the **Sciter** build (`--features inline`), not Flutter.
+Build, stage, and run it with the helper script from the workspace root:
 
 ```powershell
-python3 .\build.py --portable --hwcodec --flutter --vram --skip-portable-pack
+.\build-run-windows-client.ps1            # build + stage to run-windows-client\ + launch
+.\build-run-windows-client.ps1 -NoRun     # build + stage only (no launch)
 ```
+
+The script regenerates the inline Sciter UI (`python res\inline-sciter.py`), then runs
+`cargo build --release --features inline`, and stages the binary plus `sciter.dll` into
+`run-windows-client\`. It is fingerprint-gated (rebuilds only when tracked sources
+change) and needs `VCPKG_ROOT` (bundled under `tools\`) and `LIBCLANG_PATH` (set by the
+script). Rust **1.75** is required for the Sciter bindings.
+
+The Flutter CI workflows in the client fork (`Flutter Nightly/Tag/Full`) remain available
+for the upstream Flutter path, but that is not the path used here.
+
+### 176 Linux controlled host
+
+The persistent Linux host (`rustdesk-nemo.service` → `/opt/nemo-rustdesk/rustdesk`) is
+built with the Ubuntu notes above and Rust 1.75:
+
+```sh
+cd rustdesk-client-nemo
+PKG_CONFIG_PATH="$PWD/../pkgconfig" cargo +1.75.0 build --features "inline,linux-pkg-config"
+```
+
+Deploy by atomic-replacing the binary (keep a `.bak`) and `systemctl restart
+rustdesk-nemo.service`.
