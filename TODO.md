@@ -1,5 +1,8 @@
 # RustDesk Nemo TODO
 
+> ⚠️ **TOP PRIORITY:** [SECURITY-HARDENING-TODO.md](SECURITY-HARDENING-TODO.md) — make every channel (shell, desktop, file transfer, LDAP login) provably encrypted and MITM-proof, on par with AnyDesk/TeamViewer. Priority order: Performance ▸ Security ▸ Usability.
+> 📋 **Ranked open work:** [OPEN-TODOS.md](OPEN-TODOS.md) — server-driven client updates, relay-vs-direct metrics, identity-field hardening, ops items. · **Rename plan:** [RENAMING-PLAN.md](RENAMING-PLAN.md) — how to fully rename RustDesk→TBFDesk without breaking installs.
+
 ## Done (management layer — built, deployed, verified)
 
 - Server-driven **LDAP/AD login** (LDAPS + cert pinning) + server-populated **address book**, per-user RBAC, HTTPS on the management/login API.
