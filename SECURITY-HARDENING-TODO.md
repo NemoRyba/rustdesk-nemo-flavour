@@ -111,6 +111,39 @@ The client already holds and trusts the server's **Ed25519 key** (`nemo-manageme
 4. A packet capture of a relayed session shows **only ciphertext** for desktop, shell, and file transfer.
 5. The security changes cost **no measurable performance** (harness proof committed under `e2e/results/`).
 
+## S-DUALKEY — per-client provisioned device keys (mutual auth + per-client sealing)
+
+Goal (user, 2026-09-01): each client carries its own key the server pre-knows, so
+the server can (a) verify a poll/connection really comes from that provisioned
+client and (b) seal server→client responses to it — confidential even under a
+MITM'd/self-signed TLS. Builds on the keys the fork already has (client RegisterPk
+Ed25519, server Ed25519). One keypair per PARTY is enough (no separate per-direction
+key); the client key MUST be unique per device.
+
+Provisioning model chosen by the user: **manual now, preloaded later.**
+- **[DONE 2026-09-01] Manual generate + import.** Server dashboard generates an
+  Ed25519 keypair, pins the PUBLIC half (labelled), and shows the PRIVATE half once
+  to copy. Client has an "Import device key" dialog that saves it to config
+  (`nemo-device-key`). Endpoints: `POST/GET /nemo/api/device-keys`,
+  `POST /nemo/api/device-keys/:id/delete`. So an operator can provision a device
+  whenever, without rebuilding.
+- **[TODO — FUTURE] Preloaded binaries.** Bake a unique device key into a per-client
+  build at packaging time (extend `build-run-windows-client.ps1` / the locked-exe
+  packaging) so a fresh install is pre-enrolled with zero manual step. Needs
+  per-client build output + the server pre-pinning the matching public key.
+
+Then (the crypto usage):
+- **[DONE 2026-09-01] Signed polls + auth-mode visibility + enforcement.** Client
+  signs `ClientPolicyRequest` (id + timestamp) with `nemo-device-key`; server
+  verifies against the pinned public keys and records each peer's **auth mode**
+  (`device-key` = own pinned private key · `default` = server public key only).
+  The Peers view shows the mode per peer. A server setting **"Require provisioned
+  device key"** rejects any poll not signed by a pinned key.
+- **[TODO] Sealed responses.** Server seals the policy-poll RESPONSE (carries the
+  managed password) and `/api/ab/get` to the client's public key (NaCl `box_`,
+  Ed25519→Curve25519), so they're confidential regardless of TLS — this is the
+  S-B control-plane extension in the P0 table above.
+
 ## Cross-references
 - Existing roadmap security items S1–S10 in `.claude/plans/analyze-this-repository-and-fizzy-parrot.md` (this doc supersedes/expands the transport-security portion).
 - Prior stopgap noted in `TODO.md` (⭐ CA-trusted cert) → folded into **S-B**.
