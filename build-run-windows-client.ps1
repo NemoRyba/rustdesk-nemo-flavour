@@ -7,6 +7,7 @@ param(
     [switch]$NoRun,
     [switch]$ForceBuild,
     [switch]$SkipInline,
+    [switch]$Fast,
     [switch]$Help
 )
 
@@ -380,6 +381,19 @@ if ($BuildNeeded) {
             }
         }
 
+        # Fast-iteration build: the shipping release profile uses lto=true +
+        # codegen-units=1 (max optimization / smallest binary) which makes EVERY
+        # rebuild a slow, single-threaded, whole-program relink (~7 min). -Fast
+        # overrides those for this invocation only (no change to Cargo.toml) and
+        # turns on incremental caching, so a small change rebuilds in ~1-2 min.
+        # The binary is less optimized but identical in behaviour — fine for
+        # testing. Drop -Fast for the final shippable build.
+        if ($Fast) {
+            Write-Host "Fast build: lto=off, codegen-units=256, incremental=on (less optimized binary)."
+            $env:CARGO_PROFILE_RELEASE_LTO = "false"
+            $env:CARGO_PROFILE_RELEASE_CODEGEN_UNITS = "256"
+            $env:CARGO_INCREMENTAL = "1"
+        }
         Write-Host "Building RustDesk Windows client..."
         & $CargoExe build --release --features inline
         if ($LASTEXITCODE -ne 0) {
