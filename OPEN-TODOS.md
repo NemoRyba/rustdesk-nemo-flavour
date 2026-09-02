@@ -1,78 +1,84 @@
-# TBFDesk — Open TODOs (ranked by relevance to the goal)
+# TBFDesk — Open TODOs (ranked, **each item verified against code/live state on 2026-09-02**)
 
 **Goal:** a performance-oriented, centrally-managed, **direct** remote-control product.
-**Priority order:** Performance ▸ Security ▸ Usability/manageability.
-**Companion docs:** [SECURITY-HARDENING-TODO.md](SECURITY-HARDENING-TODO.md) (transport security), [TODO.md](TODO.md) (running log), `.claude/plans/analyze-this-repository-and-fizzy-parrot.md` (full roadmap).
+**Priority order:** Security edge ▸ Management capability ▸ Performance observability ▸ Polish.
+**Companion docs:** [SECURITY-HARDENING-TODO.md](SECURITY-HARDENING-TODO.md) (transport security detail), [HANDOFF.md](HANDOFF.md) (session state + recipes), `TODO.md` (running log), `.claude/plans/analyze-this-repository-and-fizzy-parrot.md` (full roadmap).
 
 ---
 
-## ✅ Just done (2026-09-02)
-- **Encrypted DIRECT-IP (B)** + **S-A closed / fail-closed** — direct-IP sessions now encrypt end-to-end with no relay, server-anchored via a signed `nemo-peer-keys` map; `require-encrypted-session` enforced fleet-wide; every plaintext fail-open path (H2/H3) removed. Deployed (server live on .176). See [SECURITY-HARDENING-TODO.md](SECURITY-HARDENING-TODO.md) 2026-09-02 section.
-- **Bug-hunt fixes:** H1 (stop logging session token), M3 (0600 on LDAP/session files), M4 (test suite compiles again — 41 pass).
-- **UX:** 1% custom bitrate floor; multi-column settings menu (needs visual check).
-- **Docs:** [SPEED-AND-CODEC-RESEARCH.md](SPEED-AND-CODEC-RESEARCH.md) (TJPEG_V2/DWService codec + speed opts). Multi-screen tiled view implementation in progress (Sciter UI; needs visual test).
+## SECURITY — verified open
 
-## ✅ Just done (2026-09-01)
-- **Named/per-user policies** now expose the already-enforced capability keys: **Camera, Remote terminal/shell, TCP tunnel, Remote printer** (+ **one-way file transfer** earlier). All are `KEYS_SETTINGS`-scoped and already gated on the controlled side — pure dashboard, zero client change.
-- **TBFDesk rebrand** of the remaining user-visible strings (About/version/tray/toast/German + settings help); `APP_NAME` stays `RustDesk` (config dir/service/protocol unchanged).
-- Named policies (create + assign to **users** and **devices**, precedence user ▸ device ▸ global) — verified end-to-end.
+### 1. S-B + H4 — trust for the management control plane  *(the one real security edge left)*
+*Verified:* clients run with `allow-insecure-tls-fallback = 'Y'` against the self-signed `--nemo-api-tls auto` cert, and the policy response delivers secrets (e.g. `nemo-permanent-password`) unsealed, authenticated only by id+uuid.
+**Fix as one design:** CA-signed or fingerprint-pinned cert with the insecure fallback OFF, and seal the policy-poll response (+ `/api/ab/get`) to the provisioned device key (S-DUALKEY step 3). Closes S-B and H4 together.
 
----
+### 2. M1 — device keys are a shared pool
+*Verified:* `verify_device_key` only checks `is_device_key_pinned(pubkey)` — any pinned key authenticates any client id. Bind each key to a peer id at provisioning time.
 
-## HIGH — biggest gaps for a managed, direct fleet
+### 3. M2 — blocklist trusts a self-reported id
+*Verified:* the controlled side rejects blocked peers on `lr.my_id`, a field the CONNECTING client fills in. Now fixable properly: anchor on the B-feature SignedId (server-pushed `nemo-peer-keys`).
 
-### 1. Server-driven client updates / rollout  *(does not exist)*
-For a managed fleet, pushing a new client version **from the server** is the single biggest missing management capability. The upstream updater is dead-coded (`updater.rs:31/36/43` `#[allow(dead_code)]`) and points at `api.rustdesk.com` — which this fork **blocks** (`common.rs:2059` `nemo_public_network_blocked()==true`). No update/version/download route exists on the nemo-api.
-**Build on what already works:**
-- Admin sets a **target version + download URL** (global and/or per-peer) in the dashboard.
-- Clients learn it via the **existing signed client-policy poll**, compare to `handler.get_version()`, download, and install.
-- **Sign the binary** with the server keypair (reuse the Ed25519 policy-signing path) so the client verifies authenticity before installing — no plaintext-URL trust.
-- Host the binaries on the **api-server (:21120)**; silent/unattended install needs the installed-service path (same constraint as managed passwords).
-**Perf:** none (control-plane only).
-
-### 2. Security hardening → see [SECURITY-HARDENING-TODO.md](SECURITY-HARDENING-TODO.md)
-The core session is already E2E-strong; the ranked fixes there are the HIGH security work:
-- **S-A** peer-key trust fails open → ✅ **CLOSED 2026-09-02** (require-encrypted fail-closed + server-anchored encrypted direct-IP). Remaining: TOFU store for peers not in the pushed map (they fail closed today).
-- **S-B** management/LDAP-login API is **self-signed accept-any-invalid TOFU** → CA-signed or fingerprint-pinned cert, fallback OFF. *(critical — LDAP password confidentiality)*
-- **S-C** LDAP DC cert-verify off-switch. **S-D** cross-direction nonce reuse. **S-E** port-forward/RDP tunnels drop the E2E layer.
+### 4. Smaller hardening (per the 2026-09-01 audit)
+- **S-C**: the LDAP `tls_verify` off-switch exists (default true, verified) — remove or admin-gate it.
+- **S-D**: cross-direction nonce reuse on the shared secretbox key (primitive-level).
+- **S-E**: port-forward/RDP tunnels drop the E2E layer.
+- **S-A residue** (S-A itself ✅ closed 2026-09-02): optional TOFU store for peers absent from the pushed key map — such peers currently fail closed, which is acceptable.
 
 ---
 
-## MED — serve "performance / prove-it-stays-direct" and robustness
+## MANAGEMENT capability — verified open
 
-### 3. Relay-vs-direct **byte** metrics  *(observability)*
-Today you can see *why* a session was forced to relay (negotiation events from hbbs), but **not how much traffic used the relay** — the byte counters live inside `hbbr` and aren't surfaced (`docs/nemo-management-api.md:151-153`). To *prove* sessions stay direct (the whole point), expose per-session relay byte counts from hbbr to the dashboard.
+### 5. Server-driven client updates / TBF update server  *(does not exist)*
+*Verified:* the upstream updater posts to the public RustDesk version URL, which this fork blocks; no update/version/download route exists on the nemo-api. The client's "Automatisch aktualisieren" row is DORMANT (greyed, non-editable, interval clamped 1–30 days) until this exists.
+**Design:** admin sets target version + download URL in the dashboard → delivered via the signed policy poll → client compares `get_version()`, downloads from the api-server (:21120), verifies an Ed25519 signature over the binary (reuse the policy-signing path) → installs (silent install needs the installed-service path).
 
-### 4. Harden the controller-identity field  *(protocol robustness)*
-Per-user ACL / require-login enforcement rides inside the untyped rendezvous `version` string as `nemo-source-v1:<id>:<uuid>` (`nemo_management.rs` `controller_source_identity`). It works, but a **real protobuf field** (`message NemoSource { string id; bytes uuid; }` on `PunchHoleRequest`/`RequestRelay`) would make it robust and closes the advisory-policy bypass. This is Phase 1.3 / S2 in the plan (forks `hbb_common`).
-
----
-
-## OPS / enablement (no code, or tiny code)
-
-### 5. LDAP read-only **service account** still unset  *(blocks the directory picker end-to-end)*
-Set a Bind DN + password in Integration → LDAP so the directory search can list domain users (the picker currently reports "needs a service account"). Also finish pointing clients' `api-server` at `https://<host>:21120` (pushable via global policy).
-
-### 6. Linux client **base-commit parity** on `.176`
-The `.176` Linux host only has its policy-poll file updated (base `10fc2b22f`); a full-parity Linux client needs a base-commit sync + rebuild (Rust 1.75 + Sciter) to match the Windows feature set for managed control of Linux hosts.
-
-### 7. `%APPDATA%` dir rebrand (deferred)  *(cosmetic)*
-`APP_NAME` stays `RustDesk` so the config dir/service/registry are unchanged. A true dir rename needs a config-migration step; low priority.
+### 6. Real force-disconnect  *(cut only blocks NEW connections)*
+*Verified:* `/nemo/api/connections/cut` routes to a block-only handler; a live DIRECT session has no server data path. Needs a client-honored kill signal (designed, not built) — deliverable via the signed policy poll.
 
 ---
 
-## LOW — TBFDesk polish
-- **About-dialog placeholders** (`index.tis` `MyIdMenu.showAbout()`): the RustDesk links/branding were removed (2026-09-02) and replaced with TBF placeholders — fill in the real **TBF website URL, support/contact info (e-mail, phone), privacy-statement link** when available, and wire them as clickable `.link .custom-event url='…'` divs (the click handler is already in place).
+## PERFORMANCE / observability — verified open
 
-## LOW — upstream TODO/HACK markers in retained code (informational)
-These are inherited from upstream RustDesk, not TBFDesk work, and are low-relevance to the goal:
-- `rustdesk-server-nemo/src/utils.rs:97` reverse-DNS on OSX; `:109` "ICMP ping?"; `:119` "key check".
-- `rustdesk-server-nemo/src/rendezvous_server.rs:284` `// unreachable!() ?` (UDP recv None branch); `:1505` `// temp solution to solve udp socket failure` (hbbs self-poll).
-- `rustdesk-client-nemo/src/client.rs:4138` "Use long connections to avoid socket creation"; `:4173` "Make sure socket closed?" (socket-reuse micro-opt; marginally perf-relevant, generic).
-- `rustdesk-client-nemo/src/client.rs:122, 3362` Wayland login screen "not supported" (upstream platform limitation).
+### 7. Relay-vs-direct **byte** metrics
+*Verified:* `relay_server.rs` exports no per-session byte counters. To PROVE sessions stay direct, surface hbbr per-session relay bytes to the dashboard.
+
+### 8. `NemoSource` protobuf field  *(protocol robustness)*
+*Verified:* controller identity still rides smuggled in the rendezvous `version` string (`nemo-source-v1:<id>:<uuid>[:token]`). A real field on `PunchHoleRequest`/`RequestRelay` closes the advisory-policy bypass. Forks `hbb_common` → do together with #9.
+
+### 9. hbb_common fork remote  *(blocks fresh clones)*
+*Verified:* `libs/hbb_common`'s only remote is read-only upstream `rustdesk/hbb_common`; local commit `40adca6` (private-network-only + quality default) is unpushed. Create a NemoRyba fork, push, repoint the submodule URL — until then recursive clones can't resolve the gitlink and the 176 checkout shows it permanently modified.
+
+### 10. Rebuild the 176 Linux host binary  *(checkout is current, binary is not)*
+*Verified:* client checkout on 176 reconciled to `nemo-tdd` HEAD on 2026-09-02, but `/opt/nemo-rustdesk/rustdesk` is dated 2026-08-31. Rebuild (Rust 1.75, `inline,linux-pkg-config`) and atomic-replace + `systemctl restart rustdesk-nemo.service`.
 
 ---
 
-## Deferred / product-level
-- **3D AutoCAD mouse integration** — blocked on the protocol details of the existing VPN solution (needs user input).
-- **Flutter UI parity** — Sciter is the active/working UI; Flutter is deprecated upstream. Not pursued.
+## NEEDS THE USER / infrastructure (not verifiable from the dev box)
+
+### 11. WAN/NAT path measurement + per-workstation codec tuning
+Needs the real double-NAT topology and a person at both ends (e2e/ harness is ready). Related: both OpenWrt 19.07.1 routers are EOL — upgrade (S10) before topology changes.
+
+---
+
+## LOW — polish / housekeeping
+
+### 12. Settings dialog: swap **Alias** and **Direct IP access** between sections
+User request 2026-09-02, in `index.tis` `NemoSettingsDialog.render()`:
+- **Alias** (`aRow("nemo-alias", …)`) moves from "Sicherheit & Netzwerk" (`sec`) → "Allgemein" (`gen`) — it's a friendly display name, not a security setting.
+- **Direkten IP-Zugang aktivieren** (`tRow("direct-server", …)` + its dependent `aRow("edit-direct-port")`) moves from "Allgemein" (`gen`) → "Sicherheit & Netzwerk" (`sec`) — it IS a network/exposure setting.
+
+### 13. About-dialog placeholder links
+"Webseite/Support/Datenschutz: (wird ergänzt)" — fill in the real TBF website URL, support contact, privacy link; the clickable `.link .custom-event url='…'` wiring is already in place (`index.tis` `showAbout()`).
+
+### 14. `%APPDATA%` dir rebrand (deferred, cosmetic)
+`APP_NAME` stays `RustDesk` so config dir/service/registry are unchanged; a true rename needs a config-migration step.
+
+### 15. Inherited upstream code markers (informational)
+- server `utils.rs:97/109/119` (OSX reverse-DNS, "ICMP ping?", "key check"); `rendezvous_server.rs:284` (`unreachable!()?`), `:1505` (udp self-poll workaround).
+- client `client.rs:4138/4173` (socket-reuse micro-opt), `client.rs:122/3362` (Wayland login screen, upstream limitation).
+
+---
+
+## ✅ Recently closed (kept for context)
+- **2026-09-02:** reload-icon root cause (onSize `max-width:0`); auto-update interval option + row dormant; About rebranded to TBF; **admin policy delivered user-overridable** (admins edit any setting locally; deployed); build-version readout (left pane + login gate); 176 checkout reconciled; LDAP service account **confirmed set** (`mstep@tbfgmbh.local`) — directory picker unblocked.
+- **2026-09-02 (earlier):** encrypted direct-IP (B) + S-A fail-closed; require-encrypted fleet-wide; H1/M3/M4; 1% bitrate; multi-screen tiled view; settings modal dialog.

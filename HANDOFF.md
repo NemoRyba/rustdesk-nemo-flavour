@@ -2,6 +2,12 @@
 
 Written for a fresh session. Read this first, then `.claude` memory `nemo-tdd-progress`.
 
+## ⭐ EOD STATE 2026-09-02 (supersedes the per-section notes below where they conflict)
+- **Everything is COMMITTED + PUSHED** (client + server → GitHub NemoRyba `nemo-tdd`, super → 176 bare `ubuntu`); the server change is DEPLOYED and the **176 working checkout is reconciled** to the pushed HEADs (residue: live db, runtime files, unfetchable hbb_common gitlink).
+- **The open-work source of truth is [`OPEN-TODOS.md`](OPEN-TODOS.md)** — every item there was VERIFIED against code/live state on 2026-09-02. Top: S-B+H4 (management-plane trust: pinned/CA cert + sealed policy responses), then the TBF update server (un-greys the dormant auto-update row).
+- Client UI since the morning: reload icon FIXED (root cause: onSize text-length sizing → textless span got max-width:0), auto-update row dormant (greyed, 1–30-day interval kept for later), About rebranded to TBF placeholders, **build-id readout** bottom-left (left pane + login gate, e.g. "Build 734c11c83 2026-09-02"), admin-overridable policy live (admins can edit all settings).
+- hbb_common is still push-blocked (no fork remote — OPEN-TODOS #9).
+
 ## 0. ⭐ Self-verify the client UI with a SCREENSHOT (this unlocks the whole loop)
 
 We wasted many rounds on an "invisible" UI element because I couldn't see the app. **I CAN** — pc2 (this Windows box) has a real desktop, so PowerShell can screen-capture the client window to a PNG and Claude can Read that PNG. **Always do this after a UI build instead of asking the user.**
@@ -58,8 +64,10 @@ Settings → Allgemein → "Automatisch aktualisieren": ONE row — checkbox+lab
 
 User rule: an admin logged in on a client may flip ANY setting locally (e.g. test one-way file transfer) — policy applies as defaults only. Server-side fix in `nemo_integration.rs user_policy()`: the admin branch now returns `admin_policy` with **`allow_user_override` forced true on delivery** (stored config untouched; test `admin_policy_is_delivered_user_overridable`, 42 lib tests pass). The client already honors it (`apply_policy_option`: override→DEFAULT_SETTINGS=editable, else OVERWRITE=locked). **Deployed on 176** (build-vs-DB-copy + `systemctl restart rustdesk-hbbs-nemo`, active; sessions persist). Non-admin users stay locked as before; blocked peers still get override forced false. Server checkout on 176 updated (still git-divergent); LOCAL server repo has the same change UNCOMMITTED. Verify: log in as mstep on pc2 → next policy poll → Berechtigungen rows become editable.
 
-## 2. Also still PENDING (not started)
-- **Build-version readout in the bottom-left of the left pane** so the user can verify which build is running. Needs a build id baked at compile time: `build.rs` has no git/build env today (`gen_version` only). Plan: in `build.rs` `println!("cargo:rustc-env=NEMO_BUILD_ID={}", <git short hash + date>)` + `cargo:rerun-if-changed` so it refreshes; expose via a new sciter dispatch `get_build_id()` (mirror `get_version` at `ui.rs:532`/`:825`, `ui_interface.rs:811`); show it in `index.tis` left pane.
+## 2. DONE (2026-09-02, uncommitted) — build-version readout + 176 checkout reconciled
+
+- **Build id readout**: `build.rs nemo_build_id()` bakes `NEMO_BUILD_ID` = git short hash + "+" (dirty tree, best-effort — editing a file alone doesn't rerun build.rs; the hash part is always right) + commit date (`%cs`); rerun-if-changed on `.git/HEAD` + `.git/index`. Exposed via `get_build_id()` (ui.rs dispatch + ui_interface.rs `env!`). Shown bottom-left in BOTH the left pane and the login gate (`div.nemo-build-id`, absolute bottom:4/left:8). Screenshot-verified: "Build 734c11c83+ 2026-09-02".
+- **176 working checkout RECONCILED** (was git-divergent): all three repos fetched + set to the pushed nemo-tdd HEADs — client `git checkout -f` (working tree was a strict subset of the new HEAD, verified by diff), server **mixed reset only** (live `db_v2.sqlite3` must never be checked out over — hbbs holds it open), super `checkout -f`. Remaining residue is expected: server `M db_v2.sqlite3` (live DB) + untracked runtime JSON/certs, client `M libs/hbb_common` (gitlink unfetchable until the hbb_common fork remote exists). Services stayed active.
 
 ## 3. DONE this session (all committed + pushed unless noted)
 Client (GitHub NemoRyba, branch nemo-tdd, HEAD `173470f05`): encrypted direct-IP (B) + require-encrypted fail-closed (H2/H3); 1% bitrate; **Settings redesigned into a modal dialog** (sectioned, sorted by size, scroll-on-demand, dark-theme, no stray "null", account section removed, ⋮ moved into the account bar, OTP pencil removed, Password section folded in, Language/Audio/Enhancements as working in-dialog **popups**, **plain-language tooltips on every row** + German, languages restricted to DE/EN); multi-screen tiled view; address-book **reload icon by the tab** (BROKEN, see §1) + **self-filter own id**; refresh moved out of the ID field.

@@ -2,7 +2,7 @@
 
 Company-focused RustDesk fork workspace for high-performance remote access to CAD/3D workstations.
 
-> **Continuing this work?** Read [`HANDOFF.md`](HANDOFF.md) first — it has the current state, the open **reload-icon bug** (with a step-by-step debug plan), the pending **build-version display**, all build/deploy recipes, and the **screenshot-self-verify** method for the client UI. Ranked TODOs live in [`OPEN-TODOS.md`](OPEN-TODOS.md); security in [`SECURITY-HARDENING-TODO.md`](SECURITY-HARDENING-TODO.md).
+> **Continuing this work?** Read [`HANDOFF.md`](HANDOFF.md) first — current state, build/deploy recipes, and the **screenshot-self-verify** method for the client UI (PrintWindow — no focus steal). The ranked, **verified** TODO list lives in [`OPEN-TODOS.md`](OPEN-TODOS.md) (each item checked against code/live state 2026-09-02); transport-security detail in [`SECURITY-HARDENING-TODO.md`](SECURITY-HARDENING-TODO.md). The running client shows its **build id** (git hash + date) bottom-left, so you can always tell which build you're looking at.
 
 ## Repositories
 
@@ -37,8 +37,15 @@ Server-driven management on top of RustDesk, administered from the server dashbo
   policy poll, so an operator can tell which computer an ID is.
 - Managed (signed) client policy, global client defaults, per-user session permissions,
   and an adjustable 1/2/3-column dashboard layout.
+- **Admin exception:** a logged-in admin receives the policy as *defaults only*
+  (`allow_user_override` forced true on delivery) and can change any setting locally.
+- **Encrypted direct-IP** with server-anchored peer keys; `require-encrypted-session`
+  enforced fleet-wide (no plaintext fallback).
+- Settings as a modal dialog (DE/EN, plain-language tooltips), address-book reload
+  button, multi-screen tiled view, build-id readout bottom-left.
 
-See `TODO.md` for status and open items.
+See [`OPEN-TODOS.md`](OPEN-TODOS.md) for the ranked, verified open items
+(`TODO.md` is the older running log).
 
 ## Build Priority
 
