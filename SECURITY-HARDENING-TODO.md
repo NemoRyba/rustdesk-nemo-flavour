@@ -144,6 +144,27 @@ Then (the crypto usage):
   Ed25519→Curve25519), so they're confidential regardless of TLS — this is the
   S-B control-plane extension in the P0 table above.
 
+## 2026-09-02 autonomous session — S-A largely CLOSED + focused bug-hunt
+
+### S-A now fail-CLOSED (client `cf9e6b5f4`, server `1ae8e0f`) — the plaintext-downgrade gap is closed
+- **`require-encrypted-session` enforced fleet-wide** (global policy, `allow_user_override=false`); adjustable in the dashboard.
+- **Client `secure_connection`:** EVERY fail-open branch (missing key, pk mismatch, id mismatch, invalid message type, parse failure) now bails under the policy instead of returning plaintext (was **H2** — only 2 of 5 branches were guarded).
+- **Controlled side `create_tcp_connection`:** refuses an unencryptable incoming connection under the policy (was **H3** — a modified controller requesting `secure=false` got plaintext).
+- **B — encrypted DIRECT-IP (new capability).** Direct-IP used to be *always* plaintext: the direct listener called `create_tcp_connection(secure=false)`, so the controlled side never sent its `SignedId`. Now `secure=true`, and the server pushes a **signed `{id -> Ed25519 pubkey}` map** (`nemo-peer-keys`) inside the policy; the controller verifies a direct peer's `SignedId` against it → **server-anchored** (no TOFU/MITM window), no relay, no plaintext. This delivers the pinning S-A asked for, sourced from the server instead of first-use TOFU (stronger than SSH-style TOFU).
+- **Still OPEN from S-A:** a persistent per-peer TOFU store for peers NOT in the pushed map. Today such a direct peer simply **fails closed** under the policy, which is acceptable — a peer the server doesn't know can't be anchored.
+
+### Focused bug-hunt (2026-09-02) — FIXED
+- **H1 (FIXED, server `1ae8e0f`):** `record_connection_negotiation` logged the raw punch source field, **leaking the user's session token** into the server log. Now logs only the parsed source id.
+- **M3 (FIXED, server `2a3ef79`):** `nemo_integration.json` (LDAP bind password) + `nemo_sessions.json` (bearer tokens) now written **0600**, like the TLS key (existing files chmod'd on deploy).
+- **M4 (FIXED, server `2a3ef79`):** client-policy test literals compile again (were missing device-key fields) — server test suite green (**41 passed**).
+
+### Focused bug-hunt (2026-09-02) — OPEN (need a design decision, not a quick patch)
+- **H4 (HIGH):** `client_policy` returns **UNMASKED secrets** (`nemo-permanent-password`, proxy / address-book passwords) authenticated only by `id`+`uuid` — a weak secret that also appears in punch source fields and the admin list. Anyone with a peer's id+uuid pulls its pushed password. Proper fix = the **S-B** control-plane sealing (seal the policy RESPONSE to the client's device key) + gate secret-bearing policy behind `require_device_key`. **NOT a quick patch:** most clients have no device key today, so gating would break the working password push. Do it together with S-B / S-DUALKEY sealed responses.
+- **M1 (MEDIUM):** device keys are a shared **POOL**, not bound to a peer id — any one pinned key can sign `nemo-poll:{ANY id}`, so one leaked key satisfies `require_device_key` fleet-wide. Fix = bind each generated key to a specific peer id (generate FOR a peer; verify id-match at poll). Changes the device-key UX just built → **needs the user's sign-off**.
+- **M2 (MEDIUM):** the #2 blocklist gate trusts the source's **self-reported `my_id`** (a modified client spoofs it, so only honest clients are stopped). Now **cheaply fixable because B** makes the controlled side receive the source's server-anchored `SignedId` — verify the blocklist against the **anchored** id, not the claimed one. Good direct follow-up to B.
+- **L-items (LOW):** login user-enumeration via distinct errors; sealed-login 5-min replay window with no nonce (overlaps S-B item 2); admin API unauthenticated when no token is set; device-key id 16-char prefix collision; `nemo-management-allow-unsigned` escape hatch ships in release builds.
+
 ## Cross-references
 - Existing roadmap security items S1–S10 in `.claude/plans/analyze-this-repository-and-fizzy-parrot.md` (this doc supersedes/expands the transport-security portion).
 - Prior stopgap noted in `TODO.md` (⭐ CA-trusted cert) → folded into **S-B**.
+- Speed/codec analysis (incl. why encryption costs no performance) → `SPEED-AND-CODEC-RESEARCH.md`.
