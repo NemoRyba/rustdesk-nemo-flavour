@@ -6,6 +6,12 @@
 
 ---
 
+## ✅ Just done (2026-09-02)
+- **Encrypted DIRECT-IP (B)** + **S-A closed / fail-closed** — direct-IP sessions now encrypt end-to-end with no relay, server-anchored via a signed `nemo-peer-keys` map; `require-encrypted-session` enforced fleet-wide; every plaintext fail-open path (H2/H3) removed. Deployed (server live on .176). See [SECURITY-HARDENING-TODO.md](SECURITY-HARDENING-TODO.md) 2026-09-02 section.
+- **Bug-hunt fixes:** H1 (stop logging session token), M3 (0600 on LDAP/session files), M4 (test suite compiles again — 41 pass).
+- **UX:** 1% custom bitrate floor; multi-column settings menu (needs visual check).
+- **Docs:** [SPEED-AND-CODEC-RESEARCH.md](SPEED-AND-CODEC-RESEARCH.md) (TJPEG_V2/DWService codec + speed opts). Multi-screen tiled view implementation in progress (Sciter UI; needs visual test).
+
 ## ✅ Just done (2026-09-01)
 - **Named/per-user policies** now expose the already-enforced capability keys: **Camera, Remote terminal/shell, TCP tunnel, Remote printer** (+ **one-way file transfer** earlier). All are `KEYS_SETTINGS`-scoped and already gated on the controlled side — pure dashboard, zero client change.
 - **TBFDesk rebrand** of the remaining user-visible strings (About/version/tray/toast/German + settings help); `APP_NAME` stays `RustDesk` (config dir/service/protocol unchanged).
@@ -26,7 +32,7 @@ For a managed fleet, pushing a new client version **from the server** is the sin
 
 ### 2. Security hardening → see [SECURITY-HARDENING-TODO.md](SECURITY-HARDENING-TODO.md)
 The core session is already E2E-strong; the ranked fixes there are the HIGH security work:
-- **S-A** peer-key trust **fails open** → pin + fail-closed. *(critical)*
+- **S-A** peer-key trust fails open → ✅ **CLOSED 2026-09-02** (require-encrypted fail-closed + server-anchored encrypted direct-IP). Remaining: TOFU store for peers not in the pushed map (they fail closed today).
 - **S-B** management/LDAP-login API is **self-signed accept-any-invalid TOFU** → CA-signed or fingerprint-pinned cert, fallback OFF. *(critical — LDAP password confidentiality)*
 - **S-C** LDAP DC cert-verify off-switch. **S-D** cross-direction nonce reuse. **S-E** port-forward/RDP tunnels drop the E2E layer.
 
