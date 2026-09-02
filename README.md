@@ -2,6 +2,8 @@
 
 Company-focused RustDesk fork workspace for high-performance remote access to CAD/3D workstations.
 
+> **Continuing this work?** Read [`HANDOFF.md`](HANDOFF.md) first — it has the current state, the open **reload-icon bug** (with a step-by-step debug plan), the pending **build-version display**, all build/deploy recipes, and the **screenshot-self-verify** method for the client UI. Ranked TODOs live in [`OPEN-TODOS.md`](OPEN-TODOS.md); security in [`SECURITY-HARDENING-TODO.md`](SECURITY-HARDENING-TODO.md).
+
 ## Repositories
 
 - `rustdesk-client-nemo`: RustDesk open-source client fork.

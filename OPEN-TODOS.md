@@ -61,6 +61,9 @@ The `.176` Linux host only has its policy-poll file updated (base `10fc2b22f`); 
 
 ---
 
+## LOW — TBFDesk polish
+- **About-dialog placeholders** (`index.tis` `MyIdMenu.showAbout()`): the RustDesk links/branding were removed (2026-09-02) and replaced with TBF placeholders — fill in the real **TBF website URL, support/contact info (e-mail, phone), privacy-statement link** when available, and wire them as clickable `.link .custom-event url='…'` divs (the click handler is already in place).
+
 ## LOW — upstream TODO/HACK markers in retained code (informational)
 These are inherited from upstream RustDesk, not TBFDesk work, and are low-relevance to the goal:
 - `rustdesk-server-nemo/src/utils.rs:97` reverse-DNS on OSX; `:109` "ICMP ping?"; `:119` "key check".
