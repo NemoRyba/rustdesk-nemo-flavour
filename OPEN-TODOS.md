@@ -6,22 +6,26 @@
 
 ---
 
-## SECURITY — verified open
+## SECURITY
 
-### 1. S-B + H4 — trust for the management control plane  *(the one real security edge left)*
-*Verified:* clients run with `allow-insecure-tls-fallback = 'Y'` against the self-signed `--nemo-api-tls auto` cert, and the policy response delivers secrets (e.g. `nemo-permanent-password`) unsealed, authenticated only by id+uuid.
-**Fix as one design:** CA-signed or fingerprint-pinned cert with the insecure fallback OFF, and seal the policy-poll response (+ `/api/ab/get`) to the provisioned device key (S-DUALKEY step 3). Closes S-B and H4 together.
+> **2026-09-03:** S-B core + H4 + M1 + S-C + all L-items are **CODE-COMPLETE (uncommitted, not yet deployed to 176, not yet screenshot/live-verified).** Server suite green (48 tests); client compiles clean. Detail in [SECURITY-HARDENING-TODO.md](SECURITY-HARDENING-TODO.md) (2026-09-03 session). What remains open below is the transport/proto tier (M2, S-D, S-E, cert-pin enforcement), all blocked on the hbb_common fork remote (#9) and/or lockstep rollout.
 
-### 2. M1 — device keys are a shared pool
-*Verified:* `verify_device_key` only checks `is_device_key_pinned(pubkey)` — any pinned key authenticates any client id. Bind each key to a peer id at provisioning time.
+### 1. S-B + H4 — trust for the management control plane  *(CORE DONE; cert-pin enforcement remains)*
+*Was:* clients run with `allow-insecure-tls-fallback = 'Y'` against the self-signed cert, and the policy response delivered secrets unsealed, authed only by id+uuid.
+**DONE (uncommitted):** the policy-poll response AND `/api/ab/get` are now **sealed to the provisioned device key** (sign-then-seal, NaCl sealedbox, Ed25519→Curve25519) when the client proves a pinned key — a MITM under a forged cert sees ciphertext. Client has an anti-downgrade ratchet. H4 gets an opt-in **`strip_unsealed_secrets`** mode that strips secrets from any response that can't be sealed.
+**REMAINING (S-B item 5):** CA-signed/fingerprint-pinned cert with the insecure fallback OFF. The `nemo-api-cert-fingerprint` policy key is plumbed + persisted on both ends, but the rustls `PinnedVerifier` + retry-ladder short-circuit is **not built yet** (needs `libs/hbb_common/src/verifier.rs`).
 
-### 3. M2 — blocklist trusts a self-reported id
-*Verified:* the controlled side rejects blocked peers on `lr.my_id`, a field the CONNECTING client fills in. Now fixable properly: anchor on the B-feature SignedId (server-pushed `nemo-peer-keys`).
+### 2. M1 — device keys are a shared pool  *(DONE, uncommitted)*
+Keys can now be **bound to a peer id** (`DeviceKey.peer_id`); `verify_device_signature` refuses a signature whose claimed id ≠ binding. Dashboard has a "bind to TBFDesk ID" field. Legacy unbound keys still work until re-provisioned.
+
+### 3. M2 — blocklist trusts a self-reported id  *(OPEN — needs a proto change)*
+*Verified:* the controlled side rejects blocked peers on `lr.my_id`, a field the CONNECTING client fills in. Fix = add a controller-signed `signed_id` to the `PublicKey` handshake message (proto change) and verify it against `nemo-peer-keys`. Blocked on hbb_common fork remote (#9) + lockstep rollout.
 
 ### 4. Smaller hardening (per the 2026-09-01 audit)
-- **S-C**: the LDAP `tls_verify` off-switch exists (default true, verified) — remove or admin-gate it.
-- **S-D**: cross-direction nonce reuse on the shared secretbox key (primitive-level).
-- **S-E**: port-forward/RDP tunnels drop the E2E layer.
+- **S-C** *(DONE, uncommitted)*: LDAP `tls_verify=false` now **fails closed** unless `--insecure-ldap-i-accept-mitm Y` is passed.
+- **S-D** *(OPEN)*: cross-direction nonce reuse on the shared secretbox key (primitive-level, lowest severity). Needs a `tcp.rs` + proto-negotiation change (hbb_common) to avoid breaking mixed-version sessions.
+- **S-E** *(OPEN)*: port-forward/RDP tunnels drop the E2E layer. Remove the two `set_raw()` calls, version-gated (hbb_common). Low practical risk here (direct desktop; tunnels likely unused).
+- **L-items** *(DONE, uncommitted)*: admin API fails closed without a token (auto-generates+logs one); sealed-login nonce replay guard (ts==0 bypass removed); login user-enumeration collapsed; device-key id collision fixed; `nemo-management-allow-unsigned` compiled out of release builds.
 - **S-A residue** (S-A itself ✅ closed 2026-09-02): optional TOFU store for peers absent from the pushed key map — such peers currently fail closed, which is acceptable.
 
 ---
@@ -45,8 +49,8 @@
 ### 8. `NemoSource` protobuf field  *(protocol robustness)*
 *Verified:* controller identity still rides smuggled in the rendezvous `version` string (`nemo-source-v1:<id>:<uuid>[:token]`). A real field on `PunchHoleRequest`/`RequestRelay` closes the advisory-policy bypass. Forks `hbb_common` → do together with #9.
 
-### 9. hbb_common fork remote  *(blocks fresh clones)*
-*Verified:* `libs/hbb_common`'s only remote is read-only upstream `rustdesk/hbb_common`; local commit `40adca6` (private-network-only + quality default) is unpushed. Create a NemoRyba fork, push, repoint the submodule URL — until then recursive clones can't resolve the gitlink and the 176 checkout shows it permanently modified.
+### 9. hbb_common fork remote  ✅ RESOLVED 2026-09-03
+Forked to **github.com/NemoRyba/hbb_common** (public) + a **176 bare mirror** (`~/git/hbb_common.git`). The `nemo` branch (`40adca6` + A4 `b6aa3ca`) is pushed to both; the client `.gitmodules` now points at NemoRyba (branch `nemo`) and the gitlink is committed (`ef99cce88`, pushed to NemoRyba + 176). Fresh recursive clones now resolve. hbb_common remotes: `origin`=NemoRyba, `ubuntu`=176, `upstream`=rustdesk/hbb_common.
 
 ### 10. Rebuild the 176 Linux host binary  *(checkout is current, binary is not)*
 *Verified:* client checkout on 176 reconciled to `nemo-tdd` HEAD on 2026-09-02, but `/opt/nemo-rustdesk/rustdesk` is dated 2026-08-31. Rebuild (Rust 1.75, `inline,linux-pkg-config`) and atomic-replace + `systemctl restart rustdesk-nemo.service`.
