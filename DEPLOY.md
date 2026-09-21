@@ -59,11 +59,37 @@ offline-capable. Fetch it once from the sciter-sdk (`bin.win/x64/sciter.dll`), c
 with its SHA-256, and confirm the redistribution terms while you are there. Without it
 the installed client does not start, and the build only *warns*.
 
-**Signing is an open decision.** Unsigned, the installer trips SmartScreen and UAC says
-"unknown publisher". For a handful of admin-pushed seats that is usually tolerated — and
-the trust anchor for *updates* is already the Ed25519 manifest signature plus the sha256
-the updater checks before installing, not Authenticode. Pass `-SignWith cert.pfx` if you
-buy an OV/EV certificate.
+### Signing
+
+**Let's Encrypt cannot sign code.** It issues TLS *server* certificates only; there is no
+free public CA for Authenticode. Three options:
+
+| | cost | UAC prompt on your fleet | SmartScreen elsewhere |
+|---|---|---|---|
+| OV/EV certificate | paid, annual | trusted | EV clears immediately, OV builds reputation |
+| **self-signed + Trusted Publishers GPO** | **free** | **trusted** | still warns |
+| unsigned | free | "unknown publisher" | warns |
+
+For ~15 domain-joined workstations plus a few technician machines, the middle row is the
+right answer and it is what `scripts/make-codesign-cert.ps1` sets up:
+
+```powershell
+.\scripts\make-codesign-cert.ps1 -Password (Read-Host -AsSecureString)
+# then once, on the DC: import dist\tbfdesk-codesign.cer into the workstation GPO under
+#   Computer Config > Policies > Windows Settings > Security Settings > Public Key Policies
+#   -> Trusted Publishers  AND  -> Trusted Root Certification Authorities
+# (both: a self-signed cert is its own root, so without the second it chains to nothing)
+.\scripts\package-windows-client.ps1 -SignWith dist\tbfdesk-codesign.pfx -SignPassword <pw>
+```
+
+Verify on a workstation: `Get-AuthenticodeSignature <installer>` → `Valid`.
+
+The `.pfx` holds the private key. Treat it like the server signing key: offline, backed
+up, never committed.
+
+Note the trust anchor for **updates** is neither of these — the manifest is Ed25519-signed
+by the server key and the updater verifies the sha256 before installing. Authenticode is
+about the first install and about what the UAC prompt says.
 
 **Publishing an update** is the same file: `POST` it to `/nemo/api/update` with its
 sha256. Note that MSI and exe installs are not interchangeable at update time
@@ -115,6 +141,27 @@ systemctl enable --now rustdesk-hbbs-nemo rustdesk-hbbr-nemo
 
 The token goes in `EnvironmentFile`, never inline in `ExecStart` — argv is world-readable
 through `/proc` (SEC-11).
+
+### TLS for the management API — this is where Let's Encrypt belongs
+
+Since SEC-12 the management API serves **HTTPS by default on any routable bind**, and
+refuses plaintext there. With no certificate supplied it generates a self-signed one, which
+works (the client caches the choice on first use) but means a browser warning on the admin
+dashboard every time.
+
+If the server has a DNS name reachable from the internet — which it will if you follow the
+split-horizon DNS recommendation in `TOPOLOGY-DEPLOYMENT.md` — use Let's Encrypt and point
+hbbs at the result:
+
+```bash
+certbot certonly --standalone -d tbfdesk.example.com
+# then in /etc/tbfdesk/hbbs.env, or as extra ExecStart args:
+#   --nemo-api-tls-cert /etc/letsencrypt/live/tbfdesk.example.com/fullchain.pem
+#   --nemo-api-tls-key  /etc/letsencrypt/live/tbfdesk.example.com/privkey.pem
+```
+
+The hbbs user needs read access to those files (LE's `live/` is root-only by default), and
+the renewal hook needs to restart hbbs — it reads the certificate once at boot.
 
 `--mask` decides which peers count as "same intranet"; set it to cover every internal
 network or cross-subnet pairs are forced to relay.
