@@ -1,0 +1,489 @@
+<title>TBFDesk Wire Schematic</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+  :root {
+    --paper:      #f6f7f9;
+    --surface:    #ffffff;
+    --surface-2:  #eef1f5;
+    --ink:        #10151c;
+    --ink-2:      #454f5d;
+    --ink-3:      #6f7b8a;
+    --rule:       #d7dce3;
+    --rule-soft:  #e6eaef;
+    --accent:     #0d7d7a;
+    --accent-dim: #d6ebea;
+    --ok:         #1c7a4a;
+    --ok-bg:      #dff0e6;
+    --warn:       #a76a14;
+    --warn-bg:    #f8ecd6;
+    --bad:        #b3341f;
+    --bad-bg:     #f7e0db;
+    --shadow:     0 1px 2px rgba(16,21,28,.06), 0 8px 24px -16px rgba(16,21,28,.25);
+    --sans: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:      #0d1117;
+      --surface:    #141a22;
+      --surface-2:  #1b232d;
+      --ink:        #e7ecf2;
+      --ink-2:      #aab6c4;
+      --ink-3:      #7d8a99;
+      --rule:       #2a333f;
+      --rule-soft:  #212a35;
+      --accent:     #3fb8b2;
+      --accent-dim: #10312f;
+      --ok:         #5fc98c;
+      --ok-bg:      #10301f;
+      --warn:       #e0aa5a;
+      --warn-bg:    #33260f;
+      --bad:        #f0806a;
+      --bad-bg:     #38160f;
+      --shadow:     0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.8);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper:      #0d1117;
+    --surface:    #141a22;
+    --surface-2:  #1b232d;
+    --ink:        #e7ecf2;
+    --ink-2:      #aab6c4;
+    --ink-3:      #7d8a99;
+    --rule:       #2a333f;
+    --rule-soft:  #212a35;
+    --accent:     #3fb8b2;
+    --accent-dim: #10312f;
+    --ok:         #5fc98c;
+    --ok-bg:      #10301f;
+    --warn:       #e0aa5a;
+    --warn-bg:    #33260f;
+    --bad:        #f0806a;
+    --bad-bg:     #38160f;
+    --shadow:     0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.8);
+  }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1060px; margin: 0 auto; padding-inline: 20px; padding-block: 40px 72px; }
+  h1, h2, h3 { text-wrap: balance; margin: 0; letter-spacing: -0.015em; }
+  h1 { font-size: clamp(28px, 5vw, 40px); font-weight: 700; line-height: 1.12; }
+  h2 { font-size: clamp(19px, 2.6vw, 23px); font-weight: 600; }
+  h3 { font-size: 15px; font-weight: 600; }
+  p  { margin: 0; max-width: 68ch; }
+  code, .mono { font-family: var(--mono); font-size: 0.87em; }
+
+  .eyebrow {
+    font-family: var(--mono); font-size: 11px; font-weight: 500;
+    letter-spacing: .13em; text-transform: uppercase; color: var(--accent);
+  }
+  header.masthead { display: flex; flex-direction: column; gap: 14px; padding-bottom: 28px; border-bottom: 2px solid var(--ink); }
+  .lede { font-size: 17px; color: var(--ink-2); max-width: 62ch; }
+  .meta { display: flex; flex-wrap: wrap; gap: 8px 22px; font-family: var(--mono); font-size: 11.5px; color: var(--ink-3); }
+
+  section { margin-top: 52px; display: flex; flex-direction: column; gap: 18px; }
+  .sec-head { display: flex; flex-direction: column; gap: 6px; }
+
+  /* ---------- status chips ---------- */
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px; flex: none;
+    font-family: var(--mono); font-size: 10.5px; font-weight: 600;
+    letter-spacing: .07em; text-transform: uppercase;
+    padding: 3px 8px; border-radius: 3px; white-space: nowrap;
+  }
+  .chip::before { content:""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .chip.ok   { color: var(--ok);   background: var(--ok-bg); }
+  .chip.warn { color: var(--warn); background: var(--warn-bg); }
+  .chip.bad  { color: var(--bad);  background: var(--bad-bg); }
+
+  /* ---------- topology ---------- */
+  .topo { background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 8px; box-shadow: var(--shadow); overflow-x: auto; }
+  .topo svg { display: block; width: 100%; min-width: 620px; height: auto; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 20px; font-family: var(--mono); font-size: 11.5px; color: var(--ink-3); }
+  .legend b { color: var(--ink-2); font-weight: 500; }
+
+  /* ---------- leg board ---------- */
+  .board { display: flex; flex-direction: column; border: 1px solid var(--rule); border-radius: 6px; overflow: hidden; background: var(--surface); box-shadow: var(--shadow); }
+  .leg { display: grid; grid-template-columns: 62px minmax(0,1.5fr) minmax(0,1.9fr) auto; gap: 14px; align-items: start; padding: 14px 16px; border-bottom: 1px solid var(--rule-soft); }
+  .leg:last-child { border-bottom: 0; }
+  .leg-id { font-family: var(--mono); font-size: 12px; font-weight: 600; color: var(--accent); padding-top: 1px; }
+  .leg-name { font-weight: 600; font-size: 14.5px; }
+  .leg-sub { font-family: var(--mono); font-size: 11.5px; color: var(--ink-3); margin-top: 3px; }
+  .leg-detail { font-size: 13.5px; color: var(--ink-2); }
+  .leg-detail code { color: var(--ink); background: var(--surface-2); padding: 1px 4px; border-radius: 3px; }
+  @media (max-width: 720px) {
+    .leg { grid-template-columns: 52px 1fr; gap: 4px 12px; }
+    .leg > .chip { grid-column: 2; justify-self: start; margin-top: 6px; }
+    .leg-detail { grid-column: 2; }
+  }
+
+  /* ---------- handshakes ---------- */
+  .flows { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; }
+  .flow { background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 18px; display: flex; flex-direction: column; gap: 12px; }
+  .flow-title { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  .flow-title .n { font-family: var(--mono); font-size: 11px; color: var(--accent); font-weight: 600; }
+  .steps { display: flex; flex-direction: column; gap: 0; font-family: var(--mono); font-size: 12px; }
+  .step { display: grid; grid-template-columns: 18px 1fr; gap: 10px; padding: 7px 0; border-bottom: 1px dashed var(--rule-soft); }
+  .step:last-child { border-bottom: 0; }
+  .arrow { color: var(--accent); font-weight: 600; }
+  .arrow.back { color: var(--ink-3); }
+  .step-body { color: var(--ink-2); overflow-wrap: anywhere; }
+  .step-body b { color: var(--ink); font-weight: 600; }
+  .step.sealed { background: var(--accent-dim); margin-inline: -18px; padding-inline: 18px; border-bottom: 0; }
+  .note { font-size: 13px; color: var(--ink-2); border-left: 2px solid var(--accent); padding-left: 12px; }
+
+  /* ---------- tables ---------- */
+  .tbl-wrap { overflow-x: auto; border: 1px solid var(--rule); border-radius: 6px; background: var(--surface); box-shadow: var(--shadow); }
+  table { border-collapse: collapse; width: 100%; min-width: 560px; font-size: 13.5px; }
+  th, td { text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--rule-soft); vertical-align: top; }
+  th { font-family: var(--mono); font-size: 10.5px; letter-spacing: .09em; text-transform: uppercase; color: var(--ink-3); font-weight: 600; background: var(--surface-2); }
+  tr:last-child td { border-bottom: 0; }
+  td code { font-family: var(--mono); font-size: 12px; }
+  td.key { font-family: var(--mono); font-size: 12px; color: var(--ink); white-space: nowrap; }
+
+  /* ---------- gaps ---------- */
+  .gaps { display: flex; flex-direction: column; gap: 10px; counter-reset: gap; }
+  .gap { display: grid; grid-template-columns: 30px 1fr; gap: 14px; background: var(--surface); border: 1px solid var(--rule); border-left: 3px solid var(--warn); border-radius: 5px; padding: 14px 16px; }
+  .gap.critical { border-left-color: var(--bad); }
+  .gap::before {
+    counter-increment: gap; content: counter(gap);
+    font-family: var(--mono); font-size: 13px; font-weight: 600; color: var(--ink-3);
+    font-variant-numeric: tabular-nums;
+  }
+  .gap-body { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+  .gap-title { font-weight: 600; font-size: 14.5px; }
+  .gap-text { font-size: 13.5px; color: var(--ink-2); }
+  .gap-cond { font-family: var(--mono); font-size: 11.5px; color: var(--ink-3); }
+  .gap-cond b { color: var(--warn); font-weight: 600; }
+  .gap.critical .gap-cond b { color: var(--bad); }
+
+  .verdict { background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 22px; display: flex; flex-direction: column; gap: 10px; box-shadow: var(--shadow); }
+  .verdict .answer { font-size: clamp(22px, 3.4vw, 28px); font-weight: 700; letter-spacing: -0.02em; }
+  .verdict .answer em { font-style: normal; color: var(--bad); }
+
+  footer { margin-top: 56px; padding-top: 20px; border-top: 1px solid var(--rule); font-family: var(--mono); font-size: 11.5px; color: var(--ink-3); display: flex; flex-wrap: wrap; gap: 6px 20px; }
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <span class="eyebrow">TBFDesk · protocol reference</span>
+    <h1>What talks to what, and what protects it</h1>
+    <p class="lede">Every communication leg in the system, its cipher, where the key comes from, and what is still crossing the wire in the clear. Verified at the call site, not taken from the design documents.</p>
+    <div class="meta">
+      <span>hbbs 1.1.15 · client 1.4.7</span>
+      <span>branch <code>nemo-tdd</code></span>
+      <span>not yet deployed</span>
+    </div>
+  </header>
+
+  <section>
+    <div class="sec-head">
+      <span class="eyebrow">Topology</span>
+      <h2>One site, one server, a technician outside</h2>
+    </div>
+    <div class="topo">
+      <svg viewBox="0 0 900 340" role="img" aria-label="Network topology: a technician on the internet, a TBFDesk server on site, and CAD workstations on the site LAN.">
+        <defs>
+          <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="var(--accent)"/>
+          </marker>
+          <marker id="ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="var(--ink-3)"/>
+          </marker>
+        </defs>
+
+        <!-- site boundary -->
+        <rect x="330" y="16" width="556" height="308" rx="8" fill="var(--surface-2)" stroke="var(--rule)" stroke-dasharray="5 4"/>
+        <text x="874" y="38" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--ink-3)" letter-spacing="1.4">SITE</text>
+        <text x="26" y="38" font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--ink-3)" letter-spacing="1.4">INTERNET</text>
+
+        <!-- technician -->
+        <rect x="26" y="120" width="164" height="76" rx="6" fill="var(--surface)" stroke="var(--rule)"/>
+        <text x="108" y="150" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="14" font-weight="600" fill="var(--ink)">technician</text>
+        <text x="108" y="170" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--ink-3)">controller</text>
+
+        <!-- server -->
+        <rect x="380" y="112" width="168" height="92" rx="6" fill="var(--surface)" stroke="var(--accent)" stroke-width="1.5"/>
+        <text x="464" y="142" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="14" font-weight="600" fill="var(--ink)">TBFDesk server</text>
+        <text x="464" y="162" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--ink-3)">hbbs · rendezvous</text>
+        <text x="464" y="180" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--ink-3)">hbbr · relay</text>
+
+        <!-- workstations -->
+        <rect x="712" y="112" width="152" height="92" rx="6" fill="var(--surface)" stroke="var(--rule)"/>
+        <text x="788" y="142" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="14" font-weight="600" fill="var(--ink)">workstations</text>
+        <text x="788" y="162" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--ink-3)">× 15 · CAD</text>
+        <text x="788" y="180" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--ink-3)">controlled</text>
+
+        <!-- L1 technician -> server -->
+        <line x1="190" y1="142" x2="374" y2="142" stroke="var(--accent)" stroke-width="1.6" marker-end="url(#ar)"/>
+        <text x="282" y="134" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--accent)">L1 · signalling</text>
+        <!-- L7 -->
+        <line x1="190" y1="176" x2="374" y2="176" stroke="var(--accent)" stroke-width="1.6" marker-end="url(#ar)"/>
+        <text x="282" y="194" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--accent)">L7 · mgmt API</text>
+
+        <!-- L1 workstation -> server -->
+        <line x1="706" y1="158" x2="554" y2="158" stroke="var(--accent)" stroke-width="1.6" marker-end="url(#ar)"/>
+        <text x="630" y="150" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--accent)">L1</text>
+
+        <!-- L5 relayed session: technician -> through server -> workstation -->
+        <path d="M108 196 L108 268 L788 268 L788 210" fill="none" stroke="var(--ink-3)" stroke-width="2.4" marker-end="url(#ar2)"/>
+        <rect x="392" y="252" width="146" height="30" rx="4" fill="var(--surface)" stroke="var(--rule)"/>
+        <text x="465" y="272" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--ink-2)">L5 · relayed, E2E</text>
+
+        <!-- L4 direct -->
+        <path d="M800 210 L800 306 L620 306" fill="none" stroke="var(--ink-3)" stroke-width="2.4" stroke-dasharray="6 4" marker-end="url(#ar2)"/>
+        <text x="700" y="322" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--ink-2)">L4 · direct, same subnet</text>
+
+        <!-- L8 -->
+        <line x1="464" y1="112" x2="464" y2="72" stroke="var(--accent)" stroke-width="1.6" marker-end="url(#ar)"/>
+        <rect x="396" y="44" width="136" height="28" rx="4" fill="var(--surface)" stroke="var(--rule)"/>
+        <text x="464" y="63" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--ink-2)">L8 · LDAPS → AD</text>
+      </svg>
+    </div>
+    <div class="legend">
+      <span><b>signalling</b> — who may talk to whom, and where</span>
+      <span><b>session</b> — the screen, input, audio, files</span>
+      <span><b>the relay never sees plaintext</b></span>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <span class="eyebrow">Status board</span>
+      <h2>The legs</h2>
+      <p>Status is the shipped default with no flags passed. Where it is conditional, the condition is named.</p>
+    </div>
+    <div class="board">
+
+      <div class="leg">
+        <span class="leg-id">L1</span>
+        <div><div class="leg-name">Client ↔ hbbs · rendezvous</div><div class="leg-sub">TCP 21116 · protobuf</div></div>
+        <div class="leg-detail">XSalsa20-Poly1305. Key chosen by the <b>client</b>, sealed to the server's per-connection ephemeral. Client proves a <b>pinned device key</b> bound to its peer id.</div>
+        <span class="chip ok">Encrypted</span>
+      </div>
+
+      <div class="leg">
+        <span class="leg-id">L2</span>
+        <div><div class="leg-name">Client → hbbs over UDP</div><div class="leg-sub">UDP 21116</div></div>
+        <div class="leg-detail">No handshake exists for a datagram socket. Refused by default on both ends — <code>--udp-registration=N</code>, client <code>disable-udp=Y</code>.</div>
+        <span class="chip ok">Refused</span>
+      </div>
+
+      <div class="leg">
+        <span class="leg-id">L3</span>
+        <div><div class="leg-name">hbbs → client · pushes</div><div class="leg-sub">rides the peer's own L1 connection</div></div>
+        <div class="leg-detail">Punch instructions, forwarded relay requests, local-address fetches. Sealed with that connection's key. Falls back to plaintext UDP only for a UDP-registered peer — unreachable at defaults.</div>
+        <span class="chip ok">Encrypted</span>
+      </div>
+
+      <div class="leg">
+        <span class="leg-id">L4</span>
+        <div><div class="leg-name">Client ↔ client · the session</div><div class="leg-sub">punched TCP / KCP-over-UDP / IPv6</div></div>
+        <div class="leg-detail">Screen, input, audio, clipboard, files. Two-level Ed25519 chain. <b>The password never crosses the wire.</b> Downgrades to plaintext on a handshake fault — see gap 2.</div>
+        <span class="chip warn">Conditional</span>
+      </div>
+
+      <div class="leg">
+        <span class="leg-id">L5a</span>
+        <div><div class="leg-name">Client ↔ hbbr · control frame</div><div class="leg-sub">TCP 21117</div></div>
+        <div class="leg-detail">Its own signed key exchange, separate key. Covers the relay request — the licence key and both peer ids — then both ends drop the cipher. Fail-closed.</div>
+        <span class="chip ok">Encrypted</span>
+      </div>
+
+      <div class="leg">
+        <span class="leg-id">L5b</span>
+        <div><div class="leg-name">Client ↔ client <em>through</em> hbbr</div><div class="leg-sub">TCP 21117 · byte pump</div></div>
+        <div class="leg-detail"><b>Exactly one layer, and it is the end-to-end one.</b> hbbr sees ciphertext and cannot read video, audio, clipboard or files. No double encryption, so relaying costs a hop — not CPU.</div>
+        <span class="chip warn">Inherits L4</span>
+      </div>
+
+      <div class="leg">
+        <span class="leg-id">L6</span>
+        <div><div class="leg-name">Direct IP / host:port</div><div class="leg-sub">TCP · off by default</div></div>
+        <div class="leg-detail">No handshake, no cipher, no authentication. Currently also non-functional — the controlled side waits for a key that never arrives. The one place where "fast" and "encrypted" diverge.</div>
+        <span class="chip bad">Plaintext</span>
+      </div>
+
+      <div class="leg">
+        <span class="leg-id">L7</span>
+        <div><div class="leg-name">Client ↔ management API</div><div class="leg-sub">HTTPS 21120</div></div>
+        <div class="leg-detail">Two layers. Login and the policy poll are sealed inside TLS and survive a TLS-stripping attacker. Address book and heartbeat are TLS-only, and that TLS authenticates nothing unless the certificate is pinned.</div>
+        <span class="chip warn">Conditional</span>
+      </div>
+
+      <div class="leg">
+        <span class="leg-id">L8</span>
+        <div><div class="leg-name">hbbs → LDAP / AD</div><div class="leg-sub">LDAPS 636</div></div>
+        <div class="leg-detail"><code>ldaps://</code> enforced; plaintext <code>ldap://</code> is refused outright. Certificate verification on unless explicitly disabled.</div>
+        <span class="chip ok">Encrypted</span>
+      </div>
+
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <span class="eyebrow">Handshakes</span>
+      <h2>How each key is established</h2>
+      <p>Three exchanges carry everything. Each ends with a fresh symmetric key and a nonce whose byte 8 separates the two directions, so the two sides never share keystream.</p>
+    </div>
+    <div class="flows">
+
+      <div class="flow">
+        <div class="flow-title"><span class="n">L1</span><h3>Rendezvous</h3></div>
+        <div class="steps">
+          <div class="step"><span class="arrow back">←</span><span class="step-body"><b>hbbs</b> · KeyExchange{ Ed25519_sign(ephemeral_X25519_pub) } <br><span style="color:var(--ink-3)">public by design</span></span></div>
+          <div class="step"><span class="arrow">→</span><span class="step-body"><b>client</b> · NemoClientAuth{<br>&nbsp;&nbsp;client_box_pk,<br>&nbsp;&nbsp;sealed_key = box_seal(K‖0x01),<br>&nbsp;&nbsp;device_pub, peer_id,<br>&nbsp;&nbsp;sig = Ed25519(ctx ‖ server_eph ‖ … ‖ peer_id)<br>}</span></div>
+          <div class="step sealed"><span class="arrow">⇄</span><span class="step-body"><b>XSalsa20-Poly1305 under K</b></span></div>
+        </div>
+        <p class="note">The signature covers the server's <em>per-connection</em> ephemeral, so a captured proof is useless on any other connection. Freshness from a live challenge — no clock involved.</p>
+      </div>
+
+      <div class="flow">
+        <div class="flow-title"><span class="n">L4</span><h3>Peer to peer</h3></div>
+        <div class="steps">
+          <div class="step"><span class="arrow back">←</span><span class="step-body"><b>controlled</b> · SignedId{ Ed25519_sign(IdPk{ id, eph_X25519 }) }</span></div>
+          <div class="step"><span class="arrow back">·</span><span class="step-body"><span style="color:var(--ink-3)">controller verifies with the peer key <b>hbbs signed</b> and handed over in the punch response</span></span></div>
+          <div class="step"><span class="arrow">→</span><span class="step-body"><b>controller</b> · PublicKey{ box_seal(K‖0x01) }</span></div>
+          <div class="step sealed"><span class="arrow">⇄</span><span class="step-body"><b>screen · input · audio · clipboard · files</b></span></div>
+        </div>
+        <p class="note">Two-level chain: hbbs signs the peer's identity key, the peer signs its own ephemeral. The login password is hashed twice with a salt and a challenge — it never crosses the wire in any form.</p>
+      </div>
+
+      <div class="flow">
+        <div class="flow-title"><span class="n">L5</span><h3>Through the relay</h3></div>
+        <div class="steps">
+          <div class="step"><span class="arrow back">←</span><span class="step-body"><b>hbbr</b> · KeyExchange{ Ed25519_sign(ephemeral) } <span style="color:var(--ink-3)">— its own key</span></span></div>
+          <div class="step"><span class="arrow">→</span><span class="step-body"><b>client</b> · sealed K, then RequestRelay{ licence_key, id, uuid }</span></div>
+          <div class="step"><span class="arrow back">·</span><span class="step-body"><span style="color:var(--ink-3)">both ends <b>drop the cipher</b>, keep the framing</span></span></div>
+          <div class="step sealed"><span class="arrow">⇄</span><span class="step-body"><b>L4 ciphertext, pumped byte for byte</b></span></div>
+        </div>
+        <p class="note">The control frame is protected so the licence key and both peer ids are not exposed to the path. After that hbbr is a pipe — it holds no key that could open the session.</p>
+      </div>
+
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <span class="eyebrow">Secrets</span>
+      <h2>Key inventory</h2>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Key</th><th>Lives</th><th>Protects</th><th>If lost</th></tr></thead>
+        <tbody>
+          <tr><td class="key">id_ed25519</td><td>server — shared by hbbs <em>and</em> hbbr</td><td>signs every rendezvous and relay offer, every peer identity key, every update manifest</td><td>the whole fleet fails closed</td></tr>
+          <tr><td class="key">device key</td><td>each client, <code>nemo-device-key</code></td><td>Layer 1 — proves the machine is provisioned, at the transport <em>and</em> the API</td><td>that machine cannot connect; no CLI recovery path, by design</td></tr>
+          <tr><td class="key">peer key pair</td><td>each client</td><td>its own identity, counter-signed by hbbs for peers</td><td>re-registers; peers see a key change</td></tr>
+          <tr><td class="key">permanent password</td><td>controlled machine</td><td>session login</td><td>— never on the wire</td></tr>
+          <tr><td class="key">session token</td><td>controller, local config</td><td>per-user ACL and require-login</td><td>bearer credential — replayable if leaked</td></tr>
+          <tr><td class="key">admin API token</td><td>server env + the admin browser</td><td>the entire management API, including <code>require_device_key</code></td><td>full fleet control</td></tr>
+          <tr><td class="key">management pubkey</td><td>pushed to clients</td><td>anchors the sealed envelope and the signed policy</td><td>—</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <span class="eyebrow">The question</span>
+      <h2>Is everything encrypted?</h2>
+    </div>
+    <div class="verdict">
+      <div class="answer">No — but the gaps are now <em>specific</em>, not structural.</div>
+      <p>Encrypted unconditionally at shipped defaults: rendezvous signalling, server pushes, the relay control frame, the relayed payload, LDAP, and the management API's login and policy poll. Nine things remain, ranked by what would actually hurt.</p>
+    </div>
+
+    <div class="gaps">
+
+      <div class="gap critical">
+        <div class="gap-body">
+          <span class="gap-title">Port-forward and RDP tunnels are plaintext</span>
+          <span class="gap-text">After login both ends drop the cipher <em>and</em> the framing. An entire RDP session — credentials included — crosses the punched link, or the relay, in the clear.</span>
+          <span class="gap-cond"><b>always</b> · every transport · the worst one</span>
+        </div>
+      </div>
+
+      <div class="gap critical">
+        <div class="gap-body">
+          <span class="gap-title">The session downgrades on a handshake fault</span>
+          <span class="gap-text">One corrupted frame from an on-path attacker yields a fully plaintext session, because the fail-closed switch is a policy key rather than the default.</span>
+          <span class="gap-cond"><b>nemo-require-encrypted-session</b> defaults off</span>
+        </div>
+      </div>
+
+      <div class="gap critical">
+        <div class="gap-body">
+          <span class="gap-title">Short frames bypass decryption entirely</span>
+          <span class="gap-text">Frames of one byte or less skip the cipher and do not advance the receive counter, so they are unauthenticated on <em>every</em> otherwise-encrypted leg. The rendezvous loop treats an empty frame as a keep-alive and echoes it.</span>
+          <span class="gap-cond"><b>always</b> · inherited from upstream</span>
+        </div>
+      </div>
+
+      <div class="gap">
+        <div class="gap-body">
+          <span class="gap-title">LAN discovery broadcasts who you are</span>
+          <span class="gap-text">Id, hostname, the <em>active username</em>, platform and MAC, broadcast to the whole subnet.</span>
+          <span class="gap-cond"><b>enable-lan-discovery</b> is on by default</span>
+        </div>
+      </div>
+
+      <div class="gap">
+        <div class="gap-body">
+          <span class="gap-title">Public STUN queries leave the network</span>
+          <span class="gap-text">Every connect attempt queries Google, Cloudflare and Nextcloud STUN servers in the clear — announcing that this site exists, on a network meant to be private.</span>
+          <span class="gap-cond"><b>enable-udp-punch</b> is on by default</span>
+        </div>
+      </div>
+
+      <div class="gap">
+        <div class="gap-body">
+          <span class="gap-title">Port 21115 answers anyone</span>
+          <span class="gap-text">An unauthenticated caller can enumerate which TBFDesk ids are currently online.</span>
+          <span class="gap-cond"><b>always</b>, wherever 21115 is reachable</span>
+        </div>
+      </div>
+
+      <div class="gap">
+        <div class="gap-body">
+          <span class="gap-title">The UDP software-update arm replies to anything</span>
+          <span class="gap-text">Any datagram gets an unencrypted reply carrying the configured update URL — regardless of whether UDP registration is refused.</span>
+          <span class="gap-cond"><b>always</b> · independent of <code>--udp-registration</code></span>
+        </div>
+      </div>
+
+      <div class="gap">
+        <div class="gap-body">
+          <span class="gap-title">The management API binds loopback as HTTP</span>
+          <span class="gap-text">TLS keys off <em>routable or LDAP-enabled</em>, so on the default loopback bind the admin bearer token crosses the interface in the clear — reachable by any local process or an SSH tunnel.</span>
+          <span class="gap-cond">default bind <b>127.0.0.1:21120</b> with LDAP off</span>
+        </div>
+      </div>
+
+      <div class="gap">
+        <div class="gap-body">
+          <span class="gap-title">The direct-IP path enforces nothing</span>
+          <span class="gap-text">Dead rather than dangerous today — the controlled side waits for a key that never arrives — but nothing on the controller requires encryption if that ever changes.</span>
+          <span class="gap-cond"><b>direct-server</b> is off by default</span>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <footer>
+    <span>Verified at the call site · September 2026</span>
+    <span>companion to ARCHITECTURE-WIRE.md, DECISIONS-2026-09-21.md, DEPLOY.md</span>
+  </footer>
+
+</div>
