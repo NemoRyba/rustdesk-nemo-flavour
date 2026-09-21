@@ -177,6 +177,47 @@ the server key it already trusts.
 **hbbr treats any loopback connection as its command port**, so a relay address of
 `127.0.0.1` can never pair. Always hand clients a routable address.
 
+## 3b. Transport and performance defaults
+
+Two defaults changed and neither is in the unit file — they are compiled in, so a
+deployment inherits them without anyone passing a flag.
+
+**`--udp-registration=N` (server) and `disable-udp=Y` (client).** UDP registration has no
+key exchange and no device-key proof, so it bypassed both `--key-exchange` and
+`require-device-key`. Off by default now, which means every client→server message is
+encrypted. A client that is *not* on `disable-udp=Y` will retry forever and never come
+online; the server logs a throttled warning naming it. This does **not** disable UDP hole
+punching — that is `enable-udp-punch`, a separate switch on a separate path.
+
+**Websocket rendezvous and relay (21118/21119) are refused.** They carried no key exchange
+and no device auth. Do not forward those ports; there is nothing behind them.
+
+### Tuning for CAD
+
+The defaults are safe, not optimal. Per-site, push via managed policy:
+
+| key | value | why |
+|---|---|---|
+| `image_quality` | `custom` | the preset ceilings are hard caps — ABR can only go *down* |
+| `custom_image_quality` | `300` | ~12 Mbps at 1080p. Use `200` on a contended 1 GbE, `400` for 4K |
+| `custom-fps` | `60` | now actually works — it used to be inert in this (Sciter) build |
+| `codec-preference` | `h264` **or** `vp9` | per machine: `h264` where there is NVENC/QSV/VAAPI, `vp9` otherwise. Do **not** leave it on `auto` — on a GPU-less box `auto` lands on AV1, the most expensive software encoder |
+| `i444` | `Y` | only on the `vp9` machines. It is a no-op on H.264/H.265. For CAD it is the difference between readable dimension text and smeared edges |
+| `view_style` | `original` | already the desktop default; pin it so nobody resamples line-work client-side |
+
+Leave **adaptive bitrate on**. It is a controlled-side global read once per connection, so
+switching it off for the LAN operators also switches it off for the technician on the
+internet hitting the same workstation — and with `MAX_BR_MULTIPLE = 1.0` it can never
+exceed your target anyway.
+
+While tuning, push `show_quality_monitor=Y` and read the per-session line from
+`libs/scrap/src/common/codec.rs` (`used preference: … encoder: …`) to confirm what each
+machine actually negotiated. Turn it off afterwards.
+
+Encryption is not a lever here: the media path carries one XSalsa20-Poly1305 layer
+end-to-end, the relay drops its key after the control frame, and the cipher costs under
+0.2% of a core against 5–20 ms of encode per keyframe.
+
 ## 4. Provisioning a workstation
 
 Installing is not the same as provisioning. After H5, a client also needs a **device key**
