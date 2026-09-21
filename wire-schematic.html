@@ -87,12 +87,16 @@
   .wire { stroke:var(--rule); stroke-width:2; transition:stroke .3s, stroke-width .3s; }
   .wire.live { stroke:var(--accent); stroke-width:3; }
   .wire.live.plain { stroke:var(--bad); }
-  .wire-l { font-family:var(--mono); font-size:10.5px; fill:var(--ink-3); }
+  .wire-l { font-family:var(--mono); font-size:10.5px; fill:var(--ink-3); pointer-events:none; }
   .divider { stroke:var(--rule); stroke-width:1.5; stroke-dasharray:5 5; }
-  .zone-l { font-family:var(--mono); font-size:10.5px; fill:var(--ink-3); letter-spacing:1.4px; }
+  .zone-l { font-family:var(--mono); font-size:10.5px; fill:var(--ink-3); letter-spacing:1.4px; pointer-events:none; }
   .grp { fill:none; stroke:var(--rule); stroke-dasharray:4 4; }
   .pill { fill:var(--ink); }
+  .pill.a { fill:var(--surface); stroke:var(--ink-3); stroke-width:1.5; }
+  .pill.s { fill:var(--ink); }
+  .pill.b { fill:var(--accent-dim); stroke:var(--accent); stroke-width:1.5; }
   .pill-t { font-family:var(--mono); font-size:9.5px; font-weight:600; letter-spacing:1.2px; fill:var(--paper); }
+  .pill-t.a { fill:var(--ink-2); } .pill-t.b { fill:var(--accent-2); }
   .hit { stroke:transparent; stroke-width:20; fill:none; pointer-events:stroke; cursor:help; }
   .stage [data-tip] { text-decoration:none; }
   .hit:focus-visible { stroke:var(--accent); stroke-width:10; opacity:.22; outline:none; }
@@ -250,8 +254,8 @@
 
           <!-- client A -->
           <g class="role" data-tip="CLIENT A is whoever STARTS the session — the calling side, the one that sees the other's screen. Nothing about the software makes a machine client A permanently; it is a role taken per session. Here it is always the technician's laptop, out on the internet.">
-            <rect class="pill" x="46" y="44" width="110" height="18" rx="9"/>
-            <text class="pill-t" x="101" y="57" text-anchor="middle">CLIENT A</text></g>
+            <rect class="pill a" x="46" y="44" width="110" height="18" rx="9"/>
+            <text class="pill-t a" x="101" y="57" text-anchor="middle">CLIENT A</text></g>
           <g id="n-tech" data-tip="CLIENT A — the CONTROLLER. The machine the operator sits at. Holds: its own device key (Layer 1), its identity keypair, and the logged-in user's session token. It opens every connection outbound; nothing ever connects TO it. It also chooses the picture quality, codec and frame rate for the session — those are its settings, not client B's.">
             <rect class="node-box" x="24" y="74" width="154" height="104" rx="7"/>
             <text class="node-l" x="101" y="108" text-anchor="middle">technician</text>
@@ -260,8 +264,8 @@
           </g>
 
           <!-- server -->
-          <g class="role" data-tip="THE SERVER is one machine on site running two daemons: hbbs (rendezvous, ports 21115–21118) and hbbr (relay, 21117). It is the only thing both clients trust in advance, because both have its public key pinned. It introduces clients and, when needed, carries their bytes — but it is never a party to the session's encryption.">
-            <rect class="pill" x="399" y="36" width="110" height="18" rx="9"/>
+          <g class="role" data-tip="THE SERVER is one machine on site running two daemons: hbbs (rendezvous, ports 21115, 21116 and 21118) and hbbr (relay, 21117). It is the only thing both clients trust in advance, because both have its public key pinned. It introduces clients and, when needed, carries their bytes — but it is never a party to the session's encryption.">
+            <rect class="pill s" x="399" y="36" width="110" height="18" rx="9"/>
             <text class="pill-t" x="454" y="49" text-anchor="middle">SERVER</text></g>
           <rect class="grp" x="352" y="64" width="204" height="200" rx="9"/>
           <g id="n-srv" data-tip="hbbs — the RENDEZVOUS. One machine, two roles. hbbs is the phone exchange: it knows which clients exist, decides who may call whom, and introduces them. It holds the signing key that every client trusts, and the registry of pinned device keys. It never sees session content.">
@@ -277,8 +281,8 @@
 
           <!-- client B -->
           <g class="role" data-tip="CLIENT B is whoever RECEIVES the session — the answering side, the machine being looked at and driven. It never initiates. It sits behind the site firewall with no inbound port open, which is why it must stay registered with the server to be reachable at all.">
-            <rect class="pill" x="725" y="44" width="110" height="18" rx="9"/>
-            <text class="pill-t" x="780" y="57" text-anchor="middle">CLIENT B</text></g>
+            <rect class="pill b" x="725" y="44" width="110" height="18" rx="9"/>
+            <text class="pill-t b" x="780" y="57" text-anchor="middle">CLIENT B</text></g>
           <g id="n-ws" data-tip="CLIENT B — the CONTROLLED machine. The CAD workstation whose screen is being shared. Holds: its own device key, its identity keypair, and the permanent password — which never leaves it, because login is a challenge over a salted double hash. It runs ONE encoder for all viewers, so a slow viewer drags the stream for everyone.">
             <rect class="node-box" x="700" y="74" width="160" height="104" rx="7"/>
             <text class="node-l" x="780" y="108" text-anchor="middle">workstation</text>
@@ -372,14 +376,14 @@
 
   // ---------- node anchors (viewBox units) ----------
   var N = {
-    tech:  { x: 101, y: 126 },
+    tech:  { x: 101, y: 110 },
     srv:   { x: 454, y: 110 },
     relay: { x: 454, y: 218 },
-    ws:    { x: 780, y: 126 },
+    ws:    { x: 780, y: 110 },
     techL: { x: 104, y: 218 },
     wsL:   { x: 790, y: 218 },
-    techT: { x: 130, y: 300 },
-    wsT:   { x: 764, y: 300 }
+    techD: { x: 130, y: 300 },
+    wsD:   { x: 764, y: 300 }
   };
   // where the packet parks for a step a node does to ITSELF — clear of the node's label
   var SELF = {
@@ -609,7 +613,7 @@
       dials:"Always outbound. Nothing ever connects <i>to</i> it, so it needs no open port and no fixed address.",
       sees:"The decrypted session — it is one of the two endpoints." },
     { cls:"s", tag:"Server", what:"hbbs + hbbr on one host",
-      lede:"<b>hbbs</b> is the exchange: it knows which clients exist, decides who may call whom, and introduces them. <b>hbbr</b> is the relay: when the two clients cannot reach each other it pairs their sockets and copies bytes. Ports 21115–21118, plus 21120 for the management API.",
+      lede:"<b>hbbs</b> is the exchange: it knows which clients exist, decides who may call whom, and introduces them. <b>hbbr</b> is the relay: when the two clients cannot reach each other it pairs their sockets and copies bytes. hbbs listens on 21115, 21116 and 21118; hbbr on 21117; the management API on 21120.",
       holds:"the Ed25519 key both clients pin · the device-key registry · the LDAP bind · the admin API token",
       dials:"Never. It only answers — and pushes work down connections the clients already hold open.",
       sees:"Who is talking to whom, and when. <b>Not</b> what they say: it holds no key that opens a session." },
@@ -733,17 +737,37 @@
     Array.prototype.forEach.call(document.querySelectorAll(".node-box.live"), function (n) { n.classList.remove("live"); });
   }
 
-  function anchor(id, scn) {
-    // relay scenarios route the peer-to-peer packets along the lower rail
-    if (scn === "relay") {
-      if (id === "tech") return N.techL;
-      if (id === "ws")   return N.wsL;
-    }
-    if (scn === "direct" && (id === "tech" || id === "ws")) {
-      // direct scenario: last two steps use the top rail
-      return id === "tech" ? N.techT : N.wsT;
-    }
+  // Which rail a packet rides is a property of the WIRE it travels, not of the scenario:
+  // the relay scenario also has steps on the signalling wire, and those must launch from
+  // the node box, not from the relay wire's elbow.
+  var RAIL = {
+    "w-tech-relay": { tech:"techL", ws:"wsL" },
+    "w-relay-ws":   { tech:"techL", ws:"wsL" },
+    "w-tech-ws":    { tech:"techD", ws:"wsD"  }
+  };
+  function anchor(id, wireId) {
+    var r = RAIL[wireId];
+    if (r && r[id]) return N[r[id]];
     return N[id];
+  }
+
+  // Half-extents of each node box. A packet that stopped on a node's centre sat on top of
+  // that node's own label, so it docks at the near edge instead — which is also what
+  // "arrived at hbbs" actually looks like.
+  var BOX = { tech:{w:77,h:52}, srv:{w:88,h:30}, relay:{w:88,h:28}, ws:{w:80,h:52} };
+  var PKT_W = 56, PKT_H = 13, PAD = 6;
+  function dock(from, to, id, wireId) {
+    var r = RAIL[wireId];
+    if (r && r[id]) return from;          // on a rail, not at a box
+    var b = BOX[id];
+    if (!b) return from;
+    var dx = to.x - from.x, dy = to.y - from.y;
+    if (!dx && !dy) return from;
+    // shift along the dominant axis only, so packets stay on the wire they travel
+    if (Math.abs(dx) >= Math.abs(dy)) {
+      return { x: from.x + (dx > 0 ? 1 : -1) * (b.w + PKT_W + PAD), y: from.y };
+    }
+    return { x: from.x, y: from.y + (dy > 0 ? 1 : -1) * (b.h + PKT_H + PAD) };
   }
 
   function render() {
@@ -777,9 +801,10 @@
     }
 
     // packet
-    var useDirect = (scn.key === "direct" && step >= 3);
-    var a = anchor(s.from, useDirect ? "direct" : scn.key);
-    var b = anchor(s.to,   useDirect ? "direct" : scn.key);
+    var a0 = anchor(s.from, s.wireId);
+    var b0 = anchor(s.to,   s.wireId);
+    var a = dock(a0, b0, s.from, s.wireId);
+    var b = dock(b0, a0, s.to,   s.wireId);
 
     pkt.classList.toggle("plain", !s.enc);
     pktLock.textContent = s.enc ? "🔒" : "!";
