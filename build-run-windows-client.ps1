@@ -154,7 +154,7 @@ function Get-ClientBuildFingerprint {
     $parts = [System.Collections.Generic.List[string]]::new()
     $parts.Add("stamp-version=2")
     $parts.Add("profile=release")
-    $parts.Add("features=inline")
+    $parts.Add("features=inline,hwcodec,vram")
     $parts.Add("skip-inline=$SkipInline")
 
     Add-GitRepoFingerprintParts $parts $ClientPath "client"
@@ -395,7 +395,19 @@ if ($BuildNeeded) {
             $env:CARGO_INCREMENTAL = "1"
         }
         Write-Host "Building RustDesk Windows client..."
-        & $CargoExe build --release --features inline
+        # All codecs. `hwcodec` adds hardware H.264/H.265 (NVENC / AMF / QSV) for BOTH
+        # encode and decode; `vram` lets DXGI hand a D3D11 texture straight to the encoder
+        # instead of a GPU->CPU readback. Without these two, codec.rs leaves the H26x
+        # encoders None and the decode abilities at 0, so H.264/H.265 are structurally
+        # unavailable and a `codec-preference=h264` request silently falls back to AV1.
+        # Requires VCPKG_ROOT with ffmpeg installed (the hwcodec crate links it statically).
+        #
+        # CAUTION: this CHANGES THE DEFAULT. auto_codec (libs/scrap/src/common/codec.rs)
+        # ranks h265 > h264 > av1/vp9/vp8, so every peer left on "Auto" moves to hardware
+        # H.265 — which is NV12 4:2:0 only (no 4:4:4) and gives no quantiser control. For
+        # CAD line art, push an explicit per-peer `codec-preference` (vp9 or av1) with the
+        # managed policy rather than relying on Auto.
+        & $CargoExe build --release --features inline,hwcodec,vram
         if ($LASTEXITCODE -ne 0) {
             throw "cargo build failed with exit code $LASTEXITCODE"
         }
