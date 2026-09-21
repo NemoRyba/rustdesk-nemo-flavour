@@ -192,31 +192,64 @@ punching — that is `enable-udp-punch`, a separate switch on a separate path.
 **Websocket rendezvous and relay (21118/21119) are refused.** They carried no key exchange
 and no device auth. Do not forward those ports; there is nothing behind them.
 
-### Tuning for CAD
+### Tuning: these are OPERATOR settings, not workstation settings
 
-The defaults are safe, not optimal. Per-site, push via managed policy:
+The crux, and the thing an earlier version of this document got wrong: `image_quality`,
+`custom_image_quality`, `custom-fps`, `codec-preference` and `i444` all live in the
+**controller's** per-peer `PeerConfig` and travel to the workstation in the login message.
+They are set on the machine the *operator sits at*. That is good news — a LAN operator and
+a technician on a constrained uplink can and should carry different values.
+
+Two consequences that are easy to miss:
+
+- **Managed policy does not reach an existing peer.** `PeerConfig` only falls back to the
+  managed default when the stored string is empty, and every save rewrites every field. So
+  policy sets the value for *new* peers and greys out the UI; it does not retro-fit a peer
+  the operator has already connected to. Set it on the operator machine, or delete the peer
+  entry.
+- **The workstation runs ONE encoder for all viewers.** Quality follows whoever logged in
+  last, fps is the *minimum* across viewers, ABR uses the *worst* delay, and the codec is
+  whichever preference is most common (with a nondeterministic tie-break at two viewers).
+  **While a technician on a slow link and a LAN operator are both connected, the technician
+  drags the whole stream.** Plan around that; it is not tunable.
+
+#### LAN operators (bandwidth is free)
+
+| key | value |
+|---|---|
+| `image_quality` | `custom` |
+| `custom_image_quality` | `300` (~12 Mbps at 1080p on VP9) — `200` on a contended 1 GbE |
+| `custom-fps` | `60` — **only takes effect with `image_quality=custom`**; it is not sent otherwise |
+| `codec-preference` | `vp9` for CAD line-work, or `h264` if the workstation CPU matters more |
+| `i444` | `Y` — only meaningful on VP9/AV1, and only if *every* connected viewer also wants it |
+
+#### Technician on the internet (bandwidth is scarce, CPU is not)
 
 | key | value | why |
 |---|---|---|
-| `image_quality` | `custom` | the preset ceilings are hard caps — ABR can only go *down* |
-| `custom_image_quality` | `300` | ~12 Mbps at 1080p. Use `200` on a contended 1 GbE, `400` for 4K |
-| `custom-fps` | `60` | now actually works — it used to be inert in this (Sciter) build |
-| `codec-preference` | `h264` **or** `vp9` | per machine: `h264` where there is NVENC/QSV/VAAPI, `vp9` otherwise. Do **not** leave it on `auto` — on a GPU-less box `auto` lands on AV1, the most expensive software encoder |
-| `i444` | `Y` | only on the `vp9` machines. It is a no-op on H.264/H.265. For CAD it is the difference between readable dimension text and smeared edges |
-| `view_style` | `original` | already the desktop default; pin it so nobody resamples line-work client-side |
+| `image_quality` | `balanced` or `best` | both have real ABR floors. **Do not** use `custom` with a big number here: the target is a hard ceiling *and* the session starts at it, so it congests before ABR backs off |
+| `custom_image_quality` | if you use `custom` at all, size it to the **site uplink**, not to the screen | |
+| `codec-preference` | `vp9` (or `av1` if the laptop decodes it comfortably) | the fork's own model charges **hardware H.264 ~2x** the bitrate for the same quality ratio. On a scarce link that is the wrong trade even though the workstation could encode H.264 for free |
+| `i444` | `N` | it doubles the chroma planes at an unchanged bitrate, so it costs luma detail exactly where you have none to spare |
+| `custom-fps` | leave at 30 | VP9 runs CBR with frame dropping; more frames at a fixed bitrate means fewer bits per frame and smeared line-work |
 
-Leave **adaptive bitrate on**. It is a controlled-side global read once per connection, so
-switching it off for the LAN operators also switches it off for the technician on the
-internet hitting the same workstation — and with `MAX_BR_MULTIPLE = 1.0` it can never
-exceed your target anyway.
+Encode runs on the strong workstation and **decode runs on the technician's laptop** — that
+asymmetry is why the codec choice is the laptop's constraint, not the workstation's.
 
-While tuning, push `show_quality_monitor=Y` and read the per-session line from
-`libs/scrap/src/common/codec.rs` (`used preference: … encoder: …`) to confirm what each
-machine actually negotiated. Turn it off afterwards.
+**VAAPI caveat:** on a Linux workstation using VAAPI, `support_changing_quality` is false,
+which disables ABR entirely and pins the ratio at the raw target. A large
+`custom_image_quality` there is a permanent demand, not a ceiling ABR will walk down.
 
-Encryption is not a lever here: the media path carries one XSalsa20-Poly1305 layer
-end-to-end, the relay drops its key after the control frame, and the cipher costs under
-0.2% of a core against 5–20 ms of encode per keyframe.
+Leave **adaptive bitrate on** — it is the one controlled-side key here, read once per
+connection, so turning it off for the LAN operators also turns it off for the technician
+hitting the same workstation.
+
+While tuning, push `show_quality_monitor=Y` and read the per-session `used preference: …
+encoder: …` line to confirm what was actually negotiated. Turn it off afterwards.
+
+Encryption is not a lever: the media path carries one XSalsa20-Poly1305 layer end-to-end,
+the relay drops its key after the control frame, and the cipher costs under 0.2% of a core
+against 5–20 ms of encode per keyframe.
 
 ## 4. Provisioning a workstation
 
