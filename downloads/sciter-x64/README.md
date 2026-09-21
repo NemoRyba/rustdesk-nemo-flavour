@@ -24,6 +24,8 @@ The Linux counterpart is `libsciter-gtk.so` from `bin.lnx/`; the client loads it
 `/usr/share/rustdesk/` (that path is hardcoded and must stay literally `rustdesk`
 whatever a package is named). `vm/lib/libsciter-gtk.so` is the lab's copy.
 
-**Licensing is the owner's check, not mine.** Sciter is a third-party redistributable.
-`LICENSE.txt` here is the upstream SDK licence as fetched; confirm it covers redistributing
-the binary inside TBFDesk before shipping to a customer site.
+**Licensing is the owner's check, not mine.** Sciter is a third-party redistributable and
+I did not manage to fetch an authoritative licence file to vendor alongside it. Read the
+terms at https://github.com/c-smile/sciter-sdk (`license.txt` in the SDK root) and confirm
+they cover redistributing the binary inside TBFDesk before shipping to a customer site.
+Upstream RustDesk ships this same DLL, which is suggestive but is not a legal opinion.
