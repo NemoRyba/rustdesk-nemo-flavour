@@ -1,0 +1,196 @@
+# TBFDesk — what talks to what, and what protects it
+
+Verified against the code, not against the design documents. Every claim here was checked
+at the call site; where something is conditional the condition is stated.
+
+Read with `DECISIONS-2026-09-21.md` (why things are the way they are) and `DEPLOY.md`
+(how to run it).
+
+---
+
+## Topology
+
+```
+        INTERNET                    │  SITE
+                                    │
+   ┌──────────────┐                 │   ┌──────────────────┐      ┌───────────────┐
+   │  technician  │                 │   │   TBFDesk server │      │  workstation  │
+   │   (laptop)   │                 │   │   hbbs + hbbr    │      │   × 15 (CAD)  │
+   └──────┬───────┘                 │   └─────────┬────────┘      └───────┬───────┘
+          │                         │             │                       │
+          │  ─────── L1 ────────────┼────────────►│◄────────── L1 ────────┤
+          │  rendezvous / signalling│             │                       │
+          │                         │             │                       │
+          │  ─────── L7 ────────────┼────────────►│                       │
+          │  management API         │             │                       │
+          │                         │             │                       │
+          │  ═══════ L5 ════════════┼═════════════╪═══════════════════════╡
+          │  relayed session (hbbr just pumps bytes)                      │
+          │                         │             │                       │
+          │                         │             │   ═══ L4 ═══          │
+          │                         │             │   direct P2P          │
+          │                         │             │   (same subnet)       │
+```
+
+`───` signalling · `═══` session payload
+
+---
+
+## The legs
+
+### L1 · client ↔ hbbs — rendezvous / signalling
+```
+   TCP 21116        framing: length-prefixed protobuf (BytesCodec)
+
+   hbbs ──► KeyExchange{ Ed25519_sign(ephemeral_X25519_pub, server_key) }   ← plaintext,
+                                                                              public by design
+   client ─► NemoClientAuth{
+                 client_box_pk,                     X25519 ephemeral
+                 sealed_key = box_seal(K‖0x01),     K = 32 random bytes, CLIENT-generated
+                 device_pub,                        the machine's pinned Ed25519 pubkey
+                 peer_id,
+                 sig = Ed25519( "tbfdesk-rzv-dev-v1"
+                                ‖ server_eph_pk ‖ client_box_pk
+                                ‖ sealed_key ‖ peer_id )
+             }
+   ── every frame from here on ──►  XSalsa20-Poly1305 under K
+```
+| | |
+|---|---|
+| **cipher** | XSalsa20-Poly1305 (NaCl secretbox) |
+| **key** | 32 random bytes chosen by the **client**, sealed to the server's per-connection ephemeral |
+| **nonce** | LE64 counter in bytes 0–7, **direction byte at 8** (initiator 0, responder 1) |
+| **server proves** | its Ed25519 signature over the ephemeral, verified against the pinned `key` |
+| **client proves** | a **pinned device key**, bound to the peer id it registers as |
+| **replay** | the signature covers the server's per-connection ephemeral — a captured proof is useless elsewhere. No clock involved |
+| **carries** | peer id, machine uuid, peer public key, target id, licence key, session token, NAT type, **internal LAN addresses** |
+| **status** | **ENCRYPTED**, both ends fail closed |
+
+A client with no device key falls back to a plain `KeyExchange` and hbbs refuses it when
+`require_device_key` is on — which is the default.
+
+### L2 · client → hbbs over UDP
+```
+   UDP 21116        NO handshake exists for a datagram socket
+```
+**REFUSED by default** (`--udp-registration=N`, client `disable-udp=Y`). Still live and
+unauthenticated on that port regardless of the flag: the `SoftwareUpdate` arm (answers any
+datagram with `software_url`) and `ConfigureUpdate` (loopback source only).
+
+### L3 · hbbs → client — pushes
+```
+   PunchHole · FetchLocalAddr · forwarded RequestRelay · PunchHoleResponse · RelayResponse
+```
+Ride the peer's **own** L1 connection and are sealed with that connection's key. Falls back
+to a **plaintext UDP datagram** only for a peer that registered over UDP — unreachable at
+defaults.
+
+### L4 · client ↔ client — the session itself
+```
+   TCP on the punched port pair, or KCP-over-UDP, or IPv6
+
+   controlled ──► SignedId{ Ed25519_sign( IdPk{ id, eph_X25519_pub },
+                                          own_device_Ed25519 ) }
+   controller  :  verifies with the peer pubkey hbbs signed and handed over
+                  in PunchHoleResponse.pk  →  two-level Ed25519 chain
+   controller ──► PublicKey{ asymmetric_value, symmetric_value = box_seal(K‖0x01) }
+   ── every frame from here on ──►  XSalsa20-Poly1305 under K
+```
+| | |
+|---|---|
+| **covers** | video, audio, cursor, clipboard, file transfer, keyboard/mouse, login |
+| **trust chain** | hbbs signs the peer's identity key → the peer signs its own ephemeral |
+| **password** | never crosses the wire — `SHA256(SHA256(pw‖salt)‖challenge)`, and that is inside the cipher too |
+| **status** | **CONDITIONAL** — see the downgrade below |
+
+### L5 · client ↔ client **through hbbr** — relayed session
+```
+   TCP 21117
+
+   ── control frame ─────────────────────────────────────────────────────
+   hbbr ──► KeyExchange{ Ed25519_sign(ephemeral, hbbr's key) }
+   client ─► sealed K                       ← separate key, hbbr-specific
+   client ─► RequestRelay{ licence_key, id, uuid }        encrypted
+   both ──► clear_key()                     ← cipher dropped, framing kept
+
+   ── payload ───────────────────────────────────────────────────────────
+   client A ══[ L4 ciphertext ]══► hbbr ══[ same bytes ]══► client B
+```
+**Exactly one encryption layer, and it is the end-to-end one.** hbbr drops its own cipher
+the instant it has read the control frame, then becomes a byte pump. It sees XSalsa20
+ciphertext and **cannot read video, audio, clipboard or files**. No double encryption — so
+relaying costs bandwidth and a hop, not CPU.
+
+### L6 · direct-IP / `host:port`
+```
+   TCP — NO handshake, NO cipher, NO authentication
+```
+The controller returns the raw socket and never calls `secure_connection`. Currently
+**non-functional** as well as plaintext (the controlled side waits for a `PublicKey` that
+never arrives), and off by default (`direct-server`). It is still the one path where
+"fast" and "encrypted" diverge.
+
+### L7 · client ↔ management API
+```
+   HTTPS 21120        TWO layers
+
+   ┌─ TLS ────────────────────────────────────────────────────┐
+   │  ┌─ sealed envelope (NaCl sealedbox to the pinned        │
+   │  │   management Ed25519 key, ±300 s, nonce cache)  ─┐    │
+   │  │      login · policy poll                          │   │
+   │  └───────────────────────────────────────────────────┘   │
+   │     address book · heartbeat   ← TLS only by default     │
+   └──────────────────────────────────────────────────────────┘
+```
+Login and the policy poll survive a TLS-stripping MITM. The address book and heartbeat do
+not: they carry the session token as a plain bearer value unless `nemo-sealed-request=v1`.
+And TLS here **authenticates nothing** by default — the client falls back to accepting an
+invalid certificate and caches that choice, unless `nemo-api-cert-fingerprint` is pinned.
+
+### L8 · hbbs → LDAP / AD
+`ldaps://` enforced; plaintext `ldap://` is refused outright. Certificate verification is
+on unless someone passes `--insecure-ldap-i-accept-mitm`.
+
+---
+
+## Key inventory
+
+| key | lives | protects | if lost |
+|---|---|---|---|
+| server `id_ed25519` | server, shared by hbbs **and** hbbr | signs every rendezvous and relay offer; signs peer identity keys and update manifests | the whole fleet fails closed |
+| device key (Ed25519) | each client, `nemo-device-key` | Layer 1 — proves the machine is provisioned, at the transport **and** the API | that machine cannot connect; no CLI recovery path by design |
+| peer key pair | each client | its own identity, signed by hbbs for peers | re-registers, peers see a key change |
+| permanent password | controlled machine | session login | — (never on the wire) |
+| session token | controller, `LocalConfig` | per-user ACL and require-login | bearer credential — replayable if leaked |
+| admin API token | server argv/env + the admin browser | the whole management API, incl. `require_device_key` | full fleet control |
+| management public key | pushed to clients | anchors the sealed envelope and signed policy | — |
+
+---
+
+## So: is everything encrypted?
+
+**No — but the gaps are now specific and named rather than structural.** Encrypted
+unconditionally: rendezvous signalling, server pushes, the relay control frame, the relayed
+payload, LDAP, and the management API's login and policy poll. What is left:
+
+1. **Port-forward / RDP tunnels are plaintext, always.** After login both ends call
+   `set_raw()`, dropping the cipher *and* the framing. A whole RDP session — credentials
+   included — crosses the punched link, or hbbr, in the clear. **This is the worst one.**
+2. **The peer-to-peer session downgrades on a handshake fault**, because
+   `nemo-require-encrypted-session` defaults off. One corrupted frame from an on-path
+   attacker yields a fully plaintext session.
+3. **LAN discovery is on by default** and broadcasts id, hostname, **the active username**,
+   platform and MAC to the whole subnet.
+4. **Public STUN** queries go to Google/Cloudflare/Nextcloud on every connect attempt while
+   `enable-udp-punch` is on — which is its default — leaking that this site exists.
+5. **Port 21115 answers anyone**: `OnlineRequest` lets an unauthenticated caller enumerate
+   which TBFDesk ids are online.
+6. **The UDP `SoftwareUpdate` arm** answers any datagram, regardless of
+   `--udp-registration`.
+7. **Frames of length ≤ 1 bypass decryption entirely** and do not advance the receive
+   counter — so they are unauthenticated on *every* otherwise-encrypted leg, and the
+   rendezvous loop treats an empty frame as a keep-alive to echo.
+8. **The management API binds loopback as HTTP** by default (TLS keys off *routable OR
+   ldap_enabled*), so the admin bearer token crosses `lo` in the clear — reachable by any
+   local process or an SSH tunnel.
+9. **Direct-IP** (L6), as above.
