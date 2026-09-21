@@ -52,12 +52,16 @@ extracts its payload as `rustdesk.exe` and passes its own outer filename through
 `RUSTDESK_APPNAME`, which is what `get_license_from_exe_name` reads — so the locked name
 goes on the **packer**, not on the inner binary.
 
-**One thing is missing from the repo:** `downloads/sciter-x64/sciter.dll`. It is a
-proprietary redistributable and the script deliberately does not download it at build
-time — a package step that fetches a binary off the internet is neither reproducible nor
-offline-capable. Fetch it once from the sciter-sdk (`bin.win/x64/sciter.dll`), commit it
-with its SHA-256, and confirm the redistribution terms while you are there. Without it
-the installed client does not start, and the build only *warns*.
+**sciter.dll is vendored**, at `downloads/sciter-x64/` with its SHA-256. It is not
+downloaded at package time on purpose: a step that fetches a binary off the internet is
+neither reproducible nor offline-capable, and it means the bytes that ship are not the
+bytes anyone reviewed. The committed copy is byte-identical to the official sciter-sdk
+`bin.win/x64` build *and* to the copy the QA lab has been running, so it is the same
+engine everything was tested against. Without it the installed client does not start, and
+the build only *warns* — which is how the old four-file ZIP was so easy to get wrong.
+
+Its redistribution terms are the one thing left for you: see
+`downloads/sciter-x64/README.md`.
 
 ### Signing
 
@@ -195,8 +199,6 @@ The server names every un-provisioned client in its log while it is off.
 
 - The Windows packaging script has **never been run** — there is no Windows host in this
   environment. Expect to iterate on it the first time.
-- `downloads/sciter-x64/sciter.dll` is not in the repo; the script fails with instructions
-  until it is.
 - The Windows build itself is not reproducible: `build-run-windows-client.ps1` needs
   `tools\vcpkg-120deac` and `tools\llvm-15.0.6`, which are gitignored and undocumented. A
   packaging wrapper on a non-reproducible build gives a reproducible *wrapper*, not a
