@@ -88,8 +88,17 @@
   .wire.live { stroke:var(--accent); stroke-width:3; }
   .wire.live.plain { stroke:var(--bad); }
   .wire-l { font-family:var(--mono); font-size:10.5px; fill:var(--ink-3); }
-  .zone { fill:var(--surface-2); stroke:var(--rule); stroke-dasharray:5 4; }
+  .divider { stroke:var(--rule); stroke-width:1.5; stroke-dasharray:5 5; }
   .zone-l { font-family:var(--mono); font-size:10.5px; fill:var(--ink-3); letter-spacing:1.4px; }
+  .grp { fill:none; stroke:var(--rule); stroke-dasharray:4 4; }
+  .pill { fill:var(--ink); }
+  .pill-t { font-family:var(--mono); font-size:9.5px; font-weight:600; letter-spacing:1.2px; fill:var(--paper); }
+  .hit { stroke:transparent; stroke-width:20; fill:none; pointer-events:stroke; cursor:help; }
+  .stage [data-tip] { text-decoration:none; }
+  .hit:focus-visible { stroke:var(--accent); stroke-width:10; opacity:.22; outline:none; }
+  #n-tech, #n-srv, #n-relay, #n-ws { cursor:help; }
+  #n-tech:hover .node-box, #n-srv:hover .node-box,
+  #n-relay:hover .node-box, #n-ws:hover .node-box { stroke:var(--accent); stroke-width:2; }
 
   #pkt { transition:transform var(--dur,1000ms) cubic-bezier(.45,.05,.3,1); }
   #pkt.hidden { opacity:0; }
@@ -98,6 +107,14 @@
   #pkt text { font-family:var(--mono); font-size:10px; font-weight:600; fill:var(--paper); }
   .lock { font-family:var(--mono); font-size:11px; font-weight:700; fill:var(--paper); }
 
+  .legend { display:flex; flex-wrap:wrap; gap:8px 22px; padding:4px 16px 8px; }
+  .legend .lg { display:inline-flex; align-items:center; gap:7px; font-size:12.5px; color:var(--ink-2); cursor:help; text-decoration:none; }
+  .legend .sw { width:11px; height:11px; border-radius:3px; flex:none; border:1px solid var(--rule); }
+  .legend .sw.a { background:var(--surface); box-shadow:inset 0 0 0 2px var(--ink-3); }
+  .legend .sw.s { background:var(--ink); border-color:var(--ink); }
+  .legend .sw.b { background:var(--accent-dim); border-color:var(--accent); }
+  .stage-hint { padding:0 16px 12px; font-size:12.5px; color:var(--ink-3); max-width:none; }
+  .stage-hint .k { font-family:var(--mono); font-size:11px; border:1px solid var(--rule); border-radius:3px; padding:1px 5px; color:var(--ink-2); }
   .controls { display:flex; align-items:center; gap:10px; padding:12px 16px; border-top:1px solid var(--rule); background:var(--surface-2); flex-wrap:wrap; }
   .btn { background:var(--surface); border:1px solid var(--rule); border-radius:5px; padding:6px 13px; font-size:13px; font-weight:500; display:inline-flex; align-items:center; gap:7px; transition:background .15s,border-color .15s; }
   .btn:hover { background:var(--surface-3); border-color:var(--ink-3); }
@@ -146,6 +163,15 @@
   .verdict .answer{font-size:clamp(21px,3.2vw,27px);font-weight:700;letter-spacing:-.02em}
   .verdict .answer em{font-style:normal;color:var(--bad)}
 
+  .roles{display:grid;grid-template-columns:repeat(auto-fit,minmax(248px,1fr));gap:12px}
+  .role-c{background:var(--surface);border:1px solid var(--rule);border-radius:6px;padding:16px 18px;display:flex;flex-direction:column;gap:9px;box-shadow:var(--shadow);border-top:3px solid var(--rule)}
+  .role-c.a{border-top-color:var(--ink-3)} .role-c.s{border-top-color:var(--ink)} .role-c.b{border-top-color:var(--accent)}
+  .role-c h3{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+  .role-c .what{font-size:14.5px;font-weight:600}
+  .role-c .lede2{font-size:13.5px;color:var(--ink-2)}
+  .role-c dl{display:grid;grid-template-columns:auto 1fr;gap:5px 11px;margin:0;font-size:12.5px}
+  .role-c dt{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);padding-top:2px}
+  .role-c dd{margin:0;color:var(--ink-2)}
   .gaps{display:flex;flex-direction:column;gap:9px;counter-reset:gap}
   .gap{display:grid;grid-template-columns:28px 1fr;gap:13px;background:var(--surface);border:1px solid var(--rule);border-left:3px solid var(--warn);border-radius:5px;padding:13px 16px;transition:transform .15s,box-shadow .15s}
   .gap:hover{transform:translateX(2px);box-shadow:var(--shadow)}
@@ -172,7 +198,7 @@
   <header class="masthead">
     <span class="eyebrow">TBFDesk · protocol reference</span>
     <h1>What talks to what, and what protects it</h1>
-    <p class="lede">Watch a connection happen step by step, then read the detail. Every claim here was verified at the call site, not taken from the design documents. Hover anything underlined for more.</p>
+    <p class="lede">Watch a connection happen step by step, then read the detail. Every claim here was verified at the call site, not taken from the design documents. Hover any box or line <em>in the diagram</em> — and anything underlined in the text — for what it is and what it holds.</p>
     <div class="meta">
       <span>hbbs 1.1.15 · client 1.4.7</span>
       <span>branch <code>nemo-tdd</code></span>
@@ -191,58 +217,89 @@
       <div class="scenarios" role="tablist" aria-label="Scenario"></div>
 
       <div class="stage-wrap">
-        <svg class="stage" viewBox="0 0 900 300" role="img" aria-label="Animated diagram of the connection sequence">
-          <defs>
-            <marker id="mk" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-              <path d="M0,0 L10,5 L0,10 z" fill="var(--rule)"/>
-            </marker>
-          </defs>
+        <svg class="stage" viewBox="0 0 900 330" role="img" aria-label="Animated diagram of the connection sequence between client A, the server, and client B">
+          <!-- boundary -->
+          <line class="divider" x1="300" y1="18" x2="300" y2="322"/>
+          <text class="zone-l" x="288" y="32" text-anchor="end">INTERNET</text>
+          <text class="zone-l" x="312" y="32">SITE</text>
 
-          <rect class="zone" x="318" y="14" width="568" height="272" rx="8"/>
-          <text class="zone-l" x="874" y="34" text-anchor="end">SITE</text>
-          <text class="zone-l" x="20" y="34">INTERNET</text>
+          <!-- wires (thin visible line + fat invisible hit area) -->
+          <line id="w-tech-srv" class="wire" x1="178" y1="110" x2="366" y2="110"/>
+          <line class="hit" x1="178" y1="110" x2="366" y2="110"
+                data-tip="CLIENT A → SERVER · TCP 21116. The rendezvous, or signalling, channel. Carries who wants to reach whom — never the screen. Encrypted with XSalsa20-Poly1305 under a key client A generated and sealed to a server ephemeral it verified by signature."/>
+          <text class="wire-l" x="272" y="102" text-anchor="middle">signalling · 21116</text>
 
-          <!-- wires -->
-          <line id="w-tech-srv"  class="wire" x1="178" y1="110" x2="362" y2="110"/>
-          <line id="w-srv-ws"    class="wire" x1="546" y1="110" x2="700" y2="110"/>
-          <path  id="w-tech-relay" class="wire" fill="none" d="M104 168 L104 232 L404 232"/>
-          <path  id="w-relay-ws"   class="wire" fill="none" d="M524 232 L790 232 L790 168"/>
-          <path  id="w-tech-ws"    class="wire" fill="none" stroke-dasharray="7 5" d="M104 62 L104 40 L790 40 L790 62"/>
-          <text class="wire-l" x="270" y="102" text-anchor="middle">rendezvous</text>
-          <text class="wire-l" x="623" y="102" text-anchor="middle">rendezvous</text>
-          <text class="wire-l" x="447" y="58" text-anchor="middle">direct peer to peer</text>
+          <line id="w-srv-ws" class="wire" x1="542" y1="110" x2="700" y2="110"/>
+          <line class="hit" x1="542" y1="110" x2="700" y2="110"
+                data-tip="CLIENT B → SERVER · TCP 21116. Client B holds this connection open for its whole life, heartbeating every 15 seconds. That is what lets the server push an incoming call to it — client B needs no inbound port and no port forward."/>
+          <text class="wire-l" x="621" y="102" text-anchor="middle">signalling · 21116</text>
 
-          <!-- nodes -->
-          <g id="n-tech">
-            <rect class="node-box" x="24" y="62" width="154" height="106" rx="7"/>
-            <text class="node-l" x="101" y="96" text-anchor="middle">technician</text>
-            <text class="node-s" x="101" y="116" text-anchor="middle">controller</text>
-            <text class="node-s" x="101" y="134" text-anchor="middle">thin uplink</text>
-          </g>
-          <g id="n-srv">
-            <rect class="node-box" x="362" y="62" width="184" height="66" rx="7"/>
-            <text class="node-l" x="454" y="90" text-anchor="middle">hbbs</text>
-            <text class="node-s" x="454" y="110" text-anchor="middle">rendezvous · policy</text>
-          </g>
-          <g id="n-relay">
-            <rect class="node-box" x="404" y="204" width="120" height="56" rx="7"/>
-            <text class="node-l" x="464" y="230" text-anchor="middle">hbbr</text>
-            <text class="node-s" x="464" y="248" text-anchor="middle">relay</text>
-          </g>
-          <g id="n-ws">
-            <rect class="node-box" x="700" y="62" width="160" height="106" rx="7"/>
-            <text class="node-l" x="780" y="96" text-anchor="middle">workstation</text>
-            <text class="node-s" x="780" y="116" text-anchor="middle">controlled · CAD</text>
-            <text class="node-s" x="780" y="134" text-anchor="middle">strong, on LAN</text>
+          <path id="w-tech-relay" class="wire" fill="none" d="M104 178 L104 218 L366 218"/>
+          <path class="hit" fill="none" d="M104 178 L104 218 L366 218"
+                data-tip="CLIENT A → RELAY · TCP 21117. One encrypted control frame naming the session, then both ends drop that cipher. Everything after is client-to-client ciphertext the relay cannot read."/>
+          <path id="w-relay-ws" class="wire" fill="none" d="M542 218 L790 218 L790 178"/>
+          <path class="hit" fill="none" d="M542 218 L790 218 L790 178"
+                data-tip="RELAY → CLIENT B · TCP 21117. Client B dials out to the relay when the server tells it to. Both halves are then pumped byte for byte — the relay is a pipe, not a participant."/>
+          <text class="wire-l" x="235" y="210" text-anchor="middle">relayed · 21117</text>
+          <text class="wire-l" x="666" y="210" text-anchor="middle">relayed · 21117</text>
+
+          <path id="w-tech-ws" class="wire" fill="none" stroke-dasharray="7 5" d="M130 178 L130 300 L764 300 L764 178"/>
+          <path class="hit" fill="none" d="M130 178 L130 300 L764 300 L764 178"
+                data-tip="CLIENT A ↔ CLIENT B · direct, no server in the path. Only reachable when the two can actually route to each other — same subnet, or a working hole punch. Same single encryption layer as the relayed path."/>
+          <text class="wire-l" x="447" y="316" text-anchor="middle">direct peer to peer</text>
+
+          <!-- client A -->
+          <g class="role" data-tip="CLIENT A is whoever STARTS the session — the calling side, the one that sees the other's screen. Nothing about the software makes a machine client A permanently; it is a role taken per session. Here it is always the technician's laptop, out on the internet.">
+            <rect class="pill" x="46" y="44" width="110" height="18" rx="9"/>
+            <text class="pill-t" x="101" y="57" text-anchor="middle">CLIENT A</text></g>
+          <g id="n-tech" data-tip="CLIENT A — the CONTROLLER. The machine the operator sits at. Holds: its own device key (Layer 1), its identity keypair, and the logged-in user's session token. It opens every connection outbound; nothing ever connects TO it. It also chooses the picture quality, codec and frame rate for the session — those are its settings, not client B's.">
+            <rect class="node-box" x="24" y="74" width="154" height="104" rx="7"/>
+            <text class="node-l" x="101" y="108" text-anchor="middle">technician</text>
+            <text class="node-s" x="101" y="128" text-anchor="middle">controller</text>
+            <text class="node-s" x="101" y="146" text-anchor="middle">thin uplink</text>
           </g>
 
-          <g id="pkt" class="hidden">
+          <!-- server -->
+          <g class="role" data-tip="THE SERVER is one machine on site running two daemons: hbbs (rendezvous, ports 21115–21118) and hbbr (relay, 21117). It is the only thing both clients trust in advance, because both have its public key pinned. It introduces clients and, when needed, carries their bytes — but it is never a party to the session's encryption.">
+            <rect class="pill" x="399" y="36" width="110" height="18" rx="9"/>
+            <text class="pill-t" x="454" y="49" text-anchor="middle">SERVER</text></g>
+          <rect class="grp" x="352" y="64" width="204" height="200" rx="9"/>
+          <g id="n-srv" data-tip="hbbs — the RENDEZVOUS. One machine, two roles. hbbs is the phone exchange: it knows which clients exist, decides who may call whom, and introduces them. It holds the signing key that every client trusts, and the registry of pinned device keys. It never sees session content.">
+            <rect class="node-box" x="366" y="80" width="176" height="60" rx="7"/>
+            <text class="node-l" x="454" y="106" text-anchor="middle">hbbs</text>
+            <text class="node-s" x="454" y="124" text-anchor="middle">rendezvous · policy</text>
+          </g>
+          <g id="n-relay" data-tip="hbbr — the RELAY. Used when the two clients cannot reach each other directly. It pairs two sockets on a shared session id and copies bytes between them. It holds NO key that could open the session: after the control frame it drops its cipher, so everything it carries is ciphertext it cannot read.">
+            <rect class="node-box" x="366" y="190" width="176" height="56" rx="7"/>
+            <text class="node-l" x="454" y="214" text-anchor="middle">hbbr</text>
+            <text class="node-s" x="454" y="232" text-anchor="middle">relay · byte pump</text>
+          </g>
+
+          <!-- client B -->
+          <g class="role" data-tip="CLIENT B is whoever RECEIVES the session — the answering side, the machine being looked at and driven. It never initiates. It sits behind the site firewall with no inbound port open, which is why it must stay registered with the server to be reachable at all.">
+            <rect class="pill" x="725" y="44" width="110" height="18" rx="9"/>
+            <text class="pill-t" x="780" y="57" text-anchor="middle">CLIENT B</text></g>
+          <g id="n-ws" data-tip="CLIENT B — the CONTROLLED machine. The CAD workstation whose screen is being shared. Holds: its own device key, its identity keypair, and the permanent password — which never leaves it, because login is a challenge over a salted double hash. It runs ONE encoder for all viewers, so a slow viewer drags the stream for everyone.">
+            <rect class="node-box" x="700" y="74" width="160" height="104" rx="7"/>
+            <text class="node-l" x="780" y="108" text-anchor="middle">workstation</text>
+            <text class="node-s" x="780" y="128" text-anchor="middle">controlled · CAD</text>
+            <text class="node-s" x="780" y="146" text-anchor="middle">strong, on LAN</text>
+          </g>
+
+          <g id="pkt" class="hidden" transform="translate(454,164)">
             <rect x="-56" y="-13" width="112" height="26" rx="5"/>
             <text id="pkt-t" x="6" y="4" text-anchor="middle">·</text>
-            <text id="pkt-lock" class="lock" x="-42" y="4">🔒</text>
+            <text id="pkt-lock" class="lock" x="-42" y="4">&#128274;</text>
           </g>
         </svg>
       </div>
+
+      <div class="legend">
+        <span class="lg" data-tip="The caller. Runs the viewer window, decodes the video, sends keyboard and mouse. Chooses the quality, codec and frame rate — those live in ITS per-peer config, not on the machine being controlled."><i class="sw a"></i>Client&nbsp;A — controller, the technician</span>
+        <span class="lg" data-tip="hbbs + hbbr on one host on site. Trusted in advance by both clients through a pinned Ed25519 key. Decides who may call whom; carries bytes only when the two cannot reach each other directly."><i class="sw s"></i>Server — hbbs (rendezvous) + hbbr (relay)</span>
+        <span class="lg" data-tip="The callee. Captures and encodes the screen, applies the input it receives, and checks the password. One encoder serves all viewers, so the slowest viewer sets the pace for everyone."><i class="sw b"></i>Client&nbsp;B — controlled, the CAD workstation</span>
+      </div>
+      <p class="stage-hint">Hover any box, line or label for what it is and what it holds. <span class="k">←</span> <span class="k">→</span> step through.</p>
 
       <div class="controls">
         <button class="btn primary" id="play">▶ Play</button>
@@ -264,6 +321,15 @@
         </div>
       </div>
     </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <span class="eyebrow">Who is who</span>
+      <h2>Three roles, not three products</h2>
+      <p><b>Client A</b> and <b>client B</b> are roles taken per session, not properties of a machine: A is whoever starts the call and watches, B is whoever answers and is watched. Here A is always a technician on the internet and B always a CAD workstation on site — but nothing in the software enforces that.</p>
+    </div>
+    <div class="roles" id="roles"></div>
   </section>
 
   <section>
@@ -306,14 +372,21 @@
 
   // ---------- node anchors (viewBox units) ----------
   var N = {
-    tech:  { x: 101, y: 115 },
-    srv:   { x: 454, y: 95  },
-    relay: { x: 464, y: 232 },
-    ws:    { x: 780, y: 115 },
-    techL: { x: 101, y: 232 },
-    wsL:   { x: 790, y: 232 },
-    techT: { x: 101, y: 40  },
-    wsT:   { x: 790, y: 40  }
+    tech:  { x: 101, y: 126 },
+    srv:   { x: 454, y: 110 },
+    relay: { x: 454, y: 218 },
+    ws:    { x: 780, y: 126 },
+    techL: { x: 104, y: 218 },
+    wsL:   { x: 790, y: 218 },
+    techT: { x: 130, y: 300 },
+    wsT:   { x: 764, y: 300 }
+  };
+  // where the packet parks for a step a node does to ITSELF — clear of the node's label
+  var SELF = {
+    tech:  { x: 101, y: 194 },
+    srv:   { x: 454, y: 164 },
+    relay: { x: 454, y: 268 },
+    ws:    { x: 780, y: 194 }
   };
 
   // ---------- scenarios ----------
@@ -528,25 +601,79 @@
     gb.appendChild(d);
   });
 
+  // ---------- roles ----------
+  var ROLES = [
+    { cls:"a", tag:"Client A", what:"The controller",
+      lede:"The machine the operator sits at. Runs the viewer window, decodes the video, sends keyboard and mouse. It also chooses the picture quality, codec and frame rate — those are <b>its</b> per-peer settings, not the other machine's.",
+      holds:"its device key · its identity keypair · the user's session token",
+      dials:"Always outbound. Nothing ever connects <i>to</i> it, so it needs no open port and no fixed address.",
+      sees:"The decrypted session — it is one of the two endpoints." },
+    { cls:"s", tag:"Server", what:"hbbs + hbbr on one host",
+      lede:"<b>hbbs</b> is the exchange: it knows which clients exist, decides who may call whom, and introduces them. <b>hbbr</b> is the relay: when the two clients cannot reach each other it pairs their sockets and copies bytes. Ports 21115–21118, plus 21120 for the management API.",
+      holds:"the Ed25519 key both clients pin · the device-key registry · the LDAP bind · the admin API token",
+      dials:"Never. It only answers — and pushes work down connections the clients already hold open.",
+      sees:"Who is talking to whom, and when. <b>Not</b> what they say: it holds no key that opens a session." },
+    { cls:"b", tag:"Client B", what:"The controlled machine",
+      lede:"The CAD workstation whose screen is shared. Captures and encodes the screen, applies the input it receives, and checks the password — which never leaves it, because login is a challenge over a salted double hash. One encoder serves every viewer, so the slowest viewer sets the pace for all of them.",
+      holds:"its device key · its identity keypair · the permanent password",
+      dials:"Outbound only, and it keeps that connection open for its whole life, heartbeating every 15 s. That is the only reason it is reachable at all — no inbound port, no port forward.",
+      sees:"The decrypted session — it is the other endpoint." }
+  ];
+  var rolesEl = document.getElementById("roles");
+  if (rolesEl) {
+    ROLES.forEach(function (r) {
+      var d = document.createElement("div");
+      d.className = "role-c " + r.cls;
+      d.innerHTML =
+        '<h3>' + r.tag + '</h3>' +
+        '<div class="what">' + r.what + '</div>' +
+        '<p class="lede2">' + r.lede + '</p>' +
+        '<dl><dt>holds</dt><dd>' + r.holds + '</dd>' +
+        '<dt>dials</dt><dd>' + r.dials + '</dd>' +
+        '<dt>sees</dt><dd>' + r.sees + '</dd></dl>';
+      rolesEl.appendChild(d);
+    });
+  }
+
   // ---------- tooltip ----------
   var tip = document.getElementById("tip");
-  function showTip(el) {
+  function showTip(el, ev) {
     var txt = el.getAttribute("data-tip");
     if (!txt) return;
+    clearTimeout(hideT);
     tip.textContent = txt;
     tip.classList.add("on");
     var r = el.getBoundingClientRect();
+    // inside the diagram a wire's bounding box can span the whole stage, so anchor on the
+    // pointer instead of on the box; elsewhere the box is the better anchor.
+    var inStage = el.closest(".stage");
+    var cx, cyTop, cyBot;
+    if (inStage && ev && typeof ev.clientX === "number") {
+      cx = ev.clientX; cyTop = ev.clientY - 14; cyBot = ev.clientY + 20;
+    } else if (inStage) {
+      var sr = inStage.getBoundingClientRect();
+      cx = Math.min(Math.max(r.left + r.width / 2, sr.left), sr.right);
+      cyTop = r.top; cyBot = r.bottom;
+    } else {
+      cx = r.left + r.width / 2; cyTop = r.top; cyBot = r.bottom;
+    }
     var tr = tip.getBoundingClientRect();
-    var left = Math.min(Math.max(10, r.left + r.width / 2 - tr.width / 2), window.innerWidth - tr.width - 10);
-    var top = r.top - tr.height - 9;
-    if (top < 10) top = r.bottom + 9;
+    var left = Math.min(Math.max(10, cx - tr.width / 2), window.innerWidth - tr.width - 10);
+    var top = cyTop - tr.height - 9;
+    if (top < 10) top = cyBot + 9;
     tip.style.left = left + "px";
     tip.style.top = top + "px";
   }
-  function hideTip() { tip.classList.remove("on"); }
+  var hideT = 0;
+  function hideTip() { clearTimeout(hideT); hideT = setTimeout(function () { tip.classList.remove("on"); }, 60); }
   document.addEventListener("mouseover", function (e) {
     var el = e.target.closest ? e.target.closest("[data-tip]") : null;
-    if (el) showTip(el);
+    if (el) showTip(el, e);
+  });
+  document.addEventListener("mousemove", function (e) {
+    if (!tip.classList.contains("on")) return;
+    var el = e.target.closest ? e.target.closest("[data-tip]") : null;
+    if (el && el.closest(".stage")) showTip(el, e);
   });
   document.addEventListener("mouseout", function (e) {
     if (e.target.closest && e.target.closest("[data-tip]")) hideTip();
@@ -556,7 +683,12 @@
     if (el) showTip(el);
   });
   document.addEventListener("focusout", hideTip);
-  document.addEventListener("scroll", hideTip, true);
+  document.addEventListener("scroll", function () { clearTimeout(hideT); tip.classList.remove("on"); }, true);
+  // touch: tap to show, tap elsewhere to dismiss
+  document.addEventListener("click", function (e) {
+    var el = e.target.closest ? e.target.closest("[data-tip]") : null;
+    if (el) { showTip(el, e); } else { hideTip(); }
+  });
   // keyboard reachable
   Array.prototype.forEach.call(document.querySelectorAll("[data-tip]"), function (el) {
     if (!el.hasAttribute("tabindex")) el.setAttribute("tabindex", "0");
@@ -654,10 +786,14 @@
     pktT.textContent = s.label;
 
     if (s.from === s.to) {
-      // internal work: pulse in place
-      pkt.classList.remove("hidden");
+      // internal work: park beside the node rather than on top of its label
+      var sp = SELF[s.from] || a;
+      // place it while hidden and flush layout, so no transition animates in from 0,0
+      pkt.classList.add("hidden");
       pkt.style.setProperty("--dur", "1ms");
-      pkt.setAttribute("transform", "translate(" + a.x + "," + a.y + ")");
+      pkt.setAttribute("transform", "translate(" + sp.x + "," + sp.y + ")");
+      void pkt.getBoundingClientRect();
+      pkt.classList.remove("hidden");
       return;
     }
 

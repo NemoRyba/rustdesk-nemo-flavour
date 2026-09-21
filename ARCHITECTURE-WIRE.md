@@ -10,12 +10,19 @@ Read with `DECISIONS-2026-09-21.md` (why things are the way they are) and `DEPLO
 
 ## Topology
 
+Three roles. "Client A" and "client B" are **roles taken per session**, not properties of a
+machine: A is whoever starts the call and watches, B is whoever answers and is watched. In
+this deployment A is always a technician out on the internet and B is always a CAD
+workstation on site, but nothing in the software enforces that.
+
 ```
         INTERNET                    │  SITE
                                     │
+        CLIENT A                    │        SERVER              CLIENT B
+      the controller                │   one host, two daemons   the controlled
    ┌──────────────┐                 │   ┌──────────────────┐      ┌───────────────┐
-   │  technician  │                 │   │   TBFDesk server │      │  workstation  │
-   │   (laptop)   │                 │   │   hbbs + hbbr    │      │   × 15 (CAD)  │
+   │  technician  │                 │   │  hbbs  rendezvous│      │  workstation  │
+   │   (laptop)   │                 │   │  hbbr  relay     │      │   × 15 (CAD)  │
    └──────┬───────┘                 │   └─────────┬────────┘      └───────┬───────┘
           │                         │             │                       │
           │  ─────── L1 ────────────┼────────────►│◄────────── L1 ────────┤
@@ -31,6 +38,15 @@ Read with `DECISIONS-2026-09-21.md` (why things are the way they are) and `DEPLO
           │                         │             │   direct P2P          │
           │                         │             │   (same subnet)       │
 ```
+
+| role | what it is | what it holds | who starts the connection |
+|---|---|---|---|
+| **client A** | the controller — the viewer window, decodes video, sends keyboard and mouse. Picks quality, codec and frame rate; those live in *its* per-peer config | its device key, its identity keypair, the user's session token | always A. Nothing ever dials in to it |
+| **server** | hbbs introduces clients and enforces who may call whom; hbbr carries bytes when the two cannot reach each other. One host, ports 21115–21118 | the Ed25519 key both clients pin, the device-key registry, the LDAP bind | never — it only answers, and pushes down connections clients already hold |
+| **client B** | the controlled machine — captures and encodes the screen, applies input, checks the password. One encoder serves every viewer | its device key, its identity keypair, the permanent password | dials **out** to the server and holds that connection open. No inbound port, no port forward |
+
+The server is trusted to *introduce*, not to *listen*: it never holds a key that opens a
+session. See L4 and L5.
 
 `───` signalling · `═══` session payload
 
