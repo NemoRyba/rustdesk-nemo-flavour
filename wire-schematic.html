@@ -645,6 +645,78 @@
     }
   ];
 
+  // ---------- legs ----------
+  var LEGS = [
+    { id:"L1", name:"Client ↔ hbbs · rendezvous", sub:"TCP 21116 · protobuf", cls:"ok", chip:"Encrypted",
+      detail:'XSalsa20-Poly1305. Key chosen by the <b>client</b>, sealed to the server\'s per-connection <span data-tip="A keypair generated fresh for this one connection and thrown away after. Because it is never reused, a recording of today\'s traffic cannot be decrypted tomorrow even if a long-term key leaks.">ephemeral</span>. The client proves a <span data-tip="An Ed25519 secret issued by the admin and pinned on the server, bound to one machine id. This is Layer 1: only provisioned machines get a connection at all.">pinned device key</span> bound to its peer id.' },
+    { id:"L2", name:"Client → hbbs over UDP", sub:"UDP 21116", cls:"ok", chip:"Refused",
+      detail:'There is no handshake for a datagram socket, so this path could never be encrypted. Refused by default on both ends — <code>--udp-registration=N</code> and <code>disable-udp=Y</code>. <span data-tip="They are separate switches on separate paths. disable-udp chooses the rendezvous transport; UDP hole punching is enable-udp-punch and is unaffected.">This does not disable UDP hole punching.</span>' },
+    { id:"L3", name:"hbbs → client · pushes", sub:"rides the peer's own connection", cls:"ok", chip:"Encrypted",
+      detail:'Punch instructions, forwarded relay requests, local-address fetches — sealed with that connection\'s key. <span data-tip="Before this was fixed, the server could only reach a peer by UDP datagram. A TCP-registered machine showed as online and could call out, but could never be called — silently.">Falls back to a plaintext datagram only for a UDP-registered peer</span>, which is unreachable at defaults.' },
+    { id:"L4", name:"Client ↔ client · the session", sub:"punched TCP / KCP / IPv6", cls:"warn", chip:"Conditional",
+      detail:'Screen, input, audio, clipboard, files. <span data-tip="hbbs signs the peer\'s identity key; the peer signs its own ephemeral with that identity key. The controller checks both, so neither the server nor the path can substitute a key.">Two-level Ed25519 chain.</span> <b>The password never crosses the wire.</b> Downgrades to plaintext on a handshake fault — see gap 2. Reached <span data-tip="get_local_option() forces enable-udp-punch and enable-ipv6-punch to N whenever the rendezvous server is not rustdesk.com, which is every self-hosted deployment. So no hole punch is attempted and the only direct sessions are between two machines on the same subnet, matched by FetchLocalAddr/LocalAddr. See case 4.">only on the same subnet at shipped defaults</span> — the hole punch is off for a self-hosted server.' },
+    { id:"L5a", name:"Client ↔ hbbr · control frame", sub:"TCP 21117", cls:"ok", chip:"Encrypted",
+      detail:'Its own signed key exchange with a separate key, covering the relay request — <span data-tip="Without this, the server licence key and both peer ids were readable by anyone on the path, on every relayed session.">the licence key and both peer ids</span> — then both ends drop the cipher. Fail-closed: no key, no relay.' },
+    { id:"L5b", name:"Client ↔ client <em>through</em> hbbr", sub:"TCP 21117 · byte pump", cls:"warn", chip:"Inherits L4",
+      detail:'<b>Exactly one layer, and it is the end-to-end one.</b> hbbr sees ciphertext and cannot read video, audio, clipboard or files. <span data-tip="Double-encrypting would cost CPU on every frame for no gain, since the payload is already end-to-end encrypted between the two peers.">No double encryption</span> — relaying costs a hop, not CPU.' },
+    { id:"L6", name:"Direct IP / host:port", sub:"TCP · off by default", cls:"bad", chip:"Plaintext",
+      detail:'No handshake, no cipher, no authentication. Currently also <span data-tip="The controlled side now waits for a key exchange the controller never starts, so the connection simply stalls. Dead rather than dangerous — but nothing on the controller enforces encryption if that ever changes.">non-functional</span>. The one place where fast and encrypted diverge.' },
+    { id:"L7", name:"Client ↔ management API", sub:"HTTPS 21120", cls:"warn", chip:"Conditional",
+      detail:'Two layers. Login and the policy poll are <span data-tip="Sealed to the server\'s management key inside the TLS tunnel, with a nonce cache and a freshness window. Even an attacker who strips TLS cannot read or replay them.">sealed inside TLS</span> and survive a TLS-stripping attacker. Address book and heartbeat are TLS-only, and <span data-tip="The client falls back to accepting an invalid certificate and caches that choice, unless nemo-api-cert-fingerprint is pinned by policy.">that TLS authenticates nothing by default</span>.' },
+    { id:"L8", name:"hbbs → LDAP / AD", sub:"LDAPS 636", cls:"ok", chip:"Encrypted",
+      detail:'<code>ldaps://</code> enforced; plaintext <code>ldap://</code> is refused outright, because a bind would carry a domain password. Certificate verification on unless explicitly disabled.' }
+  ];
+
+  var KEYS = [
+    ["id_ed25519","server — shared by hbbs <em>and</em> hbbr","signs every rendezvous and relay offer, every peer identity key, every update manifest","the whole fleet fails closed"],
+    ["device key","each client, <code>nemo-device-key</code>","Layer 1 — proves the machine is provisioned, at the transport <em>and</em> the API","that machine cannot connect; no CLI recovery path, by design"],
+    ["peer key pair","each client","its own identity, counter-signed by hbbs for peers","re-registers; peers see a key change"],
+    ["permanent password","controlled machine","session login","— never on the wire in any form"],
+    ["session token","controller, local config","per-user ACL and require-login","bearer credential — replayable if leaked"],
+    ["admin API token","server env + the admin browser","the entire management API, including <code>require_device_key</code>","full fleet control"],
+    ["management pubkey","pushed to clients","anchors the sealed envelope and the signed policy","—"]
+  ];
+
+  var GAPS = [
+    [1,"Port-forward and RDP tunnels are plaintext","After login both ends drop the cipher <em>and</em> the framing. An entire RDP session — credentials included — crosses the punched link, or the relay, in the clear.","<b>always</b> · every transport · the worst one"],
+    [1,"The session downgrades on a handshake fault","One corrupted frame from an on-path attacker yields a fully plaintext session, because the fail-closed switch is a policy key rather than the default.","<b>nemo-require-encrypted-session</b> defaults off"],
+    [1,"Short frames bypass decryption entirely","Frames of one byte or less skip the cipher and do not advance the receive counter, so they are unauthenticated on <em>every</em> otherwise-encrypted leg. The rendezvous loop treats an empty frame as a keep-alive and echoes it.","<b>always</b> · inherited from upstream"],
+    [0,"LAN discovery broadcasts who you are","Id, hostname, the <em>active username</em>, platform and MAC, broadcast to the whole subnet.","<b>enable-lan-discovery</b> is on by default"],
+    [0,"Public STUN queries leave the network","Every connect attempt queries Google, Cloudflare and Nextcloud STUN servers in the clear — announcing that this site exists, on a network meant to be private.","<b>enable-udp-punch</b> is on by default"],
+    [0,"Port 21115 answers anyone","An unauthenticated caller can enumerate which TBFDesk ids are currently online.","<b>always</b>, wherever 21115 is reachable"],
+    [0,"The UDP software-update arm replies to anything","Any datagram gets an unencrypted reply carrying the configured update URL — regardless of whether UDP registration is refused.","<b>always</b> · independent of <code>--udp-registration</code>"],
+    [0,"The management API binds loopback as HTTP","TLS keys off <em>routable or LDAP-enabled</em>, so on the default loopback bind the admin bearer token crosses the interface in the clear — reachable by any local process or an SSH tunnel.","default bind <b>127.0.0.1:21120</b> with LDAP off"],
+    [0,"The direct-IP path enforces nothing","Dead rather than dangerous today, but nothing on the controller requires encryption if that ever changes.","<b>direct-server</b> is off by default"]
+  ];
+
+  // ---------- render static ----------
+  var board = document.getElementById("board");
+  LEGS.forEach(function (l) {
+    var d = document.createElement("div");
+    d.className = "leg";
+    d.innerHTML = '<span class="leg-id">' + l.id + '</span>' +
+      '<div><div class="leg-name">' + l.name + '</div><div class="leg-sub">' + l.sub + '</div></div>' +
+      '<div class="leg-detail">' + l.detail + '</div>' +
+      '<span class="chip ' + l.cls + '">' + l.chip + '</span>';
+    board.appendChild(d);
+  });
+
+  var kb = document.getElementById("keys");
+  KEYS.forEach(function (k) {
+    var tr = document.createElement("tr");
+    tr.innerHTML = '<td class="key">' + k[0] + '</td><td>' + k[1] + '</td><td>' + k[2] + '</td><td>' + k[3] + '</td>';
+    kb.appendChild(tr);
+  });
+
+  var gb = document.getElementById("gaps");
+  GAPS.forEach(function (g) {
+    var d = document.createElement("div");
+    d.className = "gap" + (g[0] ? " critical" : "");
+    d.innerHTML = '<div class="gap-body"><span class="gap-title">' + g[1] + '</span>' +
+      '<span class="gap-text">' + g[2] + '</span><span class="gap-cond">' + g[3] + '</span></div>';
+    gb.appendChild(d);
+  });
+
   // ---------- roles ----------
   var ROLES = [
     { cls:"a", tag:"Client A", what:"The controller",
