@@ -59,7 +59,7 @@ server, and the two ways the session can then reach the workstation.
 |---|---|---|---|
 | 1 | a **workstation** verifies itself to the server | L1, then L7 for its policy | shipped |
 | 2 | a **technician** verifies themselves to the server | L1, then L7 for LDAP login | shipped |
-| 3 | technician → workstation **relayed** | L1 → L5 | shipped, and what happens today |
+| 3 | technician → workstation **relayed** | L1 → (failed L4) → L5 | shipped, and what happens today |
 | 4 | technician → workstation **direct** | L1 → L4 | **not shipped** — see below |
 
 **Cases 1 and 2 are the same handshake.** Not merely similar: `secure_tcp` →
@@ -75,11 +75,41 @@ differ, and neither is the verification:
 - **Layer 2.** Only the technician logs in against LDAP and carries a session token. An
   unattended workstation authenticates to the management API with its **device key
   signature** instead (`nemo_management_client.rs`): no user, no password, no directory.
+  Layer 2 is also **off at shipped defaults** — `require_login` is `false`
+  (`nemo_integration.rs:271`), so a logged-out technician whose machine holds a valid device
+  key can still punch. Layer 1 is on by default; Layer 2 is not.
+- **Where the binding is re-checked.** Both prove the device key's bound peer id at the
+  handshake. The workstation has it checked again when `RegisterPk`/`RegisterPeer` announce
+  that id; the punch and relay frames carry no equivalent cross-check.
+- **hbbs requires the technician to be registered too.** `controller_policy_rejection`
+  (`nemo_management.rs:3071`) refuses the punch unless the caller is in the registered-peer
+  table with a matching uuid, so a technician is a fully registered peer that happens to be
+  asking for someone.
 
-**Case 4 does not happen today.** `get_local_option` (`common.rs:1173`) forces both
-`enable-udp-punch` and `enable-ipv6-punch` to `N` whenever the rendezvous server is not
-`rustdesk.com` — which is every self-hosted deployment. So a technician on the internet
-always lands on case 3, and the only direct sessions that occur are same-subnet ones. What
+Worth correcting one natural assumption about case 3, in both directions. Run **bare `hbbs`
+with no flags** and it does *not* reach for the relay: `--mask` is unset, so `is_lan` is
+always false, nothing is forced, hbbs pushes a `PunchHole`, the punch fails and the *client*
+falls back to `RequestRelay`. But **the committed systemd unit sets `--mask`**
+(`systemd/rustdesk-hbbs-nemo.service:35`), which puts the workstation inside and the
+technician outside — and `peer_is_lan ^ is_lan` then forces the relay outright
+(`rendezvous_server.rs:1280`), rewriting `nat_type` to `SYMMETRIC` so the client does not
+even try. **In the deployment, no direct attempt is ever made.**
+
+**Case 4 is blocked by three independent things**, and fixing any one alone changes nothing:
+
+1. `--mask` in the shipped unit forces the relay, so no direct attempt is made at all.
+2. `PunchHoleResponse.socket_addr` is the address hbbs *observes*. hbbs is **on site**, so
+   it observes `192.168.x.y` — meaningless from the internet (`rendezvous_server.rs:1094`).
+   This is structural; no flag fixes it.
+3. UDP punching is dead-ended inside hbbs: the UDP `PunchHoleSent` arm is a deliberate
+   no-op (`rendezvous_server.rs:575`) and `is_udp` is never set on the response, so the
+   client drops its UDP socket every time. Not a default that can be flipped.
+
+Which leaves **exactly one lever: IPv6** — and it is better than it looks, because over v6
+there is no translation, so reason 2 *evaporates* rather than being worked around. Better
+still, it survives reason 1: `start_ipv6` is gated on `use_ws || is_proxy || force_relay`
+and runs at `rendezvous_mediator.rs:666`, while the `SYMMETRIC`/relay check is only at
+`:675` — so the v6 attempt still happens with `--mask` in place. What
 it would take is in `vm/shots/DESIGN-direct-path-analysis.md` §7; the headline is that
 direct buys resilience and server load, **not** latency, because the relay is on site and
 the thin uplink is crossed once either way.
