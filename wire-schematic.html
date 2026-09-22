@@ -408,7 +408,7 @@
     <div class="sec-head"><span class="eyebrow">The question</span><h2>Is everything encrypted?</h2></div>
     <div class="verdict">
       <div class="answer">No — but the gaps are now <em>specific</em>, not structural.</div>
-      <p>Encrypted unconditionally as the committed units run it: rendezvous signalling, server pushes, the relay control frame, the relayed payload, LDAP, and the management API's login and policy poll. Twelve things remain, roughly ranked by what would actually hurt. Three were closed on 22 September — the controller gates now fail closed and bind to the device-key-proven identity, the session no longer downgrades to plaintext on a handshake fault, and an unauthenticated channel that could write persisted client config is gone. What is left at the top is still about authorisation rather than encryption: who is allowed to ask for a connection, and with which key.</p>
+      <p>Encrypted unconditionally as the committed units run it: rendezvous signalling, server pushes, the relay control frame, the relayed payload, LDAP, and the management API's login and policy poll. Eleven things remain, roughly ranked by what would actually hurt. Four were closed on 22 September — the controller gates now fail closed and bind to the device-key-proven identity, the session no longer downgrades to plaintext on a handshake fault, an unauthenticated channel that could write persisted client config is gone, and the rendezvous frame that identified every machine in the clear is now sealed. What is left at the top is still about authorisation rather than encryption: who is allowed to ask for a connection, and with which key.</p>
     </div>
     <div class="gaps" id="gaps"></div>
   </section>
@@ -481,9 +481,9 @@
           guardNone:true, guard:"Plaintext, and public by design \u2014 a signature, not a secret" },
         { from:"ws", to:"srv", wireId:"w-srv-ws", enc:false, label:"device proof",
           title:"The client proves which machine it is",
-          body:"The client picks 32 random bytes as the session key, seals them to the server\u2019s ephemeral, and signs the whole bundle with its device key. The signature covers that ephemeral, so a captured proof is worthless against any other connection \u2014 no clock, no counter, no revocation list needed. But note what is NOT protected: the client sends this frame BEFORE installing the cipher, so device_pub and peer_id cross in the clear. An observer on the path learns which machine just came online and can recognise it again. Gap 10 below \u2014 and it is fixable without costing a round trip.",
-          wire:"NemoClientAuth { client_box_pk, sealed_key, device_pub, peer_id, sig }",
-          guardNone:true, guard:"The session key is sealed. device_pub and peer_id are NOT \u2014 they cross in the clear" },
+          body:"The client picks 32 random bytes as the session key, seals them to the server\u2019s ephemeral, and signs the whole bundle with its device key. The signature covers that ephemeral, so a captured proof is worthless against any other connection \u2014 no clock, no counter, no revocation list needed. Since 22 September the whole frame is sealed to the server\u2019s pinned key before it leaves the client, so device_pub and peer_id no longer cross in the clear. The session key inside is still sealed to the per-connection ephemeral \u2014 the envelope hides the identity fields and changes nothing about forward secrecy.",
+          wire:"NemoSealedAuth { sealed = box_seal(NemoClientAuth { client_box_pk, sealed_key, device_pub, peer_id, sig }) }",
+          guard:"Whole frame sealed to the server\u2019s pinned key; the session key inside is sealed to the ephemeral" },
         { from:"srv", to:"srv", wireId:null, enc:true, label:"three checks",
           title:"The server checks three things",
           body:"That the signature verifies against the device key presented; that this device key is in the registry and not revoked; and that it is bound to the peer id being claimed. Any one failing closes the connection. With require_device_key on \u2014 the default \u2014 a client that offers no device key at all is refused here.",
@@ -529,9 +529,9 @@
           guardNone:true, guard:"Plaintext, and public by design \u2014 a signature, not a secret" },
         { from:"tech", to:"srv", wireId:"w-tech-srv", enc:false, label:"device proof",
           title:"The same device proof",
-          body:"Same function, same message, same fields, same signature context. A capture could not tell you whether the machine at the other end is a technician\u2019s laptop or a CAD workstation \u2014 though it can read the peer id and the device key straight out of this frame either way, because it goes out before the cipher is installed. See case 1 step 5.",
-          wire:"NemoClientAuth { client_box_pk, sealed_key, device_pub, peer_id, sig }",
-          guardNone:true, guard:"The session key is sealed. device_pub and peer_id are NOT \u2014 they cross in the clear" },
+          body:"Same function, same message, same fields, same signature context. A capture could not tell you whether the machine at the other end is a technician\u2019s laptop or a CAD workstation \u2014 and since 22 September it cannot read the peer id or the device key out of this frame either: the whole thing is sealed to the server\u2019s pinned key. See case 1 step 5.",
+          wire:"NemoSealedAuth { sealed = box_seal(NemoClientAuth { client_box_pk, sealed_key, device_pub, peer_id, sig }) }",
+          guard:"Whole frame sealed to the server\u2019s pinned key; the session key inside is sealed to the ephemeral" },
         { from:"srv", to:"srv", wireId:null, enc:true, label:"three checks",
           title:"hbbs runs the same three checks",
           body:"Signature, registry, peer-id binding. There is no branch on role here \u2014 hbbs runs one code path for every client that connects to it. Layer 1 is now complete and the channel is encrypted, exactly as in case 1.",
@@ -718,9 +718,6 @@
     [0,"The UDP software-update arm replies to anything","Any datagram gets an unencrypted reply carrying the configured update URL — regardless of whether UDP registration is refused.","<b>always</b> · independent of <code>--udp-registration</code>"],
     [0,"The management API binds loopback as HTTP","TLS keys off <em>routable or LDAP-enabled</em>, so on the default loopback bind the admin bearer token crosses the interface in the clear — reachable by any local process or an SSH tunnel.","default bind <b>127.0.0.1:21120</b> with LDAP off"],
     [0,"The direct-IP path enforces nothing","Dead rather than dangerous today, but nothing on the controller requires encryption if that ever changes.","<b>direct-server</b> is off by default"],
-    ["", "The rendezvous identifies every machine in the clear",
-     "The client sends <code>NemoClientAuth</code> and only then installs the cipher, so <code>device_pub</code> and <code>peer_id</code> cross unencrypted on every connection. An observer on the path learns which machines exist, which device key each one holds, and when each comes online \u2014 a roster of the fleet, gathered passively. The keys to prevent it are already in place on both sides: sealing this frame to the server's pinned key costs no extra round trip and does not touch forward secrecy, because the session key stays sealed to the per-connection ephemeral.",
-     "always \u00b7 every rendezvous connection"],
     ["","The relay checks nothing but the shared server key","hbbr accepts a plain <code>KeyExchange</code> on 21117 \u2014 there is no device proof on that port at all, so Layer 1 governs who may <em>ask</em> hbbs for a relay, not who may connect to hbbr. Every client in the fleet holds the key it does check, and it is embedded in the licence name. hbbr also holds the same signing key as hbbs, by design, and sees the end-to-end handshake frames in the clear once it drops its own cipher.","<b>always</b> \u00b7 port 21117"]
   ];
 
@@ -818,7 +815,8 @@
     // --- the messages on the wire ---
     "protobuf": "Protocol Buffers: a compact binary encoding for structured messages. Every rendezvous message on this page is one of these, length-prefixed on the socket.",
     "keyexchange": "The first message on a rendezvous or relay socket. The server offers a fresh public key signed with its identity key; the client checks that signature and replies with a key of its own.",
-    "nemoclientauth": "This fork's replacement for the plain key exchange reply. It carries the client's ephemeral, the sealed session key, the machine's device public key, the peer id being claimed, and a signature binding all of it together.",
+    "nemoclientauth": "This fork's replacement for the plain key exchange reply. It carries the client's ephemeral, the sealed session key, the machine's device public key, the peer id being claimed, and a signature binding all of it together. Since 22 September it travels inside a NemoSealedAuth envelope, so none of those fields are readable on the wire.",
+    "nemosealedauth": "The envelope the auth frame now travels in: the whole NemoClientAuth, serialized and sealed to the server\u2019s long-term key. Only that server can open it, so the device key and peer id inside are not visible on the path. The session key inside is still sealed to the per-connection ephemeral, so this adds confidentiality for the identity fields without touching forward secrecy.",
     "registerpk": "The message that tells the server which peer id this machine is, along with its machine uuid and its own identity public key. Sent once the channel is encrypted.",
     "registerpeer": "The presence heartbeat. Repeated every 15 seconds so the server knows the machine is still there and can push work down the connection.",
     "punchholerequest": "The controller asking the server to reach a specific peer. Carries the target id, the caller's NAT type, and the fields a direct connection would need.",

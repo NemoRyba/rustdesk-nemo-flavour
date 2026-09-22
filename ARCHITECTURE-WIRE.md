@@ -141,6 +141,8 @@ the thin uplink is crossed once either way.
                                 ‖ sealed_key ‖ peer_id )
              }
    ── every frame from here on ──►  XSalsa20-Poly1305 under K
+   (since 2026-09-22 the NemoClientAuth above travels inside NemoSealedAuth, sealed to the
+    server's pinned key before it leaves the client — task #23)
 ```
 | | |
 |---|---|
@@ -295,14 +297,12 @@ outrank everything in the next section.
 unconditionally: rendezvous signalling, server pushes, the relay control frame, the relayed
 payload, LDAP, and the management API's login and policy poll. What is left:
 
-0. **The rendezvous identifies every machine in the clear.** The client calls
-   `conn.send(&msg_out)` and only then `conn.set_key(key)` (`common.rs:2222-2223`), so
-   `NemoClientAuth` — including `device_pub` and `peer_id` — crosses unencrypted on every
-   connection. Passively, an observer on the path builds a roster of the fleet and a
-   presence log for it. Fixable at no cost: seal the frame to the server's pinned key
-   (`sign::to_curve25519_pk` + `sealedbox::seal` already exist and are used for the
-   management envelope). No extra round trip, and forward secrecy is untouched because the
-   session key stays sealed to the per-connection ephemeral, not the long-term key.
+0. ~~The rendezvous identifies every machine in the clear.~~ **Fixed 2026-09-22 (task #23):**
+   the client now sends the whole `NemoClientAuth` inside a `NemoSealedAuth` envelope (union
+   tag 30) sealed to the server's pinned key, and the server opens it before the handshake
+   match. The session key inside stays sealed to the per-connection ephemeral, so forward
+   secrecy and the replay property are unchanged; only the identity fields gained
+   confidentiality.
 
 1. **Port-forward / RDP tunnels are plaintext, always.** After login both ends call
    `set_raw()`, dropping the cipher *and* the framing. A whole RDP session — credentials
