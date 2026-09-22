@@ -380,7 +380,7 @@
     <div class="sec-head">
       <span class="eyebrow">Status board</span>
       <h2>Every leg</h2>
-      <p>Status is the shipped default with no flags passed. Where it is conditional, the condition is named.</p>
+      <p>Status is as the committed systemd units run it \u2014 those pass <code>--mask</code>, <code>--nemo-api</code> and a key, and bare binaries with no flags behave differently in places. Where that difference matters, it is named. Where behaviour is conditional, the condition is named.</p>
     </div>
     <div class="board" id="board"></div>
   </section>
@@ -536,9 +536,9 @@
           guard:"Encrypted channel + device key (machine) + session token (human)" },
         { from:"srv", to:"srv", wireId:null, enc:true, label:"four gates",
           title:"Four policy gates run, in order",
-          body:"Straight out of controller_policy_rejection: is the CALLER registered and does its uuid match; is the caller not blocked; are outbound connections permitted by its policy; and is this particular target on its allowed list. All four must pass before hbbs will introduce anybody. Only now does the question of how the two actually meet arise \u2014 which is cases 3 and 4.",
+          body:"Straight out of controller_policy_rejection: is the CALLER registered and does its uuid match; is it not blocked; are outbound connections permitted by its policy; and is this target on its allowed list. One caveat that matters: all four hang off the source marker, and the entry point bails out with \"no rejection\" if that marker is absent or malformed \u2014 so the identity driving every one of these checks is unsigned, and omitting it skips them. Only now does the question of how the two actually meet arise \u2014 cases 3 and 4.",
           wire:"registered + uuid \u2192 not blocked \u2192 outbound allowed \u2192 target allowed",
-          guard:"L1 always. L2 only if require_login was turned on." }
+          guard:"L1 always. L2 only if require_login was turned on. The gates themselves key off an unsigned marker." }
       ]
     },
     {
@@ -613,7 +613,7 @@
           todo:true, guard:"Not shipped. Reason 2 of 3 \u2014 the one that needs network work." },
         { from:"srv", to:"srv", wireId:null, enc:true, label:"reason 3",
           title:"And UDP punching is dead-ended in the server itself",
-          body:"The third. Even with enable-udp-punch=Y, hbbs\u2019 UDP PunchHoleSent arm is a deliberate no-op and it never sets is_udp on the response, so the client drops its UDP socket every time. This one is not a default that can be flipped \u2014 the path is not wired up at all.",
+          body:"The third. Even with enable-udp-punch=Y, hbbs\u2019 UDP PunchHoleSent arm is an empty no-op and is_udp appears nowhere in the file, so the client drops its UDP socket every time. And this one is deliberate, not an oversight: the comment says UDP punch was removed upstream to stop a spoofed-source packet turning hbbs into a reflection amplifier. It should not be put back.",
           wire:"handle_udp PunchHoleSent arm \u2192 no-op; is_udp never set",
           todo:true, guard:"Not shipped. Reason 3 of 3 \u2014 and not a config problem." },
         { from:"tech", to:"srv", wireId:"w-tech-srv", enc:true, label:"IPv6",

@@ -72,6 +72,11 @@ differ, and neither is the verification:
   opens a fresh socket per connect attempt, sends `PunchHoleRequest` and drops it
   (`client.rs:536`). Note that a technician running the client normally — without
   `--no-server` — *also* keeps a registered connection, so one machine does both.
+- **The four gates are opt-in from the caller's side.** `controller_policy_rejection_from_field`
+  (`nemo_management.rs:3116`) starts with `controller_source_identity(source_field)?` — the `?`
+  means an absent or malformed source marker returns "no rejection", i.e. **pass**. The
+  identity that drives every controller-side ACL is carried in an unsigned marker, not bound
+  to the device key that was just proven.
 - **Layer 2.** Only the technician logs in against LDAP and carries a session token. An
   unattended workstation authenticates to the management API with its **device key
   signature** instead (`nemo_management_client.rs`): no user, no password, no directory.
