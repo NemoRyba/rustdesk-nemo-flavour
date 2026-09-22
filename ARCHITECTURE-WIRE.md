@@ -258,6 +258,34 @@ on unless someone passes `--insecure-ldap-i-accept-mitm`.
 
 ---
 
+## Before the encryption question: who is allowed to ask?
+
+Three findings from the September 22 sweep are not about ciphers at all, and two of them
+outrank everything in the next section.
+
+1. **The controller policy gates are skippable by omission.**
+   `controller_policy_rejection_from_field` (`nemo_management.rs:3116`) opens with
+   `controller_source_identity(source_field)?` — and the `?` returns `None`, which the
+   caller reads as *no rejection*. An absent or malformed source marker skips all four
+   gates. Worse, the identity those gates key off rides in that marker, unsigned, and is
+   never tied back to the device key proven moments earlier: hbbs binds `authed.peer_id`
+   only in the `RegisterPk`/`RegisterPeer` arms, never on `PunchHoleRequest` or
+   `RequestRelay`.
+
+2. **An unbound device key authenticates any machine.** A key minted with a blank
+   `peer_id` falls through to the accept arm at both enforcement points
+   (`rendezvous_server.rs:2058`, `nemo_management.rs:2466`). That is the documented
+   meaning of a blank binding — and the admin dashboard's peer-id box is optional free
+   text, so one empty field mints a fleet-wide skeleton key.
+
+3. **The relay checks nothing but the shared server key.** `relay_server.rs:471` accepts
+   only a plain `KeyExchange`; there is no device proof on 21117. Layer 1 governs who may
+   *ask* hbbs for a relay, not who may connect to hbbr. And hbbr holds the same Ed25519
+   signing key as hbbs by design, and sees the end-to-end handshake frames in the clear
+   once it drops its own cipher.
+
+---
+
 ## So: is everything encrypted?
 
 **No — but the gaps are now specific and named rather than structural.** Encrypted
