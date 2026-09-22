@@ -2,7 +2,18 @@
 
 Company-focused RustDesk fork workspace for high-performance remote access to CAD/3D workstations.
 
-> **Continuing this work?** Read [`HANDOFF.md`](HANDOFF.md) first — current state, build/deploy recipes, and the **screenshot-self-verify** method for the client UI (PrintWindow — no focus steal). The ranked, **verified** TODO list lives in [`OPEN-TODOS.md`](OPEN-TODOS.md) (each item checked against code/live state 2026-09-02); transport-security detail in [`SECURITY-HARDENING-TODO.md`](SECURITY-HARDENING-TODO.md). The running client shows its **build id** (git hash + date) bottom-left, so you can always tell which build you're looking at.
+> **Continuing this work?** Start with [`ARCHITECTURE-WIRE.md`](ARCHITECTURE-WIRE.md) — what talks to what,
+> which cipher protects which leg, and where the gaps are, every claim checked at the call site. Its
+> interactive companion is `wire-schematic.html` (four cases, hover anything for detail).
+> Then [`HANDOFF.md`](HANDOFF.md) for build/deploy recipes and the **screenshot-self-verify** method for the
+> client UI (PrintWindow — no focus steal), and [`DEPLOY.md`](DEPLOY.md) for running it.
+>
+> The open-items register is `../OPEN-POINTS-2026-09-21.md` (outside this repo; see *Known gaps* below).
+> `OPEN-TODOS.md` and `SECURITY-HARDENING-TODO.md` predate the September verification sweep and contain
+> items that have since been fixed, reverted, or found to be wrong — treat them as history, not as a list.
+>
+> The running client shows its **build id** (git hash + date) bottom-left, so you can always tell which
+> build you're looking at.
 
 ## Repositories
 
@@ -11,9 +22,21 @@ Company-focused RustDesk fork workspace for high-performance remote access to CA
 
 ## Current Direction
 
-- Prefer direct workstation connections for AutoCAD/3D work.
-- Use relay only as fallback.
-- Evaluate WireGuard/direct IP access as the main production topology.
+- **Sessions are relayed, and that is not currently a choice.** The intent was direct-first with relay
+  as fallback. Verified against the code, three independent things prevent a direct session for a
+  technician on the internet: the shipped systemd unit passes `--mask`, so hbbs forces the relay and
+  rewrites the NAT type to `SYMMETRIC`; `PunchHoleResponse.socket_addr` is the address hbbs *observes*,
+  and hbbs is on site, so it hands out a `192.168.x.y`; and UDP punching is deliberately not implemented
+  server-side (an anti-amplification port from upstream). Fixing any one alone changes nothing.
+- **IPv6 is the one lever that works**, and it needs no new code — the field is already carried end to
+  end, and the client attempts v6 *before* it checks whether the server forced a relay, so it survives
+  `--mask`. It needs a delegated prefix through both routers. See `ARCHITECTURE-WIRE.md` and
+  `../vm/shots/DESIGN-direct-path-analysis.md` §7.
+- **Direct buys resilience, not frame rate.** The relay is on site, so the thin uplink is crossed once
+  either way. What direct removes is a shared bottleneck and a single point of failure, and the server's
+  NIC carrying every workstation's video.
+- Performance work belongs on *bytes over the uplink*, not on the local hop: the workstations are strong,
+  the internet is not.
 - Keep the existing 3D AutoCAD mouse forwarding solution available for later integration.
 
 ## Implemented (TBFDesk management layer)
@@ -39,13 +62,34 @@ Server-driven management on top of RustDesk, administered from the server dashbo
   and an adjustable 1/2/3-column dashboard layout.
 - **Admin exception:** a logged-in admin receives the policy as *defaults only*
   (`allow_user_override` forced true on delivery) and can change any setting locally.
-- **Encrypted direct-IP** with server-anchored peer keys; `require-encrypted-session`
-  enforced fleet-wide (no plaintext fallback).
+- **Layer 1 — pinned device keys.** Every machine holds an Ed25519 private key minted on the server and
+  bound to its peer id. It is proven on *every* rendezvous connection, by both technicians and
+  workstations — the same code path, the same checks, no role branch. `require_device_key` defaults on,
+  so a client without one is refused outright. This, not the LDAP login, is the control the deployment
+  rests on.
 - Settings as a modal dialog (DE/EN, plain-language tooltips), address-book reload
   button, multi-screen tiled view, build-id readout bottom-left.
 
-See [`OPEN-TODOS.md`](OPEN-TODOS.md) for the ranked, verified open items
-(`TODO.md` is the older running log).
+## Known gaps
+
+Not everything above is as strong as it sounds, and the fork is explicit about which parts are not.
+`ARCHITECTURE-WIRE.md` carries the full list with the condition attached to each; the ones worth knowing
+before reading any other document:
+
+- **Direct-IP (`host:port`) is plaintext and unauthenticated**, not encrypted. `client.rs:335` returns a
+  bare socket for an IP peer and never calls `secure_connection`. It is off by default (`direct-server`)
+  and currently non-functional as well, but the README previously claimed the opposite.
+- **`nemo-require-encrypted-session` has no default**, so a peer-to-peer session downgrades to plaintext
+  on a handshake fault. It exists only as a pushable policy key.
+- **Port-forward / RDP tunnels are plaintext always** — both ends call `set_raw()` after login, dropping
+  the cipher *and* the framing.
+- **Layer 2 (LDAP) is off at shipped defaults** (`require_login` is `false`), so a logged-out technician
+  whose machine holds a valid device key can still connect. Layer 1 is on; Layer 2 is opt-in.
+- **The management API is off at bare defaults** (`nemo-api` defaults `N`, bound to loopback). The
+  committed systemd unit is what turns it on as HTTPS on `0.0.0.0:21120`.
+
+The ranked register of open items lives in `../OPEN-POINTS-2026-09-21.md`, outside this repository —
+moving it in is itself an open item. `OPEN-TODOS.md` and `TODO.md` are older running logs.
 
 ## Build Priority
 
