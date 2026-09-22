@@ -408,7 +408,7 @@
     <div class="sec-head"><span class="eyebrow">The question</span><h2>Is everything encrypted?</h2></div>
     <div class="verdict">
       <div class="answer">No — but the gaps are now <em>specific</em>, not structural.</div>
-      <p>Encrypted unconditionally at shipped defaults: rendezvous signalling, server pushes, the relay control frame, the relayed payload, LDAP, and the management API's login and policy poll. Nine things remain, ranked by what would actually hurt.</p>
+      <p>Encrypted unconditionally as the committed units run it: rendezvous signalling, server pushes, the relay control frame, the relayed payload, LDAP, and the management API's login and policy poll. Thirteen things remain, roughly ranked by what would actually hurt — five of them serious enough to fix before a rollout, and the first three of those are not about encryption at all but about who is allowed to ask for a connection in the first place.</p>
     </div>
     <div class="gaps" id="gaps"></div>
   </section>
@@ -711,6 +711,8 @@
     [1,"Port-forward and RDP tunnels are plaintext","After login both ends drop the cipher <em>and</em> the framing. An entire RDP session — credentials included — crosses the punched link, or the relay, in the clear.","<b>always</b> · every transport · the worst one"],
     [1,"The session downgrades on a handshake fault","One corrupted frame from an on-path attacker yields a fully plaintext session, because the fail-closed switch is a policy key rather than the default.","<b>nemo-require-encrypted-session</b> defaults off"],
     [1,"Short frames bypass decryption entirely","Frames of one byte or less skip the cipher and do not advance the receive counter, so they are unauthenticated on <em>every</em> otherwise-encrypted leg. The rendezvous loop treats an empty frame as a keep-alive and echoes it.","<b>always</b> · inherited from upstream"],
+    [1,"The controller policy gates are skippable by omission","<code>controller_policy_rejection_from_field</code> begins with <code>controller_source_identity(source_field)?</code> \u2014 and the <code>?</code> returns <em>no rejection</em>, so an absent or malformed source marker skips all four gates. The identity those gates key off is carried in that marker, unsigned, and is never tied back to the device key proven moments earlier at the handshake.","<b>always</b> \u00b7 any caller that omits the marker"],
+    [1,"An unbound device key authenticates any machine","A key minted with a blank peer id falls through to the accept arm at both enforcement points, so it will authenticate <em>any</em> peer id. That is the documented meaning of leaving the binding blank \u2014 and the admin dashboard\u2019s peer-id box is optional free text, so one empty field mints a fleet-wide skeleton key.","<b>per key</b> \u00b7 whenever the binding is left blank"],
     [0,"LAN discovery broadcasts who you are","Id, hostname, the <em>active username</em>, platform and MAC, broadcast to the whole subnet.","<b>enable-lan-discovery</b> is on by default"],
     [0,"Public STUN queries leave the network","Every connect attempt queries Google, Cloudflare and Nextcloud STUN servers in the clear — announcing that this site exists, on a network meant to be private.","<b>enable-udp-punch</b> is on by default"],
     [0,"Port 21115 answers anyone","An unauthenticated caller can enumerate which TBFDesk ids are currently online.","<b>always</b>, wherever 21115 is reachable"],
@@ -719,7 +721,8 @@
     [0,"The direct-IP path enforces nothing","Dead rather than dangerous today, but nothing on the controller requires encryption if that ever changes.","<b>direct-server</b> is off by default"],
     ["", "The rendezvous identifies every machine in the clear",
      "The client sends <code>NemoClientAuth</code> and only then installs the cipher, so <code>device_pub</code> and <code>peer_id</code> cross unencrypted on every connection. An observer on the path learns which machines exist, which device key each one holds, and when each comes online \u2014 a roster of the fleet, gathered passively. The keys to prevent it are already in place on both sides: sealing this frame to the server's pinned key costs no extra round trip and does not touch forward secrecy, because the session key stays sealed to the per-connection ephemeral.",
-     "always \u00b7 every rendezvous connection"]
+     "always \u00b7 every rendezvous connection"],
+    ["","The relay checks nothing but the shared server key","hbbr accepts a plain <code>KeyExchange</code> on 21117 \u2014 there is no device proof on that port at all, so Layer 1 governs who may <em>ask</em> hbbs for a relay, not who may connect to hbbr. Every client in the fleet holds the key it does check, and it is embedded in the licence name. hbbr also holds the same signing key as hbbs, by design, and sees the end-to-end handshake frames in the clear once it drops its own cipher.","<b>always</b> \u00b7 port 21117"]
   ];
 
   // ---------- render static ----------
