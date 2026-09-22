@@ -36,7 +36,8 @@ workstation on site, but nothing in the software enforces that.
           │                         │             │                       │
           │                         │             │   ═══ L4 ═══          │
           │                         │             │   direct P2P          │
-          │                         │             │   (same subnet)       │
+          │                         │             │   (same subnet only   │
+          │                         │             │    at defaults)       │
 ```
 
 | role | what it is | what it holds | who starts the connection |
@@ -47,6 +48,41 @@ workstation on site, but nothing in the software enforces that.
 
 The server is trusted to *introduce*, not to *listen*: it never holds a key that opens a
 session. See L4 and L5.
+
+### The four cases
+
+The session is **always** started by a technician on the internet toward a workstation on
+site. That gives four things worth walking separately: each side proving itself to the
+server, and the two ways the session can then reach the workstation.
+
+| # | case | legs | status |
+|---|---|---|---|
+| 1 | a **workstation** verifies itself to the server | L1, then L7 for its policy | shipped |
+| 2 | a **technician** verifies themselves to the server | L1, then L7 for LDAP login | shipped |
+| 3 | technician → workstation **relayed** | L1 → L5 | shipped, and what happens today |
+| 4 | technician → workstation **direct** | L1 → L4 | **not shipped** — see below |
+
+**Cases 1 and 2 are the same handshake.** Not merely similar: `secure_tcp` →
+`nemo_rendezvous_key_exchange` → `NemoClientAuth` is one code path, hbbs runs one set of
+checks, and a packet capture of the handshake could not tell the two apart. Two things
+differ, and neither is the verification:
+
+- **Lifetime.** The workstation holds one connection open for its whole life and
+  re-announces itself every 15 s (`REG_INTERVAL`, `rendezvous_mediator.rs`). The technician
+  opens a fresh socket per connect attempt, sends `PunchHoleRequest` and drops it
+  (`client.rs:536`). Note that a technician running the client normally — without
+  `--no-server` — *also* keeps a registered connection, so one machine does both.
+- **Layer 2.** Only the technician logs in against LDAP and carries a session token. An
+  unattended workstation authenticates to the management API with its **device key
+  signature** instead (`nemo_management_client.rs`): no user, no password, no directory.
+
+**Case 4 does not happen today.** `get_local_option` (`common.rs:1173`) forces both
+`enable-udp-punch` and `enable-ipv6-punch` to `N` whenever the rendezvous server is not
+`rustdesk.com` — which is every self-hosted deployment. So a technician on the internet
+always lands on case 3, and the only direct sessions that occur are same-subnet ones. What
+it would take is in `vm/shots/DESIGN-direct-path-analysis.md` §7; the headline is that
+direct buys resilience and server load, **not** latency, because the relay is on site and
+the thin uplink is crossed once either way.
 
 `───` signalling · `═══` session payload
 
@@ -104,6 +140,10 @@ defaults.
 ### L4 · client ↔ client — the session itself
 ```
    TCP on the punched port pair, or KCP-over-UDP, or IPv6
+
+   OFF by default here: both punch options force to N for a self-hosted rendezvous
+   server, so in practice this leg is reached only between two machines on the same
+   subnet, via FetchLocalAddr/LocalAddr rather than a punch.
 
    controlled ──► SignedId{ Ed25519_sign( IdPk{ id, eph_X25519_pub },
                                           own_device_Ed25519 ) }

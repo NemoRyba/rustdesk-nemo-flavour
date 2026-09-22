@@ -71,11 +71,14 @@
   /* ====== player ====== */
   .player { background:var(--surface); border:1px solid var(--rule); border-radius:8px; box-shadow:var(--shadow); overflow:hidden; }
   .scenarios { display:flex; flex-wrap:wrap; gap:0; border-bottom:1px solid var(--rule); background:var(--surface-2); }
-  .scn { flex:1 1 200px; text-align:left; background:none; border:0; border-bottom:2px solid transparent; padding:13px 16px; display:flex; flex-direction:column; gap:2px; transition:background .15s; }
+  .scn { flex:1 1 170px; text-align:left; background:none; border:0; border-bottom:2px solid transparent; border-right:1px solid var(--rule-soft); padding:12px 15px; display:flex; flex-direction:column; gap:2px; transition:background .15s; }
+  .scn:last-child { border-right:0; }
   .scn:hover { background:var(--surface-3); }
   .scn[aria-selected="true"] { background:var(--surface); border-bottom-color:var(--accent); }
   .scn .n { font-family:var(--mono); font-size:10.5px; letter-spacing:.1em; color:var(--accent); text-transform:uppercase; }
   .scn .t { font-weight:600; font-size:14px; }
+  .scn .sb { font-family:var(--mono); font-size:10.5px; color:var(--ink-3); }
+  .scn .plan { font-style:normal; font-family:var(--mono); font-size:9px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--warn); background:var(--warn-bg); padding:1px 5px; border-radius:3px; margin-left:4px; }
 
   .stage-wrap { overflow-x:auto; background:var(--surface); }
   .stage { display:block; width:100%; min-width:660px; height:auto; }
@@ -144,7 +147,7 @@
   .step-b { font-size:14.5px; color:var(--ink-2); }
   .side-k { font-family:var(--mono); font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-3); margin-bottom:4px; }
   .side-v { font-family:var(--mono); font-size:12px; color:var(--ink); overflow-wrap:anywhere; line-height:1.55; }
-  .side-v.guard { color:var(--ok); } .side-v.guard.none { color:var(--bad); }
+  .side-v.guard { color:var(--ok); } .side-v.guard.none { color:var(--bad); } .side-v.guard.todo { color:var(--warn); }
 
   /* ====== board ====== */
   .board { display:flex; flex-direction:column; border:1px solid var(--rule); border-radius:6px; overflow:hidden; background:var(--surface); box-shadow:var(--shadow); }
@@ -166,6 +169,12 @@
   .verdict{background:var(--surface);border:1px solid var(--rule);border-radius:6px;padding:22px;display:flex;flex-direction:column;gap:9px;box-shadow:var(--shadow)}
   .verdict .answer{font-size:clamp(21px,3.2vw,27px);font-weight:700;letter-spacing:-.02em}
   .verdict .answer em{font-style:normal;color:var(--bad)}
+  .verdict .answer.ok em{color:var(--ok)}
+  .two-up{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px 26px;margin-top:6px}
+  .tu h4{font-family:var(--mono);font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3);font-weight:600;margin-bottom:6px}
+  .tu ul{margin:0;padding-left:17px;display:flex;flex-direction:column;gap:5px}
+  .tu li{font-size:13.5px;color:var(--ink-2)}
+  .tu code{font-family:var(--mono);font-size:.87em;color:var(--ink);background:var(--surface-2);padding:1px 4px;border-radius:3px}
 
   .roles{display:grid;grid-template-columns:repeat(auto-fit,minmax(248px,1fr));gap:12px}
   .role-c{background:var(--surface);border:1px solid var(--rule);border-radius:6px;padding:16px 18px;display:flex;flex-direction:column;gap:9px;box-shadow:var(--shadow);border-top:3px solid var(--rule)}
@@ -202,7 +211,7 @@
   <header class="masthead">
     <span class="eyebrow">TBFDesk · protocol reference</span>
     <h1>What talks to what, and what protects it</h1>
-    <p class="lede">Watch a connection happen step by step, then read the detail. Every claim here was verified at the call site, not taken from the design documents. Hover any box or line <em>in the diagram</em> — and anything underlined in the text — for what it is and what it holds.</p>
+    <p class="lede">Four cases, step by step — how each side proves itself to the server, and the two ways a session reaches the workstation. Every claim here was verified at the call site, not taken from the design documents. Hover any box or line <em>in the diagram</em> — and anything underlined in the text — for what it is and what it holds.</p>
     <div class="meta">
       <span>hbbs 1.1.15 · client 1.4.7</span>
       <span>branch <code>nemo-tdd</code></span>
@@ -214,7 +223,7 @@
     <div class="sec-head">
       <span class="eyebrow">Walkthrough</span>
       <h2>How a connection actually happens</h2>
-      <p>Three scenarios. Press play, or step through at your own pace — the panel below says what is on the wire and what is protecting it at that moment.</p>
+      <p>Four cases. The first two are the same handshake seen from each side; the last two are the two ways that session can actually reach the workstation. Press play, or step through at your own pace — the panel below says what is on the wire and what is protecting it at that moment.</p>
     </div>
 
     <div class="player">
@@ -249,7 +258,7 @@
 
           <path id="w-tech-ws" class="wire" fill="none" stroke-dasharray="7 5" d="M130 178 L130 300 L764 300 L764 178"/>
           <path class="hit" fill="none" d="M130 178 L130 300 L764 300 L764 178"
-                data-tip="CLIENT A ↔ CLIENT B · direct, no server in the path. Only reachable when the two can actually route to each other — same subnet, or a working hole punch. Same single encryption layer as the relayed path."/>
+                data-tip="CLIENT A ↔ CLIENT B · direct, no server in the path. NOT SHIPPED for a technician on the internet: the client turns both hole-punch options off whenever the rendezvous server is self-hosted, so today this only happens on the same subnet. Same single encryption layer as the relayed path either way — going direct changes the route, not the cryptography. See case 4."/>
           <text class="wire-l" x="447" y="316" text-anchor="middle">direct peer to peer</text>
 
           <!-- client A -->
@@ -329,6 +338,37 @@
 
   <section>
     <div class="sec-head">
+      <span class="eyebrow">The short answer</span>
+      <h2>Is the client–server verification the same from both sides?</h2>
+    </div>
+    <div class="verdict">
+      <div class="answer ok">Yes — <em>the same code path</em>, not merely a similar one.</div>
+      <p>A workstation proving itself to the server and a technician proving themselves to the server run <code>secure_tcp</code> → <code>nemo_rendezvous_key_exchange</code> → <code>NemoClientAuth</code>, and hbbs runs one set of checks for both. Same message, same fields, same signature context, same registry lookup. A packet capture of the two handshakes could not tell them apart.</p>
+      <div class="two-up">
+        <div class="tu">
+          <h4>What is identical</h4>
+          <ul>
+            <li>The signed server ephemeral, and the client verifying it against the pinned key</li>
+            <li>The client-chosen session key, sealed to that ephemeral</li>
+            <li>The device-key signature, and what it is bound to</li>
+            <li>hbbs’ three checks: signature, registry, peer-id binding</li>
+            <li><code>require_device_key</code> refusing a client that has none</li>
+          </ul>
+        </div>
+        <div class="tu">
+          <h4>What differs — and it is not the verification</h4>
+          <ul>
+            <li><b>Lifetime.</b> The workstation holds its connection open for life and re-announces every 15 s; the technician opens a fresh socket per connect and drops it.</li>
+            <li><b>Layer 2.</b> Only the technician logs in against LDAP and carries a session token. An unattended workstation authenticates to the management API with a <em>device-key signature</em> — no user, no password.</li>
+            <li>A technician running the client normally — without <code>--no-server</code> — <em>also</em> keeps a registered connection, so the same laptop does case 1 and case 2 at once.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
       <span class="eyebrow">Who is who</span>
       <h2>Three roles, not three products</h2>
       <p><b>Client A</b> and <b>client B</b> are roles taken per session, not properties of a machine: A is whoever starts the call and watches, B is whoever answers and is watched. Here A is always a technician on the internet and B always a CAD workstation on site — but nothing in the software enforces that.</p>
@@ -396,214 +436,214 @@
   // ---------- scenarios ----------
   var SCENARIOS = [
     {
-      key: "provision",
-      n: "Scenario A",
-      t: "Provisioning a workstation",
+      key: "ws-verify",
+      n: "Case 1",
+      t: "A workstation verifies itself",
+      sub: "client B \u2192 server",
       steps: [
         { from:"srv", to:"srv", wireId:null, enc:true, label:"generate key",
           title:"The admin mints a device key",
-          body:"On the server, an Ed25519 keypair is generated and pinned to the registry, bound to the id of one specific machine. The private half is handed out once; the server keeps only the public half.",
+          body:"On the server, an Ed25519 keypair is generated and pinned to the registry, bound to the id of one specific machine. The private half is handed out once; the server keeps only the public half. This is Layer 1, and it is what makes a machine a member of the fleet rather than merely a machine that knows the address.",
           wire:"POST /nemo/api/device-keys { label, peer_id }",
           guard:"TLS, plus the admin bearer token" },
         { from:"srv", to:"ws", wireId:null, enc:true, label:"out of band",
           title:"The key is imported on the machine",
-          body:"Through the client's Import device key dialog — deliberately not through the command line, so the secret never lands in a process list, a shell history or a sudo audit trail. This is the one manual step; an installer alone does not provision a machine.",
+          body:"Through the client\u2019s Import device key dialog \u2014 deliberately not through the command line, so the secret never lands in a process list, a shell history or a sudo audit trail. This is the one manual step; an installer alone does not provision a machine.",
           wire:"nemo-device-key = <Ed25519 secret>",
           guard:"Out of band. No CLI path exists, by design." },
         { from:"ws", to:"srv", wireId:"w-srv-ws", enc:false, label:"TCP connect",
           title:"The workstation opens the rendezvous",
           body:"A single long-lived TCP connection on port 21116, held open for the lifetime of the client. Nothing secret has been sent yet.",
-          wire:"TCP SYN → 21116",
-          guardNone:true, guard:"Nothing yet — the handshake has not started" },
+          wire:"TCP SYN \u2192 21116",
+          guardNone:true, guard:"Nothing yet \u2014 the handshake has not started" },
         { from:"srv", to:"ws", wireId:"w-srv-ws", enc:false, label:"signed offer",
           title:"The server offers a signed ephemeral",
-          body:"hbbs generates a fresh X25519 keypair for this one connection and signs the public half with its long-term Ed25519 key. The client verifies that signature against the server key it was configured with — that is how it knows it is talking to the real server.",
-          wire:"KeyExchange{ Ed25519_sign(ephemeral_X25519_pub) }",
-          guardNone:true, guard:"Plaintext, and public by design — a signature, not a secret" },
+          body:"hbbs generates a fresh X25519 keypair for this one connection and signs the public half with the server\u2019s Ed25519 identity key \u2014 the key every client has pinned. The client verifies that signature before it will say anything else.",
+          wire:"KeyExchange { Ed25519_sign(eph_pub, server_key) }",
+          guardNone:true, guard:"Plaintext, and public by design \u2014 a signature, not a secret" },
         { from:"ws", to:"srv", wireId:"w-srv-ws", enc:false, label:"device proof",
           title:"The client proves which machine it is",
-          body:"The client picks a random 32-byte session key, seals it to the server's ephemeral, and signs the whole bundle with its device key — including the peer id it intends to register as. Because the signature covers the server's per-connection ephemeral, a captured proof is useless anywhere else.",
-          wire:"NemoClientAuth{ client_box_pk, sealed_key, device_pub, peer_id, sig }",
-          guardNone:true, guard:"Sealed to the server's ephemeral; the proof itself is signed" },
-        { from:"srv", to:"srv", wireId:null, enc:true, label:"3 checks",
+          body:"The client picks 32 random bytes as the session key, seals them to the server\u2019s ephemeral, and signs the whole bundle with its device key. The signature covers the server\u2019s ephemeral, so a captured proof is worthless against any other connection \u2014 no clock, no counter, no revocation list needed.",
+          wire:"NemoClientAuth { client_box_pk, sealed_key, device_pub, peer_id, sig }",
+          guardNone:true, guard:"Sealed to the server\u2019s ephemeral; the proof itself is signed" },
+        { from:"srv", to:"srv", wireId:null, enc:true, label:"three checks",
           title:"The server checks three things",
-          body:"Is this device key pinned in the registry? Is it bound to the peer id being claimed? Does the signature verify? The cheap lookup runs before the expensive signature check, so an unknown key cannot be used to burn server CPU.",
-          wire:"is_device_key_pinned → device_key_binding → Ed25519 verify",
-          guard:"Layer 1 — only provisioned machines get this far" },
+          body:"That the signature verifies against the device key presented; that this device key is in the registry and not revoked; and that it is bound to the peer id being claimed. Any one failing closes the connection. With require_device_key on \u2014 the default \u2014 a client that offers no device key at all is refused here.",
+          wire:"verify \u2192 registry lookup \u2192 peer-id binding",
+          guard:"Layer 1 complete. The channel is now encrypted both ways." },
         { from:"ws", to:"srv", wireId:"w-srv-ws", enc:true, label:"RegisterPk",
           title:"Registration, now encrypted",
-          body:"Every frame from here is XSalsa20-Poly1305 under the session key. The registration is held to the identity just proven — a key bound to machine A cannot register as machine B.",
-          wire:"RegisterPk{ id, uuid, pk }",
-          guard:"XSalsa20-Poly1305, per-direction nonces" },
+          body:"Only now does the workstation say who it is: its peer id, machine uuid and its own identity public key \u2014 the key hbbs will later sign and hand to a technician so they can recognise this machine.",
+          wire:"RegisterPk { id, uuid, pk }",
+          guard:"XSalsa20-Poly1305 under the key the client chose" },
         { from:"srv", to:"ws", wireId:"w-srv-ws", enc:true, label:"online",
-          title:"The machine is online",
-          body:"A heartbeat every 15 seconds keeps the connection alive, and the server can now push to this machine over that same connection rather than firing a datagram into the dark.",
-          wire:"RegisterPkResponse{ OK } · then RegisterPeer every 15s",
-          guard:"Same session key, same connection" }
+          title:"The machine is online, and stays online",
+          body:"From here the workstation re-announces its presence every 15 seconds down this same connection. That heartbeat is the only reason it is reachable at all: it has no inbound port and no port forward, so the server can only reach it by pushing down a connection the workstation itself opened.",
+          wire:"RegisterPeer \u2192 RegisterPeerResponse, every 15 s",
+          guard:"Same encrypted channel, held open for the client\u2019s whole life" },
+        { from:"ws", to:"srv", wireId:"w-srv-ws", enc:true, label:"policy poll",
+          title:"And it asks for its policy \u2014 with no user involved",
+          body:"Separately, on the management API, the workstation fetches the settings the admin has pushed. It authenticates that request with the same device key, signing the payload rather than presenting any credential. This is the whole of what an unattended machine needs: no user, no password, no LDAP. Layer 2 does not apply to it.",
+          wire:"POST /nemo/api/policy { device_key_pub, device_key_sig } \u2014 HTTPS 21120",
+          guard:"TLS, plus a device-key signature. Response sealed to the device key." }
+      ]
+    },
+    {
+      key: "tech-verify",
+      n: "Case 2",
+      t: "A technician verifies themselves",
+      sub: "client A \u2192 server",
+      steps: [
+        { from:"srv", to:"tech", wireId:null, enc:true, label:"out of band",
+          title:"The laptop is provisioned exactly the same way",
+          body:"A technician machine is not a special class of client. It gets its own minted device key, imported through the same dialog, checked by the same code. If it has no device key it is refused at the rendezvous just as a workstation would be.",
+          wire:"nemo-device-key = <Ed25519 secret>",
+          guard:"Out of band, identical ceremony to case 1" },
+        { from:"tech", to:"srv", wireId:"w-tech-srv", enc:false, label:"TCP connect",
+          title:"The technician opens a rendezvous connection",
+          body:"Here is the one structural difference, and it is about lifetime rather than trust: a workstation holds one connection open forever, while a technician opens a fresh socket each time they want to reach someone and drops it afterwards. (If the client is running normally rather than with --no-server, the laptop ALSO keeps a registered connection of its own \u2014 so the same machine does case 1 and case 2 at once.)",
+          wire:"TCP SYN \u2192 21116, one per connect attempt",
+          guardNone:true, guard:"Nothing yet \u2014 the handshake has not started" },
+        { from:"srv", to:"tech", wireId:"w-tech-srv", enc:false, label:"signed offer",
+          title:"The same signed ephemeral",
+          body:"Byte for byte the same exchange as case 1 step 4. hbbs does not know yet, and does not care, whether this client intends to control anything.",
+          wire:"KeyExchange { Ed25519_sign(eph_pub, server_key) }",
+          guardNone:true, guard:"Plaintext, and public by design \u2014 a signature, not a secret" },
+        { from:"tech", to:"srv", wireId:"w-tech-srv", enc:false, label:"device proof",
+          title:"The same device proof",
+          body:"Same function, same message, same fields, same signature context. A packet capture of this handshake could not tell you whether the machine at the other end was a technician\u2019s laptop or a CAD workstation.",
+          wire:"NemoClientAuth { client_box_pk, sealed_key, device_pub, peer_id, sig }",
+          guardNone:true, guard:"Sealed to the server\u2019s ephemeral; the proof itself is signed" },
+        { from:"srv", to:"srv", wireId:null, enc:true, label:"three checks",
+          title:"hbbs runs the same three checks",
+          body:"Signature, registry, peer-id binding. There is no branch on role here \u2014 hbbs runs one code path for every client that connects to it. Layer 1 is now complete and the channel is encrypted, exactly as in case 1.",
+          wire:"verify \u2192 registry lookup \u2192 peer-id binding",
+          guard:"Layer 1 complete. Identical to case 1." },
+        { from:"tech", to:"srv", wireId:"w-tech-srv", enc:true, label:"LDAP login",
+          title:"Now the part only a technician does",
+          body:"Layer 2. The operator types a directory username and password into the client, which sends them to the management API inside a NaCl sealed envelope addressed to the pinned management key \u2014 so this one survives even a TLS-stripping attacker. hbbs binds to the directory over ldaps:// to check them; plaintext ldap:// is refused outright.",
+          wire:"POST /nemo/api/login \u2014 sealed envelope inside HTTPS 21120",
+          guard:"NaCl sealedbox to the management key, inside TLS. LDAPS to the directory." },
+        { from:"srv", to:"tech", wireId:"w-tech-srv", enc:true, label:"session token",
+          title:"A session token comes back",
+          body:"It identifies the human, not the machine, and it is what the per-user access rules are evaluated against. It is a bearer credential \u2014 anyone holding it is that user \u2014 which is why it is only ever attached to a channel already known to be confidential.",
+          wire:"200 { session_token }",
+          guard:"Sealed response; stored in LocalConfig on the laptop" },
+        { from:"tech", to:"srv", wireId:"w-tech-srv", enc:true, label:"PunchHoleRequest",
+          title:"The technician asks for a workstation",
+          body:"The request names the peer wanted, the connection type, and the laptop\u2019s NAT type. The session token rides along in the source marker \u2014 and only because the socket is already encrypted; on an unsecured socket the client refuses to attach it.",
+          wire:"PunchHoleRequest { id, nat_type, conn_type, licence_key, \u2026 }",
+          guard:"Encrypted channel + device key (machine) + session token (human)" },
+        { from:"srv", to:"srv", wireId:null, enc:true, label:"four gates",
+          title:"Four policy gates run, in order",
+          body:"Is the caller\u2019s device key still valid; is the named peer actually registered; does this user\u2019s access list include this machine; and is the target accepting connections. All four must pass before hbbs will introduce anybody. Only now does the question of relay-or-direct arise \u2014 which is cases 3 and 4.",
+          wire:"device key \u2192 peer registered \u2192 user ACL \u2192 target state",
+          guard:"Both layers proven: which machine (L1) and which human (L2)" }
       ]
     },
     {
       key: "relay",
-      n: "Scenario B",
-      t: "Technician connects from the internet",
+      n: "Case 3",
+      t: "Technician \u2192 workstation, relayed",
+      sub: "how it connects today",
       steps: [
-        { from:"tech", to:"srv", wireId:"w-tech-srv", enc:true, label:"punch req",
-          title:"The technician asks for a peer",
-          body:"A fresh TCP connection to hbbs, secured the same way, carrying the target id and the technician's own identity marker. This is the moment the server decides whether the connection is allowed at all.",
-          wire:"PunchHoleRequest{ id, licence_key, version:<source marker> }",
-          guard:"XSalsa20-Poly1305 — and the session token rides only because the socket is confidential" },
-        { from:"srv", to:"srv", wireId:null, enc:true, label:"4 gates",
-          title:"Four policy gates run, in order",
-          body:"The licence key must match. The target must not be blocked. The controller must be registered, unblocked and permitted to make outbound connections. And the logged-in user must be allowed to reach this particular machine. Any one of them refuses and nothing is brokered.",
-          wire:"licence → is_peer_allowed → controller policy → per-user ACL",
-          guard:"Layer 2 — enforced on the punch leg and the relay leg alike" },
-        { from:"srv", to:"tech", wireId:"w-tech-srv", enc:true, label:"relay",
-          title:"The server chooses the relay",
-          body:"The two machines are on different networks, so a direct punch cannot work — the address the server sees for the workstation is meaningless from the internet. It says so, and hands back the relay address plus the workstation's identity key, signed by the server.",
-          wire:"PunchHoleResponse{ relay_server, pk:<hbbs-signed IdPk> }",
-          guard:"Encrypted. The peer key is signed, so it cannot be substituted." },
+        { from:"srv", to:"srv", wireId:null, enc:true, label:"choose path",
+          title:"The server has to choose a path",
+          body:"The four gates of case 2 have passed. hbbs now decides how the two will actually meet. At shipped defaults there is no direct option for a technician out on the internet \u2014 see case 4 for why \u2014 so it chooses the relay and allocates a session id for the pair.",
+          wire:"relay decision + session uuid",
+          guard:"Decided inside the server; nothing on the wire yet" },
+        { from:"srv", to:"tech", wireId:"w-tech-srv", enc:true, label:"RelayResponse",
+          title:"The technician is given the relay",
+          body:"Along with the relay address and session id comes the thing that matters most: the workstation\u2019s identity public key, signed by the server. That signature is the root of the end-to-end trust chain built a few steps from now.",
+          wire:"RelayResponse { relay_server, uuid, pk }",
+          guard:"Encrypted rendezvous channel" },
         { from:"srv", to:"ws", wireId:"w-srv-ws", enc:true, label:"RequestRelay",
-          title:"The workstation is told to dial the relay",
-          body:"The server pushes this over the workstation's own long-lived rendezvous connection — which is why that connection being held open matters. There is no inbound port on the workstation and none is needed.",
-          wire:"RequestRelay{ id, uuid, relay_server }",
-          guard:"The workstation's own session key" },
+          title:"The workstation is told to dial out",
+          body:"This is why the heartbeat of case 1 exists. The server cannot open a connection to the workstation \u2014 nothing can \u2014 so it pushes the instruction down the connection the workstation is already holding open, and the workstation dials outward in response.",
+          wire:"RequestRelay { id, uuid, relay_server }",
+          guard:"The workstation\u2019s own encrypted rendezvous channel" },
         { from:"tech", to:"relay", wireId:"w-tech-relay", enc:true, label:"control",
           title:"Both sides dial the relay",
-          body:"The relay runs its own signed key exchange — a separate key from the rendezvous one — so the licence key and both peer ids are not exposed to anyone on the path. Then both ends deliberately drop that cipher.",
-          wire:"KeyExchange, then RequestRelay{ licence_key, id, uuid }",
-          guard:"The relay's own session key, fail-closed" },
+          body:"Each opens a TCP connection to hbbr on 21117 and runs a handshake of its own \u2014 hbbr signs an ephemeral with the same server identity key, each client seals a fresh key to it \u2014 then names the session id it was given.",
+          wire:"KeyExchange, then RequestRelay { uuid } \u2014 TCP 21117",
+          guard:"A separate XSalsa20 key per client, specific to hbbr" },
         { from:"relay", to:"ws", wireId:"w-relay-ws", enc:true, label:"paired",
-          title:"The relay pairs the two sockets",
-          body:"Matching on the uuid both sides carry. From this instant hbbr is a byte pump: it holds no key that could open what passes through it.",
-          wire:"uuid match → both halves switched to raw",
-          guard:"None needed — the relay is now outside the trust boundary" },
+          title:"The relay pairs them, then goes deaf",
+          body:"Two sockets quoting the same session id are joined, and both ends immediately drop the hbbr cipher. hbbr keeps the framing and copies bytes; it holds no key that could open what follows. Nothing is double-encrypted, so relaying costs a hop and bandwidth, not CPU.",
+          wire:"clear_key() \u2014 cipher dropped, framing kept",
+          guard:"From here hbbr sees ciphertext it cannot read" },
         { from:"ws", to:"tech", wireId:"w-tech-relay", enc:true, label:"SignedId",
           title:"The workstation proves who it is",
-          body:"It sends its own fresh ephemeral, signed by its identity key. The technician verifies that against the key hbbs signed in step 3 — a two-level chain, so neither the relay nor anyone on the path can substitute themselves.",
-          wire:"SignedId{ Ed25519_sign(IdPk{ id, ephemeral }) }",
-          guard:"Two-level Ed25519: hbbs signs the peer key, the peer signs its ephemeral" },
+          body:"It sends its id and a fresh ephemeral, signed with its device key. The technician verifies that against the public key hbbs signed and handed over three steps ago \u2014 a two-level chain: the server vouches for the machine\u2019s identity key, the machine vouches for this session\u2019s ephemeral.",
+          wire:"SignedId { Ed25519_sign(IdPk { id, eph_pub }) }",
+          guard:"Two-level Ed25519 chain, anchored in the pinned server key" },
         { from:"tech", to:"ws", wireId:"w-tech-relay", enc:true, label:"session key",
           title:"The end-to-end key is sealed",
-          body:"The technician generates the session key and seals it to the workstation's ephemeral. This is the key the relay does not have and cannot derive.",
-          wire:"PublicKey{ box_seal(K ‖ 0x01) }",
-          guard:"Sealed to the peer's ephemeral — forward secret" },
+          body:"The technician generates the session key and seals it to the ephemeral just verified. From this frame on, everything between the two machines is encrypted under a key neither hbbs nor hbbr ever saw.",
+          wire:"PublicKey { asymmetric_value, symmetric_value = box_seal(K) }",
+          guard:"XSalsa20-Poly1305 end to end, per-direction nonces" },
         { from:"ws", to:"tech", wireId:"w-tech-relay", enc:true, label:"login",
           title:"The password never crosses the wire",
-          body:"The workstation sends a salt and a challenge; the technician returns a double hash of the password with both. What travels is not the password and cannot be replayed against a different challenge. And all of it is inside the session cipher anyway.",
-          wire:"LoginRequest{ password: SHA256(SHA256(pw‖salt)‖challenge) }",
-          guard:"Hashed and challenged — then encrypted on top" },
+          body:"The workstation sends a random challenge; the technician answers with a salted double hash of the password over that challenge. The password itself is never transmitted, and even the hash is inside the end-to-end cipher.",
+          wire:"Hash { salt, challenge } \u2192 SHA256(SHA256(pw\u2016salt)\u2016challenge)",
+          guard:"Challenge-response, inside the end-to-end cipher" },
         { from:"ws", to:"tech", wireId:"w-tech-relay", enc:true, label:"screen",
           title:"The session flows",
-          body:"Screen, keyboard, mouse, audio, clipboard, files — all under one encryption layer, end to end. The relay sees ciphertext. There is no second layer, so relaying costs a hop and some bandwidth, not CPU.",
-          wire:"VideoFrame · MouseEvent · KeyEvent · Clipboard · FileTransfer",
-          guard:"One XSalsa20-Poly1305 layer, controller to workstation" }
+          body:"Video, audio, cursor, clipboard, file transfer and every keystroke ride this one encrypted stream. hbbr carries all of it and can read none of it. The one thing that leaves this envelope is a port-forward or RDP tunnel, which drops the cipher after login \u2014 the largest remaining hole on the board below.",
+          wire:"VideoFrame \u00b7 CursorData \u00b7 KeyEvent \u00b7 Clipboard \u00b7 FileTransfer",
+          guard:"One layer, and it is the end-to-end one" }
       ]
     },
     {
       key: "direct",
-      n: "Scenario C",
-      t: "LAN operator goes direct",
+      n: "Case 4",
+      t: "Technician \u2192 workstation, direct",
+      sub: "not shipped \u2014 what it would take",
+      planned: true,
       steps: [
-        { from:"ws", to:"srv", wireId:"w-srv-ws", enc:true, label:"punch req",
-          title:"An operator on the same subnet asks",
-          body:"Identical request to Scenario B, and the same four gates run. Being on the LAN buys no exemption from policy — the decision is the server's either way.",
-          wire:"PunchHoleRequest{ id, licence_key, version }",
-          guard:"XSalsa20-Poly1305" },
-        { from:"srv", to:"srv", wireId:null, enc:true, label:"same subnet",
-          title:"The server notices they are neighbours",
-          body:"It observes both peers arriving from the same public address, so it knows a direct path exists. Instead of a punch it asks the target for its internal address.",
-          wire:"same observed address → FetchLocalAddr",
-          guard:"Encrypted, and the internal address never leaves the site" },
-        { from:"srv", to:"ws", wireId:"w-srv-ws", enc:true, label:"LocalAddr",
-          title:"The internal address is exchanged",
-          body:"This reply carries the workstation's private LAN address. It used to go out in the clear — one of the fixes this cycle was making the answering side encrypt unconditionally, not just when a policy flag was set.",
-          wire:"LocalAddr{ local_addr, relay_server, id }",
-          guard:"Encrypted unconditionally — previously opt-in" },
+        { from:"srv", to:"srv", wireId:null, enc:true, label:"off today",
+          title:"First, the honest part: this path is off",
+          body:"The client disables both hole-punch mechanisms whenever the rendezvous server is not rustdesk.com \u2014 which is every self-hosted deployment, including this one. So enable-udp-punch and enable-ipv6-punch both read N here even though neither was ever set. Today a technician on the internet always lands on case 3.",
+          wire:"get_local_option() \u2192 \u201cN\u201d for a non-public rendezvous server",
+          todo:true, guard:"Not shipped. One policy key flips it \u2014 the network work is the real cost." },
+        { from:"tech", to:"srv", wireId:"w-tech-srv", enc:true, label:"punch + v6",
+          title:"The request already carries what is needed",
+          body:"Nothing has to be invented on the wire. The punch request has always had room for the caller\u2019s NAT type, its UDP port and its IPv6 address, and hbbs passes all three through. The field plumbing is done; what is missing is the network underneath it.",
+          wire:"PunchHoleRequest { nat_type, udp_port, socket_addr_v6 }",
+          guard:"Encrypted rendezvous channel, device key + session token" },
+        { from:"srv", to:"ws", wireId:"w-srv-ws", enc:true, label:"PunchHole",
+          title:"The server pushes the punch to the workstation",
+          body:"Down the heartbeat connection again, as in case 3 \u2014 the same mechanism, a different instruction. Instead of \u201cdial the relay\u201d it says \u201cthrow a packet at this address\u201d.",
+          wire:"PunchHole { socket_addr, nat_type, relay_server }",
+          guard:"The workstation\u2019s own encrypted rendezvous channel" },
+        { from:"ws", to:"srv", wireId:"w-srv-ws", enc:true, label:"PunchHoleSent",
+          title:"The workstation opens a hole outward",
+          body:"It sends a packet toward the technician that is expected to be dropped. The point is the state it leaves behind in its own firewall: an outbound flow whose return path is now open. Over IPv6 this is the whole trick \u2014 stateful firewalls, no address translation to be unpredictable about.",
+          wire:"outbound packet, then PunchHoleSent { socket_addr, \u2026 }",
+          guard:"Encrypted signalling; the punch packet itself is a throwaway" },
+        { from:"srv", to:"tech", wireId:"w-tech-srv", enc:true, label:"address + pk",
+          title:"The technician gets the address and the peer key",
+          body:"Same signed identity key as case 3 \u2014 the trust chain does not change because the transport did. What changes is only that the address handed over is the workstation\u2019s own, not the relay\u2019s.",
+          wire:"PunchHoleResponse { socket_addr, pk, relay_server }",
+          guard:"Encrypted rendezvous channel" },
         { from:"tech", to:"ws", wireId:"w-tech-ws", enc:true, label:"direct TCP",
-          title:"The two machines connect directly",
-          body:"No server in the path from here. The same two-level Ed25519 handshake runs, the same session key is sealed, and the same single encryption layer covers everything.",
-          wire:"SignedId → PublicKey{ box_seal(K ‖ 0x01) }",
-          guard:"Two-level Ed25519, then XSalsa20-Poly1305" },
+          title:"The two connect with no server in the path",
+          body:"For this to land, one of three things has to be true: an IPv6 prefix delegated through both routers so there is no translation left to traverse; or the site router hairpinning so the workstations register the address the internet can actually reach them on; or a static forward chain giving each machine a fixed public endpoint.",
+          wire:"TCP to the punched endpoint, or IPv6 direct",
+          todo:true, guard:"Needs enable-ipv6-punch=Y plus a delegated prefix, or hairpin, or forwards" },
+        { from:"ws", to:"tech", wireId:"w-tech-ws", enc:true, label:"same handshake",
+          title:"From here it is identical to case 3",
+          body:"SignedId, then the sealed session key, then the password challenge \u2014 the same code, the same two-level chain, the same cipher. Going direct changes the route, not the cryptography. There is no security argument either way.",
+          wire:"SignedId \u2192 PublicKey \u2192 Hash challenge",
+          guard:"The same end-to-end XSalsa20-Poly1305 as the relayed path" },
         { from:"ws", to:"tech", wireId:"w-tech-ws", enc:true, label:"screen",
-          title:"Full LAN speed",
-          body:"This is the path worth having on site: no relay hop and no uplink limit. It is also why the direct path being encrypted matters — it is the fast one, and fast should not mean unprotected.",
-          wire:"VideoFrame · MouseEvent · KeyEvent · audio",
-          guard:"One layer, end to end" }
+          title:"What you actually win",
+          body:"Not much latency, and that is worth saying plainly: the relay is on site, so the thin uplink is crossed exactly once either way. Direct removes one internal LAN hop. What it does buy is real but different \u2014 the relay stops being a shared bottleneck and a single point of failure, and the server stops carrying fifteen workstations\u2019 worth of video on its NIC.",
+          wire:"VideoFrame \u00b7 CursorData \u00b7 KeyEvent \u00b7 Clipboard",
+          guard:"Same single layer. Pursue this for resilience and server load, not frame rate." }
       ]
     }
   ];
-
-  // ---------- legs ----------
-  var LEGS = [
-    { id:"L1", name:"Client ↔ hbbs · rendezvous", sub:"TCP 21116 · protobuf", cls:"ok", chip:"Encrypted",
-      detail:'XSalsa20-Poly1305. Key chosen by the <b>client</b>, sealed to the server\'s per-connection <span data-tip="A keypair generated fresh for this one connection and thrown away after. Because it is never reused, a recording of today\'s traffic cannot be decrypted tomorrow even if a long-term key leaks.">ephemeral</span>. The client proves a <span data-tip="An Ed25519 secret issued by the admin and pinned on the server, bound to one machine id. This is Layer 1: only provisioned machines get a connection at all.">pinned device key</span> bound to its peer id.' },
-    { id:"L2", name:"Client → hbbs over UDP", sub:"UDP 21116", cls:"ok", chip:"Refused",
-      detail:'There is no handshake for a datagram socket, so this path could never be encrypted. Refused by default on both ends — <code>--udp-registration=N</code> and <code>disable-udp=Y</code>. <span data-tip="They are separate switches on separate paths. disable-udp chooses the rendezvous transport; UDP hole punching is enable-udp-punch and is unaffected.">This does not disable UDP hole punching.</span>' },
-    { id:"L3", name:"hbbs → client · pushes", sub:"rides the peer's own connection", cls:"ok", chip:"Encrypted",
-      detail:'Punch instructions, forwarded relay requests, local-address fetches — sealed with that connection\'s key. <span data-tip="Before this was fixed, the server could only reach a peer by UDP datagram. A TCP-registered machine showed as online and could call out, but could never be called — silently.">Falls back to a plaintext datagram only for a UDP-registered peer</span>, which is unreachable at defaults.' },
-    { id:"L4", name:"Client ↔ client · the session", sub:"punched TCP / KCP / IPv6", cls:"warn", chip:"Conditional",
-      detail:'Screen, input, audio, clipboard, files. <span data-tip="hbbs signs the peer\'s identity key; the peer signs its own ephemeral with that identity key. The controller checks both, so neither the server nor the path can substitute a key.">Two-level Ed25519 chain.</span> <b>The password never crosses the wire.</b> Downgrades to plaintext on a handshake fault — see gap 2.' },
-    { id:"L5a", name:"Client ↔ hbbr · control frame", sub:"TCP 21117", cls:"ok", chip:"Encrypted",
-      detail:'Its own signed key exchange with a separate key, covering the relay request — <span data-tip="Without this, the server licence key and both peer ids were readable by anyone on the path, on every relayed session.">the licence key and both peer ids</span> — then both ends drop the cipher. Fail-closed: no key, no relay.' },
-    { id:"L5b", name:"Client ↔ client <em>through</em> hbbr", sub:"TCP 21117 · byte pump", cls:"warn", chip:"Inherits L4",
-      detail:'<b>Exactly one layer, and it is the end-to-end one.</b> hbbr sees ciphertext and cannot read video, audio, clipboard or files. <span data-tip="Double-encrypting would cost CPU on every frame for no gain, since the payload is already end-to-end encrypted between the two peers.">No double encryption</span> — relaying costs a hop, not CPU.' },
-    { id:"L6", name:"Direct IP / host:port", sub:"TCP · off by default", cls:"bad", chip:"Plaintext",
-      detail:'No handshake, no cipher, no authentication. Currently also <span data-tip="The controlled side now waits for a key exchange the controller never starts, so the connection simply stalls. Dead rather than dangerous — but nothing on the controller enforces encryption if that ever changes.">non-functional</span>. The one place where fast and encrypted diverge.' },
-    { id:"L7", name:"Client ↔ management API", sub:"HTTPS 21120", cls:"warn", chip:"Conditional",
-      detail:'Two layers. Login and the policy poll are <span data-tip="Sealed to the server\'s management key inside the TLS tunnel, with a nonce cache and a freshness window. Even an attacker who strips TLS cannot read or replay them.">sealed inside TLS</span> and survive a TLS-stripping attacker. Address book and heartbeat are TLS-only, and <span data-tip="The client falls back to accepting an invalid certificate and caches that choice, unless nemo-api-cert-fingerprint is pinned by policy.">that TLS authenticates nothing by default</span>.' },
-    { id:"L8", name:"hbbs → LDAP / AD", sub:"LDAPS 636", cls:"ok", chip:"Encrypted",
-      detail:'<code>ldaps://</code> enforced; plaintext <code>ldap://</code> is refused outright, because a bind would carry a domain password. Certificate verification on unless explicitly disabled.' }
-  ];
-
-  var KEYS = [
-    ["id_ed25519","server — shared by hbbs <em>and</em> hbbr","signs every rendezvous and relay offer, every peer identity key, every update manifest","the whole fleet fails closed"],
-    ["device key","each client, <code>nemo-device-key</code>","Layer 1 — proves the machine is provisioned, at the transport <em>and</em> the API","that machine cannot connect; no CLI recovery path, by design"],
-    ["peer key pair","each client","its own identity, counter-signed by hbbs for peers","re-registers; peers see a key change"],
-    ["permanent password","controlled machine","session login","— never on the wire in any form"],
-    ["session token","controller, local config","per-user ACL and require-login","bearer credential — replayable if leaked"],
-    ["admin API token","server env + the admin browser","the entire management API, including <code>require_device_key</code>","full fleet control"],
-    ["management pubkey","pushed to clients","anchors the sealed envelope and the signed policy","—"]
-  ];
-
-  var GAPS = [
-    [1,"Port-forward and RDP tunnels are plaintext","After login both ends drop the cipher <em>and</em> the framing. An entire RDP session — credentials included — crosses the punched link, or the relay, in the clear.","<b>always</b> · every transport · the worst one"],
-    [1,"The session downgrades on a handshake fault","One corrupted frame from an on-path attacker yields a fully plaintext session, because the fail-closed switch is a policy key rather than the default.","<b>nemo-require-encrypted-session</b> defaults off"],
-    [1,"Short frames bypass decryption entirely","Frames of one byte or less skip the cipher and do not advance the receive counter, so they are unauthenticated on <em>every</em> otherwise-encrypted leg. The rendezvous loop treats an empty frame as a keep-alive and echoes it.","<b>always</b> · inherited from upstream"],
-    [0,"LAN discovery broadcasts who you are","Id, hostname, the <em>active username</em>, platform and MAC, broadcast to the whole subnet.","<b>enable-lan-discovery</b> is on by default"],
-    [0,"Public STUN queries leave the network","Every connect attempt queries Google, Cloudflare and Nextcloud STUN servers in the clear — announcing that this site exists, on a network meant to be private.","<b>enable-udp-punch</b> is on by default"],
-    [0,"Port 21115 answers anyone","An unauthenticated caller can enumerate which TBFDesk ids are currently online.","<b>always</b>, wherever 21115 is reachable"],
-    [0,"The UDP software-update arm replies to anything","Any datagram gets an unencrypted reply carrying the configured update URL — regardless of whether UDP registration is refused.","<b>always</b> · independent of <code>--udp-registration</code>"],
-    [0,"The management API binds loopback as HTTP","TLS keys off <em>routable or LDAP-enabled</em>, so on the default loopback bind the admin bearer token crosses the interface in the clear — reachable by any local process or an SSH tunnel.","default bind <b>127.0.0.1:21120</b> with LDAP off"],
-    [0,"The direct-IP path enforces nothing","Dead rather than dangerous today, but nothing on the controller requires encryption if that ever changes.","<b>direct-server</b> is off by default"]
-  ];
-
-  // ---------- render static ----------
-  var board = document.getElementById("board");
-  LEGS.forEach(function (l) {
-    var d = document.createElement("div");
-    d.className = "leg";
-    d.innerHTML = '<span class="leg-id">' + l.id + '</span>' +
-      '<div><div class="leg-name">' + l.name + '</div><div class="leg-sub">' + l.sub + '</div></div>' +
-      '<div class="leg-detail">' + l.detail + '</div>' +
-      '<span class="chip ' + l.cls + '">' + l.chip + '</span>';
-    board.appendChild(d);
-  });
-
-  var kb = document.getElementById("keys");
-  KEYS.forEach(function (k) {
-    var tr = document.createElement("tr");
-    tr.innerHTML = '<td class="key">' + k[0] + '</td><td>' + k[1] + '</td><td>' + k[2] + '</td><td>' + k[3] + '</td>';
-    kb.appendChild(tr);
-  });
-
-  var gb = document.getElementById("gaps");
-  GAPS.forEach(function (g) {
-    var d = document.createElement("div");
-    d.className = "gap" + (g[0] ? " critical" : "");
-    d.innerHTML = '<div class="gap-body"><span class="gap-title">' + g[1] + '</span>' +
-      '<span class="gap-text">' + g[2] + '</span><span class="gap-cond">' + g[3] + '</span></div>';
-    gb.appendChild(d);
-  });
 
   // ---------- roles ----------
   var ROLES = [
@@ -716,7 +756,9 @@
   SCENARIOS.forEach(function (s, i) {
     var b = document.createElement("button");
     b.className = "scn"; b.type = "button"; b.setAttribute("role", "tab");
-    b.innerHTML = '<span class="n">' + s.n + '</span><span class="t">' + s.t + '</span>';
+    b.innerHTML = '<span class="n">' + s.n + (s.planned ? ' <em class="plan">planned</em>' : '') + '</span>' +
+                  '<span class="t">' + s.t + '</span>' +
+                  (s.sub ? '<span class="sb">' + s.sub + '</span>' : '');
     b.addEventListener("click", function () { stop(); si = i; step = 0; buildRail(); render(); });
     scnBar.appendChild(b);
   });
@@ -786,7 +828,7 @@
     elB.textContent = s.body;
     elW.textContent = s.wire;
     elG.textContent = s.guard;
-    elG.className = "side-v guard" + (s.guardNone ? " none" : "");
+    elG.className = "side-v guard" + (s.guardNone ? " none" : "") + (s.todo ? " todo" : "");
 
     btnPrev.disabled = step === 0;
     btnNext.disabled = step === scn.steps.length - 1;
