@@ -702,7 +702,7 @@
     ["device key","each client, <code>nemo-device-key</code>","Layer 1 — proves the machine is provisioned, at the transport <em>and</em> the API","that machine cannot connect; no CLI recovery path, by design"],
     ["peer key pair","each client","its own identity, counter-signed by hbbs for peers","re-registers; peers see a key change"],
     ["permanent password","controlled machine","session login","— never on the wire in any form"],
-    ["session token","controller, local config","per-user ACL and require-login","bearer credential — replayable if leaked"],
+    ["session token","controller, local config","per-user ACL and require-login","since 22 September bound to the device key that proved the login \u2014 a lifted token is refused from any other machine"],
     ["admin API token","server env + the admin browser","the entire management API, including <code>require_device_key</code>","full fleet control"],
     ["management pubkey","pushed to clients","anchors the sealed envelope and the signed policy","—"]
   ];
@@ -855,7 +855,7 @@
     "layer 1": "Machine identity: the pinned device key, proven on every rendezvous connection. On by default.",
     "layer 2": "Human identity: an LDAP login that mints a session token, driving per-user access rules. Off by default in this build.",
     "layer 3": "Windows single sign-on. Designed but not built.",
-    "session token": "A bearer credential identifying the logged-in human. Anyone holding it is that user, which is why it is only ever attached to a channel already known to be encrypted.",
+    "session token": "A credential identifying the logged-in human, attached only to channels already known to be encrypted. Since 22 September it is also bound to the device key that proved the login, so it can only be spent from the machine it was issued to \u2014 a lifted token is refused at the punch and relay gate.",
     "bearer": "A credential that authenticates whoever presents it, with nothing tying it to a particular machine or person. Convenient, and worthless the moment it leaks.",
     "peer id": "The short number identifying a machine on this network. The thing a technician types in to connect.",
     "uuid": "A machine-generated identifier, fixed per installation. Checked alongside the peer id so a reused id does not silently become a different machine.",
