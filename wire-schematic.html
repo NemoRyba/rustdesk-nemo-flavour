@@ -258,7 +258,7 @@
 
           <path id="w-tech-relay" class="wire" fill="none" d="M104 178 L104 218 L366 218"/>
           <path class="hit" fill="none" d="M104 178 L104 218 L366 218"
-                data-tip="CLIENT A → RELAY · TCP 21117. One encrypted control frame naming the session, then both ends drop that cipher — the framing stays, so hbbr keeps metering. Everything after the end-to-end handshake is ciphertext it has no key for. There is no device proof on this port: Layer 1 governs who may ASK hbbs for a relay, not who may connect to hbbr."/>
+                data-tip="CLIENT A → RELAY · TCP 21117. One encrypted control frame naming the session, then both ends drop that cipher — the framing stays, so hbbr keeps metering. Everything after the end-to-end handshake is ciphertext it has no key for. There is no device proof on this port — Layer 1 governs who may ASK hbbs for a relay — but since 23 September the session id quoted here is an hbbs-signed grant that expires in 60 seconds, so only a pairing hbbs brokered is admitted."/>
           <path id="w-relay-ws" class="wire" fill="none" d="M542 218 L790 218 L790 178"/>
           <path class="hit" fill="none" d="M542 218 L790 218 L790 178"
                 data-tip="RELAY → CLIENT B · TCP 21117. Client B dials out to the relay when the server tells it to. Both halves are then pumped byte for byte — the relay is a pipe, not a participant."/>
@@ -291,7 +291,7 @@
             <text class="node-l" x="454" y="106" text-anchor="middle">hbbs</text>
             <text class="node-s" x="454" y="124" text-anchor="middle">rendezvous · policy</text>
           </g>
-          <g id="n-relay" data-tip="hbbr — the RELAY. Pairs two sockets on a shared session id and copies bytes between them. It never sees the session key, so it cannot read video, input, clipboard or files. Be precise about what that does NOT mean: hbbr runs no device-key check at all (a plain KeyExchange, not NemoClientAuth), it holds the SAME Ed25519 signing key as hbbs by design, and once it drops its own cipher it sees the SignedId and PublicKey handshake frames in the clear.">
+          <g id="n-relay" data-tip="hbbr — the RELAY. Pairs two sockets on a shared session id and copies bytes between them. It never sees the session key, so it cannot read video, input, clipboard or files. Be precise about what that does NOT mean: since 23 September hbbr admits a pairing only on an hbbs-signed 60-second grant, but it still runs no device-key challenge of its own (a plain KeyExchange, not NemoClientAuth), it holds the SAME Ed25519 signing key as hbbs by design, and once it drops its own cipher it sees the SignedId and PublicKey handshake frames in the clear.">
             <rect class="node-box" x="366" y="190" width="176" height="56" rx="7"/>
             <text class="node-l" x="454" y="214" text-anchor="middle">hbbr</text>
             <text class="node-s" x="454" y="232" text-anchor="middle">relay · byte pump</text>
@@ -582,9 +582,9 @@
           guard:"Encrypted rendezvous channel" },
         { from:"tech", to:"relay", wireId:"w-tech-relay", enc:true, label:"control",
           title:"Both sides dial the relay",
-          body:"Each opens TCP 21117 and runs a handshake of its own \u2014 hbbr signs an ephemeral with the same server identity key, each client seals a fresh key to it \u2014 then names the session id. Note what hbbr does NOT check: there is no device proof at 21117. Layer 1 governs who may ASK hbbs for a relay, not who may connect to hbbr.",
+          body:"Each opens TCP 21117 and runs a handshake of its own \u2014 hbbr signs an ephemeral with the same server identity key, each client seals a fresh key to it \u2014 then quotes the session id. Since 23 September that id is an hbbs-signed grant that expires in 60 seconds, so hbbr admits only a pairing hbbs itself brokered. It still runs no device-key challenge of its own \u2014 Layer 1 reaches it through the connection that received the grant.",
           wire:"KeyExchange, then RequestRelay { uuid } \u2014 TCP 21117",
-          guard:"A separate XSalsa20 key per client. Layer 1 is not enforced here." },
+          guard:"A separate XSalsa20 key per client; admission on an hbbs-signed 60 s grant" },
         { from:"relay", to:"ws", wireId:"w-relay-ws", enc:true, label:"paired",
           title:"The relay pairs them and drops its cipher",
           body:"Two sockets quoting the same session id are joined, and both ends drop the hbbr cipher \u2014 which only ever covered that one control frame. The framing stays; hbbr keeps metering and can still blacklist. Nothing is double-encrypted, so relaying costs a hop and bandwidth, not CPU.",
@@ -718,7 +718,7 @@
     [0,"The UDP software-update arm replies to anything","Any datagram gets an unencrypted reply carrying the configured update URL — regardless of whether UDP registration is refused.","<b>always</b> · independent of <code>--udp-registration</code>"],
     [0,"The management API binds loopback as HTTP","TLS keys off <em>routable or LDAP-enabled</em>, so on the default loopback bind the admin bearer token crosses the interface in the clear — reachable by any local process or an SSH tunnel.","default bind <b>127.0.0.1:21120</b> with LDAP off"],
     [0,"The direct-IP path enforces nothing","Dead rather than dangerous today, but nothing on the controller requires encryption if that ever changes.","<b>direct-server</b> is off by default"],
-    ["","The relay checks nothing but the shared server key","hbbr accepts a plain <code>KeyExchange</code> on 21117 \u2014 there is no device proof on that port at all, so Layer 1 governs who may <em>ask</em> hbbs for a relay, not who may connect to hbbr. Every client in the fleet holds the key it does check, and it is embedded in the licence name. hbbr also holds the same signing key as hbbs, by design, and sees the end-to-end handshake frames in the clear once it drops its own cipher.","<b>always</b> \u00b7 port 21117"]
+    ["","The relay verifies an hbbs grant, not the parties","Since 23 September hbbr admits a pairing only on an hbbs-signed grant that expires in 60 seconds, carried in the session-id field \u2014 so it enforces <em>hbbs brokered this over connections it gated</em>, and Layer 1 reaches it transitively. What it still cannot do is challenge either party for its own device key, so any fleet member holding a live grant could present it. hbbr also still holds the same signing key as hbbs, by design, and sees the end-to-end handshake frames in the clear once it drops its own cipher.","<b>narrowed</b> \u00b7 port 21117 \u00b7 device-key challenge at hbbr deferred"]
   ];
 
   // ---------- render static ----------
@@ -850,7 +850,7 @@
 
     // --- this deployment ---
     "hbbs": "The rendezvous server. It registers machines, enforces who may call whom, and introduces the two parties. It never holds a key that opens a session.",
-    "hbbr": "The relay server. Pairs two sockets on a session id and copies bytes. On this page, note what it does not do: no device check, and it shares the signing key with hbbs.",
+    "hbbr": "The relay server. Pairs two sockets and copies bytes. Since 23 September it admits a pairing only on an hbbs-signed grant that expires in 60 seconds; it still runs no device-key challenge of its own, and it shares the signing key with hbbs.",
     "device key": "Layer 1. An Ed25519 private key minted on the server and imported onto one specific machine, proving the machine is part of the fleet. Without one, a client is refused at the rendezvous entirely.",
     "layer 1": "Machine identity: the pinned device key, proven on every rendezvous connection. On by default.",
     "layer 2": "Human identity: an LDAP login that mints a session token, driving per-user access rules. Off by default in this build.",
