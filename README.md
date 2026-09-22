@@ -79,8 +79,11 @@ before reading any other document:
 - **Direct-IP (`host:port`) is plaintext and unauthenticated**, not encrypted. `client.rs:335` returns a
   bare socket for an IP peer and never calls `secure_connection`. It is off by default (`direct-server`)
   and currently non-functional as well, but the README previously claimed the opposite.
-- **`nemo-require-encrypted-session` has no default**, so a peer-to-peer session downgrades to plaintext
-  on a handshake fault. It exists only as a pushable policy key.
+- **Direct-IP-by-address sessions never negotiate a key.** `Client::_start` returns a bare TCP stream
+  for an `<ip>` or `<host>:<port>` peer without calling `secure_connection`, and `nemo-peer-keys` is
+  keyed by TBFDesk id, so there is nothing to anchor an address to. With `nemo-require-encrypted-session`
+  now ON by default the controlled side refuses such a connection rather than serving it in the clear,
+  so the path is closed rather than encrypted. `direct-server` is off by default.
 - **Port-forward / RDP tunnels are plaintext always** — both ends call `set_raw()` after login, dropping
   the cipher *and* the framing.
 - **Layer 2 (LDAP) is off at shipped defaults** (`require_login` is `false`), so a logged-out technician

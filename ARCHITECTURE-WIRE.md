@@ -230,11 +230,14 @@ never arrives), and off by default (`direct-server`). It is still the one path w
    │  │   management Ed25519 key, ±300 s, nonce cache)  ─┐    │
    │  │      login · policy poll                          │   │
    │  └───────────────────────────────────────────────────┘   │
-   │     address book · heartbeat   ← TLS only by default     │
+   │     address book               ← TLS only by default     │
    └──────────────────────────────────────────────────────────┘
 ```
-Login and the policy poll survive a TLS-stripping MITM. The address book and heartbeat do
-not: they carry the session token as a plain bearer value unless `nemo-sealed-request=v1`.
+Login and the policy poll survive a TLS-stripping MITM. The address book does not: it
+carries the session token as a plain bearer value unless `nemo-sealed-request=v1`.
+The upstream HTTP heartbeat (`POST /api/heartbeat`, `/api/sysinfo`) is **gone** from the
+client: it was unauthenticated, this fork never served the routes, and its `strategy`
+reply wrote arbitrary persisted config keys straight past `POLICY_DENIED_KEYS`.
 And TLS here **authenticates nothing** by default — the client falls back to accepting an
 invalid certificate and caches that choice, unless `nemo-api-cert-fingerprint` is pinned.
 
@@ -304,9 +307,12 @@ payload, LDAP, and the management API's login and policy poll. What is left:
 1. **Port-forward / RDP tunnels are plaintext, always.** After login both ends call
    `set_raw()`, dropping the cipher *and* the framing. A whole RDP session — credentials
    included — crosses the punched link, or hbbr, in the clear. **This is the worst one.**
-2. **The peer-to-peer session downgrades on a handshake fault**, because
-   `nemo-require-encrypted-session` defaults off. One corrupted frame from an on-path
-   attacker yields a fully plaintext session.
+2. **Direct-IP-by-address sessions are plaintext.** `Client::_start` returns a bare TCP
+   stream for an `<ip>` or `<host>:<port>` peer and never calls `secure_connection`, so
+   nothing anchors it — `nemo-peer-keys` is keyed by id, and an address has no id.
+   `nemo-require-encrypted-session` (now ON by default) does not rescue this path, it
+   refuses it: the controlled side drops the connection because no key exchange
+   completed. `direct-server` is off by default, so this is latent.
 3. **LAN discovery is on by default** and broadcasts id, hostname, **the active username**,
    platform and MAC to the whole subnet.
 4. **Public STUN** queries go to Google/Cloudflare/Nextcloud on every connect attempt while

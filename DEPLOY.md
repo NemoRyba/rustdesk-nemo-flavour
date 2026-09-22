@@ -179,7 +179,7 @@ the server key it already trusts.
 
 ## 3b. Transport and performance defaults
 
-Two defaults changed and neither is in the unit file — they are compiled in, so a
+Three defaults changed and none of them is in the unit file — they are compiled in, so a
 deployment inherits them without anyone passing a flag.
 
 **`--udp-registration=N` (server) and `disable-udp=Y` (client).** UDP registration has no
@@ -188,6 +188,18 @@ key exchange and no device-key proof, so it bypassed both `--key-exchange` and
 encrypted. A client that is *not* on `disable-udp=Y` will retry forever and never come
 online; the server logs a throttled warning naming it. This does **not** disable UDP hole
 punching — that is `enable-udp-punch`, a separate switch on a separate path.
+
+**`--key-exchange=require` (server).** Upstream never implemented the server half of this
+handshake at all; TBFDesk defaults it to `require`, so every rendezvous TCP connection is
+encrypted and carries the client's device-key proof. The modes are `off | offer |
+require`. **`off` is a debugging option only** — it sends no offer, which means the channel
+is plaintext *and* no client can present a device key, so `require-device-key` is not
+enforced on this transport even though the config and the admin API still report it as on
+(the management-API login gate is a separate check and does still enforce it). TBFDesk
+clients fail closed on an unsecured rendezvous, so `off` also takes the whole fleet offline
+— the only thing that can still connect is a stock upstream client, in the clear and
+unauthenticated. `require` needs the server signing key, which `-k _` plus `id_ed25519` in
+the working directory already gives the unit; without one, hbbs refuses to boot.
 
 **Websocket rendezvous and relay (21118/21119) are refused.** They carried no key exchange
 and no device auth. Do not forward those ports; there is nothing behind them.

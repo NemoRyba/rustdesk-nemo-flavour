@@ -1,5 +1,9 @@
 # Control-plane encryption, security review and CAD performance — 2026-09-20
 
+> **Dated snapshot — defaults have moved since.** This file records the state on
+> 2026-09-20 and is deliberately not rewritten. For the shipped defaults (notably
+> `--key-exchange=require`, not `off`, and `disable-udp=Y`) see DEPLOY.md §3b.
+
 Work done overnight on branch `nemo-tdd` in both submodules. **Everything is uncommitted
 in the working tree.** Diffs: client +547/−97 over 8 files, server +799/−22 over 7 files.
 
