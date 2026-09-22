@@ -102,6 +102,10 @@
   .pill-t.a { fill:var(--ink-2); } .pill-t.b { fill:var(--accent-2); }
   .hit { stroke:transparent; stroke-width:20; fill:none; pointer-events:stroke; cursor:help; }
   .stage [data-tip] { text-decoration:none; }
+  .gl { text-decoration-color:var(--rule); text-decoration-thickness:1px; }
+  .gl:hover { text-decoration-color:var(--accent); color:var(--ink); }
+  .side-k[data-tip] { text-decoration:none; border-bottom:1px dotted var(--rule); display:inline-block; }
+  .scn[data-tip] { text-decoration:none; }
   .hit:focus-visible { stroke:var(--accent); stroke-width:10; opacity:.22; outline:none; }
   #n-tech, #n-srv, #n-relay, #n-ws { cursor:help; }
   #n-tech:hover .node-box, #n-srv:hover .node-box,
@@ -185,6 +189,11 @@
   .role-c dl{display:grid;grid-template-columns:auto 1fr;gap:5px 11px;margin:0;font-size:12.5px}
   .role-c dt{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);padding-top:2px}
   .role-c dd{margin:0;color:var(--ink-2)}
+  .gloss{columns:2;column-gap:26px;background:var(--surface);border:1px solid var(--rule);border-radius:6px;padding:18px 20px;box-shadow:var(--shadow)}
+  @media (max-width:760px){ .gloss{columns:1} }
+  .gi{break-inside:avoid;margin-bottom:11px}
+  .gi dt{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--accent-2)}
+  .gi dd{margin:2px 0 0;font-size:13px;color:var(--ink-2);line-height:1.5}
   .gaps{display:flex;flex-direction:column;gap:9px;counter-reset:gap}
   .gap{display:grid;grid-template-columns:28px 1fr;gap:13px;background:var(--surface);border:1px solid var(--rule);border-left:3px solid var(--warn);border-radius:5px;padding:13px 16px;transition:transform .15s,box-shadow .15s}
   .gap:hover{transform:translateX(2px);box-shadow:var(--shadow)}
@@ -213,9 +222,9 @@
     <h1>What talks to what, and what protects it</h1>
     <p class="lede">Four cases, step by step — how each side proves itself to the server, and the two ways a session reaches the workstation. Every claim here was verified at the call site, not taken from the design documents. Hover any box or line <em>in the diagram</em> — and anything underlined in the text — for what it is and what it holds.</p>
     <div class="meta">
-      <span>hbbs 1.1.15 · client 1.4.7</span>
-      <span>branch <code>nemo-tdd</code></span>
-      <span>not yet deployed</span>
+      <span data-tip="The two versions this page was checked against. Both are this fork, not upstream RustDesk: the protocol described here has messages upstream does not have, and refuses things upstream allows.">hbbs 1.1.15 · client 1.4.7</span>
+      <span data-tip="The working branch. Everything on this page was read off this branch; master is a stale snapshot and does not describe what is written here.">branch <code>nemo-tdd</code></span>
+      <span data-tip="Nothing is in production yet, which is why breaking wire changes are still on the table. It also means nothing here has been proven by a real rollout \u2014 it has been proven by reading the code and by lab runs.">not yet deployed</span>
     </div>
   </header>
 
@@ -319,18 +328,18 @@
         <button class="btn" id="prev">‹ Back</button>
         <button class="btn" id="next">Next ›</button>
         <div class="rail" id="rail"></div>
-        <span class="counter" id="counter">1 / 1</span>
+        <span class="counter" id="counter" data-tip="Which step of this case you are on. Each step is one observable event \u2014 a message on the wire, or a decision inside one of the machines. Arrow keys move between them.">1 / 1</span>
       </div>
 
       <div class="narr">
         <div class="narr-main">
-          <span class="step-n" id="s-n">Step 1</span>
+          <span class="step-n" id="s-n" data-tip="Steps are ordered but not evenly spaced in time: some are a single packet, others are a handshake or a decision taken inside a process. The order is what is guaranteed, not the duration.">Step 1</span>
           <span class="step-t" id="s-t">—</span>
           <p class="step-b" id="s-b">—</p>
         </div>
         <div class="narr-side">
-          <div><div class="side-k">On the wire</div><div class="side-v" id="s-w">—</div></div>
-          <div><div class="side-k">What protects it</div><div class="side-v guard" id="s-g">—</div></div>
+          <div><div class="side-k" data-tip="The actual bytes this step puts on the network: the protobuf message and its fields, or the HTTP route. Named exactly as they appear in the code, so you can grep for them.">On the wire</div><div class="side-v" id="s-w">—</div></div>
+          <div><div class="side-k" data-tip="What is cryptographically protecting THIS step at this moment. Green means protected, red means nothing is, amber means it describes something not shipped. A step can be unprotected and still fine if nothing secret is on the wire yet \u2014 the text says which.">What protects it</div><div class="side-v guard" id="s-g">—</div></div>
         </div>
       </div>
     </div>
@@ -402,6 +411,15 @@
       <p>Encrypted unconditionally at shipped defaults: rendezvous signalling, server pushes, the relay control frame, the relayed payload, LDAP, and the management API's login and policy poll. Nine things remain, ranked by what would actually hurt.</p>
     </div>
     <div class="gaps" id="gaps"></div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <span class="eyebrow">Reference</span>
+      <h2>Glossary</h2>
+      <p>Every term marked in the text, in full. Hovering is faster; this is here so the page still works by keyboard, by screen reader, and by <code>Ctrl+F</code>.</p>
+    </div>
+    <div class="gloss" id="gloss"></div>
   </section>
 
   <footer>
@@ -646,6 +664,18 @@
   ];
 
   // ---------- legs ----------
+  // What each status chip actually claims. Written out because "conditional" on its own
+  // tells you nothing about which condition, or which way it fails.
+  function CHIP_TIP(l) {
+    var base = {
+      ok:   "ENCRYPTED \u2014 protected unconditionally at the settings this deployment runs. No flag turns it off, and both ends refuse rather than fall back.",
+      warn: "CONDITIONAL \u2014 protected only while some condition holds. The condition is named in the row; read it as a thing that can be true or false on a given day, not as a guarantee.",
+      bad:  "NOT PROTECTED \u2014 nothing cryptographic applies on this leg. Either it is refused outright (so the exposure never happens), or it is genuinely in the clear. The row says which."
+    }[l.cls] || "";
+    var txt = base + " This row: " + l.name.replace(/<[^>]*>/g, "") + " over " + l.sub + ".";
+    return txt.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+  }
+
   var LEGS = [
     { id:"L1", name:"Client ↔ hbbs · rendezvous", sub:"TCP 21116 · protobuf", cls:"ok", chip:"Encrypted",
       detail:'XSalsa20-Poly1305. Key chosen by the <b>client</b>, sealed to the server\'s per-connection <span data-tip="A keypair generated fresh for this one connection and thrown away after. Because it is never reused, a recording of today\'s traffic cannot be decrypted tomorrow even if a long-term key leaks.">ephemeral</span>. The client proves a <span data-tip="An Ed25519 secret issued by the admin and pinned on the server, bound to one machine id. This is Layer 1: only provisioned machines get a connection at all.">pinned device key</span> bound to its peer id.' },
@@ -697,7 +727,7 @@
     d.innerHTML = '<span class="leg-id">' + l.id + '</span>' +
       '<div><div class="leg-name">' + l.name + '</div><div class="leg-sub">' + l.sub + '</div></div>' +
       '<div class="leg-detail">' + l.detail + '</div>' +
-      '<span class="chip ' + l.cls + '">' + l.chip + '</span>';
+      '<span class="chip ' + l.cls + '" data-tip="' + CHIP_TIP(l) + '">' + l.chip + '</span>';
     board.appendChild(d);
   });
 
@@ -712,6 +742,10 @@
   GAPS.forEach(function (g) {
     var d = document.createElement("div");
     d.className = "gap" + (g[0] ? " critical" : "");
+    d.setAttribute("data-tip", (g[0] === "critical"
+      ? "CRITICAL \u2014 red bar. Exploitable as shipped, or it defeats a protection the rest of the design depends on. These are the three to fix first."
+      : "OPEN \u2014 amber bar. A real weakness, but it needs a condition an attacker does not simply get: a position on the network, a setting changed, or a feature nobody uses yet.")
+      + " The line underneath names the exact condition or default that makes it true.");
     d.innerHTML = '<div class="gap-body"><span class="gap-title">' + g[1] + '</span>' +
       '<span class="gap-text">' + g[2] + '</span><span class="gap-cond">' + g[3] + '</span></div>';
     gb.appendChild(d);
@@ -748,6 +782,161 @@
         '<dt>dials</dt><dd>' + r.dials + '</dd>' +
         '<dt>sees</dt><dd>' + r.sees + '</dd></dl>';
       rolesEl.appendChild(d);
+    });
+  }
+
+
+  // ---------- glossary ----------
+  // Every technical term on this page, explained once here and then attached to the first
+  // place it appears in any block of prose. Keys are matched case-insensitively on whole
+  // words; longer keys win, so "device key" beats "key".
+  var GLOSSARY = {
+    // --- the cryptography ---
+    "ed25519": "A digital-signature scheme. A private half signs a message, and anyone holding the matching public half can check the signature without being able to produce one. Used here for every identity: the server's, each machine's device key, and each peer's own key.",
+    "x25519": "A key-agreement scheme. Two sides each generate a keypair, exchange public halves, and independently derive the same shared secret \u2014 without that secret ever crossing the wire.",
+    "xsalsa20-poly1305": "The cipher that actually protects the traffic. XSalsa20 encrypts, Poly1305 authenticates, so a tampered frame is rejected rather than silently decrypted to garbage. This is NaCl's secretbox.",
+    "secretbox": "NaCl's symmetric encryption: both ends share one key, and every frame is both encrypted and authenticated.",
+    "sealedbox": "NaCl's anonymous encryption: seal a message to someone's public key and only their private key can open it. The sender is not identified, which is why a signature is added separately when it matters.",
+    "sealed": "Encrypted to a specific public key, so only the holder of the matching private key can open it. Used here for the session key, the login credentials and the policy response.",
+    "sealed envelope": "A request wrapped in a sealedbox addressed to the pinned management key, inside TLS. It survives an attacker who strips or forges TLS, because opening it needs a key that lives only on the server.",
+    "box_seal": "The function that seals a message to a public key. Produces something only the matching private key can open.",
+    "ephemeral": "A keypair generated for one connection and thrown away afterwards. Because it is never reused, a proof made against it cannot be replayed into any other connection \u2014 which is how this handshake avoids needing a clock or a nonce cache.",
+    "nonce": "A number used once. Combined with the key so the same plaintext never encrypts to the same ciphertext twice. Here it is a counter, plus one byte naming the direction, so the two directions can never collide.",
+    "sha256": "A hash function: it turns any input into a fixed-size fingerprint that cannot practically be reversed or collided.",
+    "salt": "Random bytes mixed into a password before hashing, so the same password on two machines produces different hashes and a precomputed table is useless.",
+    "challenge": "A random value the verifier sends so the prover must answer freshly. It makes a recorded answer worthless, because the next challenge will be different.",
+    "fail closed": "When something cannot be verified, refuse rather than continue unprotected. The opposite \u2014 falling back to plaintext on error \u2014 is how most downgrade attacks work.",
+    "replay": "Capturing a valid message and sending it again later to impersonate its author. Defeated here by signing over the server's per-connection ephemeral, so a captured proof only works on the connection it was made for.",
+    "two-level": "Two signatures chained: the server signs the machine's long-term identity key, and that identity key signs this session's ephemeral. Trusting only the server's key is then enough to trust the session.",
+    "pinned": "Stored in advance and required to match exactly, rather than accepted because some authority vouches for it. Pinning is why a forged certificate or a substituted key does not help an attacker here.",
+
+    // --- the messages on the wire ---
+    "protobuf": "Protocol Buffers: a compact binary encoding for structured messages. Every rendezvous message on this page is one of these, length-prefixed on the socket.",
+    "keyexchange": "The first message on a rendezvous or relay socket. The server offers a fresh public key signed with its identity key; the client checks that signature and replies with a key of its own.",
+    "nemoclientauth": "This fork's replacement for the plain key exchange reply. It carries the client's ephemeral, the sealed session key, the machine's device public key, the peer id being claimed, and a signature binding all of it together.",
+    "registerpk": "The message that tells the server which peer id this machine is, along with its machine uuid and its own identity public key. Sent once the channel is encrypted.",
+    "registerpeer": "The presence heartbeat. Repeated every 15 seconds so the server knows the machine is still there and can push work down the connection.",
+    "punchholerequest": "The controller asking the server to reach a specific peer. Carries the target id, the caller's NAT type, and the fields a direct connection would need.",
+    "punchhole": "The instruction the server pushes to the controlled machine: send a packet toward this address, so your firewall opens a return path.",
+    "punchholesent": "The controlled machine reporting back that it has thrown its packet and is listening. Carries the address and ports the controller should try.",
+    "punchholeresponse": "What the controller finally receives: the address to connect to, plus the peer's identity public key signed by the server.",
+    "requestrelay": "A request to be put through the relay instead of connecting directly \u2014 sent by the controller to the server, and then by both clients to the relay itself to name their shared session.",
+    "relayresponse": "The server's answer naming the relay to use and the session id that will pair the two sockets.",
+    "fetchlocaladdr": "Used when the server can see that both parties are on the same network: instead of a hole punch, it simply asks one side for its LAN address.",
+    "localaddr": "The reply to FetchLocalAddr, carrying an address that is only meaningful inside the local network.",
+    "signedid": "The controlled machine proving itself directly to the controller: its id and a fresh ephemeral, signed with its device key.",
+    "idpk": "The structure inside SignedId \u2014 an id paired with an ephemeral public key \u2014 which is what the signature actually covers.",
+    "clear_key": "The call that drops a connection's cipher while keeping its framing. The relay does this once it has read the control frame, so it can keep moving frames it can no longer read.",
+    "set_raw": "Drops the framing as well as the cipher, turning the connection into an undifferentiated byte stream. This is what a port-forward tunnel does, and why those are not encrypted.",
+
+    // --- the network ---
+    "rendezvous": "The introduction service. It knows which machines exist and decides who may call whom, but it is not in the path of the session it arranges.",
+    "relay": "A server that pairs two connections and copies bytes between them, used when the two machines cannot reach each other directly. It carries the session without being able to read it.",
+    "nat": "Network Address Translation. A router rewrites addresses so many machines share one public address \u2014 which means nothing outside can address a machine inside unless that machine spoke first.",
+    "cascaded nat": "Two layers of NAT in series, one router behind another. Each layer has to be traversed, and the inner one usually cannot be seen or configured from outside.",
+    "hole punch": "Getting two machines behind NAT to talk directly: each sends an outbound packet to the other, and the state that leaves in their own routers lets the reply back in. It works when both routers assign predictable addresses, and fails when they do not.",
+    "symmetric": "A NAT that assigns a different external port for every destination. That makes the mapping unpredictable from outside, so hole punching cannot work and the relay is the only option. The server also sets this value deliberately to force a relay.",
+    "hairpin": "A router allowing a machine inside to reach its own public address and be routed back in. Also called NAT loopback. Needed if inside machines are to register the address the outside world sees.",
+    "ipv6": "The newer addressing scheme, with enough addresses that translation is unnecessary. Firewalls stay, but they are stateful \u2014 an outbound packet opens the return path \u2014 so the address a machine registers from is the address others can actually reach.",
+    "prefix": "A block of IPv6 addresses handed down from the provider. It has to be delegated through every router in the chain; a block that stops at the outer router never reaches the machines behind the inner one.",
+    "kcp": "A protocol that runs a reliable, ordered stream on top of UDP, tuned for lower latency than TCP over a lossy link.",
+    "stun": "A protocol for asking a public server what your own external address looks like from outside. Useful for punching, and a quiet way of telling a third party that you exist.",
+    "loopback": "The machine's own internal network interface. Traffic on it never reaches a cable, so it is reachable only by processes on that same machine.",
+    "uplink": "The link from the site to the internet. When it is the narrow part of the path, nothing done inside the site makes a session faster.",
+    "mitm": "Machine-in-the-middle: an attacker positioned in the path who can read, alter or drop traffic. Pinned keys and signatures are what make that position useless rather than decisive.",
+
+    // --- this deployment ---
+    "hbbs": "The rendezvous server. It registers machines, enforces who may call whom, and introduces the two parties. It never holds a key that opens a session.",
+    "hbbr": "The relay server. Pairs two sockets on a session id and copies bytes. On this page, note what it does not do: no device check, and it shares the signing key with hbbs.",
+    "device key": "Layer 1. An Ed25519 private key minted on the server and imported onto one specific machine, proving the machine is part of the fleet. Without one, a client is refused at the rendezvous entirely.",
+    "layer 1": "Machine identity: the pinned device key, proven on every rendezvous connection. On by default.",
+    "layer 2": "Human identity: an LDAP login that mints a session token, driving per-user access rules. Off by default in this build.",
+    "layer 3": "Windows single sign-on. Designed but not built.",
+    "session token": "A bearer credential identifying the logged-in human. Anyone holding it is that user, which is why it is only ever attached to a channel already known to be encrypted.",
+    "bearer": "A credential that authenticates whoever presents it, with nothing tying it to a particular machine or person. Convenient, and worthless the moment it leaks.",
+    "peer id": "The short number identifying a machine on this network. The thing a technician types in to connect.",
+    "uuid": "A machine-generated identifier, fixed per installation. Checked alongside the peer id so a reused id does not silently become a different machine.",
+    "licence key": "The server's public key, carried in requests so a client can tell it has reached the right server. It is in every client's config, so it answers which server, not who is asking.",
+    "source marker": "A small field the controller attaches to its requests naming who it is, and carrying the session token when the channel is confidential. Note that it is not signed.",
+    "managed policy": "Settings pushed from the server and applied on the client, some of which the user cannot override locally.",
+    "policy poll": "The periodic request a client makes for its current settings, authenticated with a device-key signature rather than any user credential.",
+    "require_device_key": "The server setting that refuses any client which cannot prove a pinned device key. On by default.",
+    "require_login": "The server setting that requires an LDAP login before a connection is allowed. Off by default, so Layer 2 is opt-in.",
+    "out of band": "Delivered by some route other than this system \u2014 by hand, by an administrator, through a separate channel. Used here for the device key, which is deliberately not transmitted over any connection the software makes: if it were, compromising that channel once would compromise every machine provisioned through it.",
+    "heartbeat": "A small message repeated on a schedule, here every 15 seconds, whose purpose is to keep a connection open and prove the machine is still present.",
+    "ldap": "The directory protocol used to check a username and password against the organisation's existing accounts, so this system does not hold its own.",
+    "ldaps": "LDAP inside TLS. Plain LDAP would carry a directory password in the clear, so this fork refuses it outright.",
+    "tls": "The encryption layer used by HTTPS. It protects traffic in transit, but only proves who the server is if the certificate is actually checked.",
+    "registry": "The server's list of pinned device public keys, with the peer id each one is bound to. A key that is not in it cannot connect.",
+    "mask": "The server flag naming which addresses count as the local network. Setting it is what makes the server treat an outside technician and an inside workstation as different, and force a relay between them.",
+    "enable-udp-punch": "Client setting for UDP hole punching. Forced off for a self-hosted server, and the server side is deliberately not implemented.",
+    "enable-ipv6-punch": "Client setting for direct IPv6 connections. Forced off for a self-hosted server, and the single most promising lever for getting a direct path.",
+    "port forward": "A tunnel carrying another protocol, such as RDP, through this one. Both ends drop the cipher and the framing after login, so this traffic is not encrypted by this system.",
+    "downgrade": "Falling back to a weaker or absent protection when something fails, rather than refusing. An attacker who can cause the failure gets to choose the weaker path."
+  };
+
+  // Wrap the first occurrence of each known term inside `root`, skipping anything that is
+  // already a tooltip of its own. Walks text nodes rather than the HTML string, so it can
+  // never produce broken markup.
+  var GLOSS_KEYS = Object.keys(GLOSSARY).sort(function (a, b) { return b.length - a.length; });
+  var GLOSS_RE = new RegExp(
+    "(^|[^A-Za-z0-9_-])(" +
+    GLOSS_KEYS.map(function (k) { return k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }).join("|") +
+    ")(?![A-Za-z0-9_-])", "i");
+
+  function annotate(root) {
+    if (!root) return;
+    var used = {};
+    var nodes = [];
+    var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+    nodes.forEach(function (node) {
+      if (!node.parentElement || node.parentElement.closest("[data-tip]")) return;
+      var rest = node.nodeValue, frag = null;
+      for (;;) {
+        var m = GLOSS_RE.exec(rest);
+        if (!m) break;
+        var term = m[2], key = term.toLowerCase();
+        var at = m.index + m[1].length;
+        if (used[key]) {
+          // already explained in this block: keep the text, keep scanning after it
+          if (!frag) frag = document.createDocumentFragment();
+          frag.appendChild(document.createTextNode(rest.slice(0, at + term.length)));
+          rest = rest.slice(at + term.length);
+          continue;
+        }
+        used[key] = true;
+        if (!frag) frag = document.createDocumentFragment();
+        if (at) frag.appendChild(document.createTextNode(rest.slice(0, at)));
+        var span = document.createElement("span");
+        span.className = "gl";
+        span.setAttribute("data-tip", GLOSSARY[key]);
+        span.textContent = term;
+        frag.appendChild(span);
+        rest = rest.slice(at + term.length);
+      }
+      if (frag) {
+        if (rest) frag.appendChild(document.createTextNode(rest));
+        node.parentNode.replaceChild(frag, node);
+      }
+    });
+  }
+
+
+  // annotate the long-form sections once; the step panel is re-annotated on every render
+  ["board", "keys", "gaps", "roles"].forEach(function (id) { annotate(document.getElementById(id)); });
+  Array.prototype.forEach.call(document.querySelectorAll(".sec-head p, .lede, .verdict p, .tu"), annotate);
+
+  // ---------- glossary section ----------
+  var glossEl = document.getElementById("gloss");
+  if (glossEl) {
+    GLOSS_KEYS.slice().sort().forEach(function (k) {
+      var d = document.createElement("div");
+      d.className = "gi";
+      var t = document.createElement("dt"); t.textContent = k;
+      var b = document.createElement("dd"); b.textContent = GLOSSARY[k];
+      d.appendChild(t); d.appendChild(b);
+      glossEl.appendChild(d);
     });
   }
 
@@ -806,7 +995,11 @@
     if (el) { showTip(el, e); } else { hideTip(); }
   });
   // keyboard reachable
+  // Structural tooltips are keyboard-reachable. The ~75 inline glossary marks are not:
+  // that many tab stops would make the page unusable by keyboard, and every one of those
+  // terms is listed in full in the Glossary section instead.
   Array.prototype.forEach.call(document.querySelectorAll("[data-tip]"), function (el) {
+    if (el.classList.contains("gl")) return;
     if (!el.hasAttribute("tabindex")) el.setAttribute("tabindex", "0");
   });
 
@@ -828,6 +1021,8 @@
   SCENARIOS.forEach(function (s, i) {
     var b = document.createElement("button");
     b.className = "scn"; b.type = "button"; b.setAttribute("role", "tab");
+    b.setAttribute("data-tip", s.t + " \u2014 " + (s.sub || "") + ". " + s.steps.length + " steps." +
+      (s.planned ? " Marked PLANNED: this describes behaviour that is NOT shipped, and every step depending on something unbuilt says so in amber." : ""));
     b.innerHTML = '<span class="n">' + s.n + (s.planned ? ' <em class="plan">planned</em>' : '') + '</span>' +
                   '<span class="t">' + s.t + '</span>' +
                   (s.sub ? '<span class="sb">' + s.sub + '</span>' : '');
@@ -900,6 +1095,10 @@
     elB.textContent = s.body;
     elW.textContent = s.wire;
     elG.textContent = s.guard;
+    // explain every term in the panel; main and side are annotated separately so a term
+    // used in both is reachable from either
+    annotate(document.querySelector(".narr-main"));
+    annotate(document.querySelector(".narr-side"));
     elG.className = "side-v guard" + (s.guardNone ? " none" : "") + (s.todo ? " todo" : "");
 
     btnPrev.disabled = step === 0;
@@ -923,6 +1122,11 @@
     pkt.classList.toggle("plain", !s.enc);
     pktLock.textContent = s.enc ? "🔒" : "!";
     pktT.textContent = s.label;
+    // the packet was the one thing on the stage with nothing to say when hovered
+    var gl = GLOSSARY[String(s.label).toLowerCase()];
+    pkt.setAttribute("data-tip",
+      (gl ? String(s.label).toUpperCase() + " \u2014 " + gl + "  " : "") +
+      "HERE: " + s.title + ". On the wire: " + s.wire + ". Protected by: " + s.guard + ".");
 
     if (s.from === s.to) {
       // internal work: park beside the node rather than on top of its label
