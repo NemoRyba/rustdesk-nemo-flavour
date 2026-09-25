@@ -13,6 +13,17 @@
 - Adjustable 1/2/3-column dashboard layout; UAC-install + upstream-update banners removed from the client home.
 - User-visible strings rebranded **TBF/TBFDesk** ("Nemo" kept only in code/filenames).
 
+## Done (security fixes — implemented 2026-09-25, committed and pushed)
+
+- **H11/H20/H22:** ACL version check to prevent stale tab overwrites (`permissions_version` field + mismatch rejection).
+- **H23/M13:** Session eviction when permissions change (user removed, disabled, targets changed, admin flag changed, policy changed).
+- **H24:** IPC authorization for Linux/macOS main IPC (same user or root required, executable matches).
+- **S-B control-plane sealing:** Policy poll response sealed to device key (`sealed_payload`); request can carry sealed token; address book sign-then-sealed; login sealed with nonce.
+- **S-C:** LDAP cert verification off-switch fails closed (requires `--insecure-ldap-i-accept-mitm Y`).
+- **M1:** Device keys bound to peer id (one leaked key no longer authenticates fleet-wide).
+- **A4:** Cert-fingerprint pinning (`PinnedVerifier` + `nemo_api_cert_fingerprint` policy key).
+- **L-items:** Admin API fails closed without token; sealed-login replay guard (nonce); user enumeration collapsed; device-key collision fixed; unsigned-policy compiled out of release.
+
 ## Open
 
 - Set a read-only **service account** (Bind DN + password) in Integration → LDAP so the directory picker can list domain users.

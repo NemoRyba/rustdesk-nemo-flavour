@@ -1,4 +1,4 @@
-# TBFDesk — Open TODOs (ranked, **each item verified against code/live state on 2026-09-02**)
+# TBFDesk — Open TODOs (ranked, **each item verified against code/live state on 2026-09-25**)
 
 **Goal:** a performance-oriented, centrally-managed, **direct** remote-control product.
 **Priority order:** Security edge ▸ Management capability ▸ Performance observability ▸ Polish.
@@ -8,7 +8,7 @@
 
 ## SECURITY
 
-> **2026-09-03:** S-B core + H4 + M1 + S-C + all L-items are **CODE-COMPLETE (uncommitted, not yet deployed to 176, not yet screenshot/live-verified).** Server suite green (48 tests); client compiles clean. Detail in [SECURITY-HARDENING-TODO.md](SECURITY-HARDENING-TODO.md) (2026-09-03 session). What remains open below is the transport/proto tier (M2, S-D, S-E, cert-pin enforcement), all blocked on the hbb_common fork remote (#9) and/or lockstep rollout.
+> **2026-09-25:** Security fixes H11/H20/H22 (version check), H23/M13 (session eviction), H24 (IPC authorization), and S-B control-plane sealing (sealed requests/responses) are **IMPLEMENTED, TESTED, AND PUSHED** (commit `fa10913`). Server suite green; client compiles and runs clean. Detail in [SECURITY-HARDENING-TODO.md](SECURITY-HARDENING-TODO.md) (2026-09-25 session). What remains open below is the transport/proto tier (M2, S-D, S-E, cert-pin enforcement), all blocked on the hbb_common fork remote (#9) and/or lockstep rollout.
 
 ### 1. S-B + H4 — trust for the management control plane  *(CORE DONE; cert-pin enforcement remains)*
 *Was:* clients run with `allow-insecure-tls-fallback = 'Y'` against the self-signed cert, and the policy response delivered secrets unsealed, authed only by id+uuid.
