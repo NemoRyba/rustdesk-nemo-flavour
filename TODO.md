@@ -13,16 +13,13 @@
 - Adjustable 1/2/3-column dashboard layout; UAC-install + upstream-update banners removed from the client home.
 - User-visible strings rebranded **TBF/TBFDesk** ("Nemo" kept only in code/filenames).
 
-## Done (security fixes — implemented 2026-09-25, committed and pushed)
+## Done (2026-09-25, completed 2026-09-27)
 
-- **H11/H20/H22:** ACL version check to prevent stale tab overwrites (`permissions_version` field + mismatch rejection).
-- **H23/M13:** Session eviction when permissions change (user removed, disabled, targets changed, admin flag changed, policy changed).
-- **H24:** IPC authorization for Linux/macOS main IPC (same user or root required, executable matches).
-- **S-B control-plane sealing:** Policy poll response sealed to device key (`sealed_payload`); request can carry sealed token; address book sign-then-sealed; login sealed with nonce.
-- **S-C:** LDAP cert verification off-switch fails closed (requires `--insecure-ldap-i-accept-mitm Y`).
-- **M1:** Device keys bound to peer id (one leaked key no longer authenticates fleet-wide).
-- **A4:** Cert-fingerprint pinning (`PinnedVerifier` + `nemo_api_cert_fingerprint` policy key).
-- **L-items:** Admin API fails closed without token; sealed-login replay guard (nonce); user enumeration collapsed; device-key collision fixed; unsigned-policy compiled out of release.
+- **H11/H20/H22:** ACL version check against stale-tab overwrites — server `0231ccd`, contract fixed in `897a00b`.
+- **H23/M13:** login sessions evicted when a user's permissions change.
+- **H24:** client `9e18fa9e1` reverted in `feaf523f9` — the socket was already 0600/0700, and the check broke root CLI commands.
+
+S-B sealing, M1, S-C, A4 and the L-items are the 2026-09-03 work in SECURITY-HARDENING-TODO.md.
 
 ## Open
 

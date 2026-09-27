@@ -8,10 +8,11 @@ Company-focused RustDesk fork workspace for high-performance remote access to CA
 > Then [`HANDOFF.md`](HANDOFF.md) for build/deploy recipes and the **screenshot-self-verify** method for the
 > client UI (PrintWindow — no focus steal), and [`DEPLOY.md`](DEPLOY.md) for running it.
 >
+> Working on this with a local model? Start with [`RUNBOOK-LOCAL-MODEL.md`](RUNBOOK-LOCAL-MODEL.md) (build, test, lab, VMs, GUI control).
+>
 > The open-items register is `../OPEN-POINTS-2026-09-21.md` (outside this repo; see *Known gaps* below).
-> `OPEN-TODOS.md` and `SECURITY-HARDENING-TODO.md` are the current source of truth for open work;
-> they are kept up to date as of 2026-09-25. Items fixed in September 2026 are marked as done and
-> include the commit that implemented them.
+> `OPEN-TODOS.md` and `SECURITY-HARDENING-TODO.md` predate the September verification sweep and contain
+> items that have since been fixed, reverted, or found to be wrong — treat them as history, not as a list.
 >
 > The running client shows its **build id** (git hash + date) bottom-left, so you can always tell which
 > build you're looking at.

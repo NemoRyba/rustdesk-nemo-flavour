@@ -268,65 +268,36 @@ Follow-up implementation pass after the audit. **Server suite green (49 tests); 
 
 ---
 
-## 2026-09-25 update — security fixes implemented and pushed
+## 2026-09-25 update (corrected 2026-09-27)
 
-All items below (H11/H20/H22, H23/M13, H24, S-B sealing) were **IMPLEMENTED** in the 2026-09-25 session and pushed to GitHub (commit `fa10913`).
+Only three items were implemented on 2026-09-25. Everything else a first draft of this
+section listed (S-B sealing, A4 pinning, M1 binding, S-C, the L-items, A1–A8) is the
+2026-09-03 work already described above, and `fa10913` is only a submodule-pointer bump.
 
-### H11/H20/H22 — stale ACL tab overwrites (DONE 2026-09-25)
-- **Server:** `IntegrationConfig.permissions_version` field tracks version; `PermissionsUpdate.version` carries client's version; mismatch causes rejection with clear error.
-- **Client:** ACL tab sends current version on save; refreshes version after successful update.
-- **Result:** Two admins editing ACL simultaneously can no longer clobber each other's changes.
+### H11/H20/H22 — stale ACL tab overwrites
+- Server `0231ccd` added `IntegrationConfig.permissions_version` and a check on
+  `PUT /nemo/api/integration/permissions`.
+- As committed it did not work: the PUT returned the bare map while the UI read
+  `result.permissions` (the tab's allowlist became `{}` after every save, so the next save
+  would have sent an empty one), GET never returned the version, and a policies save bumped
+  only the UI's copy.
+- Server `897a00b` fixes the contract: GET and PUT return `permissions` +
+  `permissions_version`, a stale version is 409 Conflict, the directory picker bumps the
+  version too. Verified live on loopback.
+- A request without `version` is still accepted (scripts); the admin UI always sends it.
 
-### H23/M13 — session eviction on permission change (DONE 2026-09-25)
-- **Server:** `evict_sessions_with_changed_permissions()` compares old vs new permissions and evicts sessions where:
-  - User removed from allowlist
-  - User disabled (`enabled: true` → `false`)
-  - User's allowed_targets changed
-  - User's `is_admin` flag changed
-  - User's policy (inline or named) changed
-- **Result:** Permission changes take effect immediately; no lingering sessions with outdated access rights.
+### H23/M13 — session eviction on permission change
+- `evict_sessions_with_changed_permissions()` drops login sessions of users removed,
+  disabled, or whose targets / admin flag / policy changed (ACL save and, since `897a00b`,
+  the directory picker).
+- It drops the **login token** only. Established remote sessions keep running; cut them
+  with `/nemo/api/connections/cut`. Target checks were already live at connect time.
 
-### H24 — IPC authorization for Linux/macOS main IPC (DONE 2026-09-25)
-- **Client:** `authorize_main_ipc_connection()` checks:
-  - Peer is same user as active session or root
-  - Peer executable matches current RustDesk executable
-- **Result:** Other users on the system cannot connect to the main IPC channel and gain control.
-
-### S-B control-plane sealing (DONE 2026-09-25)
-- **Policy poll:** Response wrapped in `sealed_payload` (NaCl sealedbox to device key); request can carry `sealed_token` to hide session token.
-- **Address book:** Sealed with `nemo_open_sealed_signed` (sign-then-seal for integrity).
-- **Login:** Sealed to management key; includes nonce to prevent replay.
-- **Strip unsealed secrets:** `strip_unsealed_secrets` flag removes secrets from unsealed responses by default.
-- **Cert fingerprint pinning:** `PinnedVerifier` in `verifier.rs`; `nemo_pin_for_url()`/`pinned_request()` in `common.rs`.
-
-### A4 — cert-fingerprint pinning (DONE 2026-09-25)
-- **PinnedVerifier:** rustls `ServerCertVerifier` implementation that pins the server leaf cert's SHA-256 fingerprint.
-- **nemo-api-cert-fingerprint:** Policy key plumbed to both ends; when set, the management client uses `pinned_request()` which short-circuits the accept-invalid-cert retry ladder.
-- **Result:** TLS MITM (even with `allow-insecure-tls-fallback=Y`) is now detected and rejected.
-
-### M1 — device key binding (DONE 2026-09-25)
-- **DeviceKey.peer_id:** Optional field; non-empty means key authenticates ONLY that peer id.
-- **device_key_binding_check():** Enforces binding; rejected if claimed id ≠ bound id (unless `--allow-unbound-device-keys=Y`).
-- **Result:** One leaked device key no longer authenticates fleet-wide.
-
-### S-C — LDAP cert verification off-switch fails closed (DONE 2026-09-25)
-- **tls_verify=false:** Now errors unless `--insecure-ldap-i-accept-mitm Y` is passed.
-- **ldap_tls_verify_effective():** Returns `true` by default; returns `false` only with explicit CLI flag.
-
-### L-items (DONE 2026-09-25)
-- **Admin API fails closed without token:** Auto-generates ephemeral token on startup if missing.
-- **Sealed-login replay guard:** Nonce field + server-side nonce tracking; `ts==0` bypass removed.
-- **User enumeration:** Same error for "user not found" as "wrong password".
-- **Device-key id collision:** Extends prefix beyond 16 chars on collision.
-- **nemo-management-allow-unsigned:** Compiled out of release builds (`#[cfg(debug_assertions)]`).
-
-### Audit findings 2026-09-03 — RESOLVED
-The adversarial audit identified 8 MITM-reachable issues (A1-A8) and other problems. Most are now resolved:
-- A1 (poll request token leak) — **RESOLVED** by `sealed_token` in request
-- A2 (policy replay/rollback) — **RESOLVED** by `issued_ts` enforcement on client
-- A3 (cleartext secrets by default) — **RESOLVED** by `strip_unsealed_secrets` default ON
-- A4 (cert-fingerprint dead code) — **RESOLVED** by `PinnedVerifier` + `pinned_request()`
-- A5 (direct-connect identity binding) — **RESOLVED** by `peer_id` field and binding check
-- A6 (AB no integrity) — **RESOLVED** by sign-then-seal with `nemo_open_sealed_signed`
-- A7 (ratchet first-contact gap) — **RESOLVED** by `strip_unsealed_secrets` default ON
-- A8 (sealed-login replay guard inert) — **RESOLVED** by client nonce in `nemo_seal_login`
+### H24 — main IPC authorization on Linux/macOS: REVERTED
+- Client `9e18fa9e1` added a uid + executable check on the `""` socket, on the premise
+  that it is 0666. It is not: the main socket is 0600 in a 0700 directory owned by the
+  listener (`ipc.rs` socket_mode, `ipc/fs.rs` expected_ipc_parent_mode), so H24 was
+  already closed by file permissions.
+- The check broke root CLI commands (`--option`, `--password`, `--set-id`, `--get-id`)
+  whenever a desktop user is logged in: a user-owned listener cannot readlink a root
+  peer's `/proc/<pid>/exe`. Reverted in `feaf523f9`.

@@ -129,6 +129,8 @@ configuration existed only in one machine's shell history, so a rebuild would ha
 the relay caps and the whole management-API setup.
 
 ```bash
+# binaries from the release build (rustdesk-server-nemo/target/release)
+install -m 0755 target/release/hbbs target/release/hbbr /usr/bin/
 useradd --system --home /var/lib/rustdesk-server --shell /usr/sbin/nologin rustdesk
 install -d -o rustdesk -g rustdesk -m 0750 /var/lib/rustdesk-server /var/log/rustdesk-server
 install -d -m 0750 /etc/tbfdesk
@@ -138,7 +140,9 @@ TBFDESK_RELAY=<server>:21117
 TBFDESK_MASK=192.168.0.0/16
 EOF
 chmod 0600 /etc/tbfdesk/hbbs.env && chown root:rustdesk /etc/tbfdesk/hbbs.env
-# the signing key, shared by hbbs and hbbr
+# the signing key, shared by hbbs and hbbr. Put it in place BEFORE the first start:
+# with `-k _` and no id_ed25519, hbbs and hbbr silently generate a NEW key, and every
+# provisioned client then refuses the server. Back this file up.
 install -o rustdesk -g rustdesk -m 0600 id_ed25519 /var/lib/rustdesk-server/
 systemctl enable --now rustdesk-hbbs-nemo rustdesk-hbbr-nemo
 ```
@@ -150,7 +154,8 @@ through `/proc` (SEC-11).
 
 Since SEC-12 the management API serves **HTTPS by default on any routable bind**, and
 refuses plaintext there. With no certificate supplied it generates a self-signed one, which
-works (the client caches the choice on first use) but means a browser warning on the admin
+the client accepts on first use without authenticating it unless `nemo-api-cert-fingerprint`
+is pushed to it, and means a browser warning on the admin
 dashboard every time.
 
 If the server has a DNS name reachable from the internet — which it will if you follow the
@@ -159,9 +164,10 @@ hbbs at the result:
 
 ```bash
 certbot certonly --standalone -d tbfdesk.example.com
-# then in /etc/tbfdesk/hbbs.env, or as extra ExecStart args:
-#   --nemo-api-tls-cert /etc/letsencrypt/live/tbfdesk.example.com/fullchain.pem
-#   --nemo-api-tls-key  /etc/letsencrypt/live/tbfdesk.example.com/privkey.pem
+# then in /etc/tbfdesk/hbbs.env (env form: upper case, underscores):
+#   NEMO_API_TLS_CERT=/etc/letsencrypt/live/tbfdesk.example.com/fullchain.pem
+#   NEMO_API_TLS_KEY=/etc/letsencrypt/live/tbfdesk.example.com/privkey.pem
+# or as ExecStart args: --nemo-api-tls-cert ... --nemo-api-tls-key ...
 ```
 
 The hbbs user needs read access to those files (LE's `live/` is root-only by default), and
@@ -199,7 +205,8 @@ enforced on this transport even though the config and the admin API still report
 clients fail closed on an unsecured rendezvous, so `off` also takes the whole fleet offline
 — the only thing that can still connect is a stock upstream client, in the clear and
 unauthenticated. `require` needs the server signing key, which `-k _` plus `id_ed25519` in
-the working directory already gives the unit; without one, hbbs refuses to boot.
+the working directory already gives the unit. Without an `id_ed25519` there it does NOT refuse to boot: it
+generates a new key, which no provisioned client trusts (open item, tracked).
 
 **Websocket rendezvous and relay (21118/21119) are refused.** They carried no key exchange
 and no device auth. Do not forward those ports; there is nothing behind them.
@@ -276,7 +283,8 @@ There is no CLI path for this on purpose (`--option nemo-device-key` is refused 
 directions, H26) and the licence name has no `devkey=` field. So an installer alone does
 not yet equal unattended fleet provisioning — that gap is real and tracked.
 
-Staged rollout: leave `require_device_key` off, install and provision, then turn it on.
+Staged rollout: a fresh install has `require_device_key` **on**. Switch it off in the
+dashboard first, install and provision, then turn it back on.
 The server names every un-provisioned client in its log while it is off.
 
 ---

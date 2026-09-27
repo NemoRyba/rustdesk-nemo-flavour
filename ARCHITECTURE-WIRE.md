@@ -43,7 +43,7 @@ workstation on site, but nothing in the software enforces that.
 | role | what it is | what it holds | who starts the connection |
 |---|---|---|---|
 | **client A** | the controller — the viewer window, decodes video, sends keyboard and mouse. Picks quality, codec and frame rate; those live in *its* per-peer config | its device key, its identity keypair, the user's session token | always A. Nothing ever dials in to it |
-| **server** | hbbs introduces clients and enforces who may call whom; hbbr carries bytes when the two cannot reach each other. One host, ports 21115–21118 | the Ed25519 key both clients pin, the device-key registry, the LDAP bind | never — it only answers, and pushes down connections clients already hold |
+| **server** | hbbs introduces clients and enforces who may call whom; hbbr carries bytes when the two cannot reach each other. One host, ports 21115–21117 plus 21120 for the management API (21118/21119 listen but refuse) | the Ed25519 key both clients pin, the device-key registry, the LDAP bind | never — it only answers, and pushes down connections clients already hold |
 | **client B** | the controlled machine — captures and encodes the screen, applies input, checks the password. One encoder serves every viewer | its device key, its identity keypair, the permanent password | dials **out** to the server and holds that connection open. No inbound port, no port forward |
 
 The server is trusted to *introduce*, not to *listen*: it never holds a key that opens a
