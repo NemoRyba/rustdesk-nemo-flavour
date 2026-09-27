@@ -453,7 +453,7 @@ Where keys live:
 | Host relay of the container lab | `/projects/rustdesk/vm/relay/id_ed25519` (a copy of the server key) | `/projects/rustdesk/vm/relay/id_ed25519.pub` |
 | Backup of old container state | `/projects/rustdesk/vm/server-state-backup/` (DB needs its `-wal` file) | |
 
-hbbs and hbbr must use the SAME key. Starting both in the same folder with `-k _` does that.
+hbbs and hbbr must use the SAME key. Starting both in the same folder with `-k _` does that. Start hbbs FIRST: since 2026-09-27 a missing `id_ed25519` is fatal. hbbs creates one only with `--generate-key Y` (lab only, never on production: clients pin the key); hbbr never creates one and exits until the file exists.
 
 ### 5.1 Native loopback lab
 
@@ -477,7 +477,7 @@ Expect: an address like `192.168.x.y`. Write it down as HOSTIP. Never use 127.0.
 
 Step 5.1.4. Start hbbs. Replace `<HOSTIP>`.
 ```sh
-cd /tmp/tbf-lab && nohup taskset -c 0-3,6,7,10,11,14-31 /projects/rustdesk/rustdesk-nemo-flavour/rustdesk-server-nemo/target/release/hbbs -k _ -r <HOSTIP>:21117 --nemo-api Y --nemo-api-bind 127.0.0.1:21120 --nemo-api-token labtoken --nemo-api-allow-insecure Y --key-exchange offer > /tmp/tbf-lab/hbbs.log 2>&1 & echo "hbbs pid $!"
+cd /tmp/tbf-lab && nohup taskset -c 0-3,6,7,10,11,14-31 /projects/rustdesk/rustdesk-nemo-flavour/rustdesk-server-nemo/target/release/hbbs -k _ --generate-key Y -r <HOSTIP>:21117 --nemo-api Y --nemo-api-bind 127.0.0.1:21120 --nemo-api-token labtoken --nemo-api-allow-insecure Y --key-exchange offer > /tmp/tbf-lab/hbbs.log 2>&1 & echo "hbbs pid $!"
 ```
 Expect: `hbbs pid <number>`. Write the number down.
 
@@ -951,7 +951,8 @@ Device keys are base64 and contain `+`. Every `+` must be sent as `{+}`.
 | Windows client shows "Build unknown" | Built from a tarball without `.git` | Expected. |
 | hbbs: `Refusing to serve the Nemo management API over plaintext HTTP on <addr>` | Routable bind without TLS | Bind `127.0.0.1:21120`, or add `--nemo-api-tls auto`, or (lab only) `--nemo-api-allow-insecure Y`. |
 | hbbs: `Refusing to bind Nemo management API to <addr> without --nemo-api-token` | No token | Add `--nemo-api-token <t>` (production: `NEMO_API_TOKEN` in the env file). |
-| hbbs: `--key-exchange=require needs a server signing key` | No key | Add `-k _` so hbbs uses/creates `id_ed25519` in its folder. |
+| hbbs: `--key-exchange=require needs a server signing key` | No key | Add `-k _` so hbbs uses `id_ed25519` in its folder. |
+| `Fatal error: no id_ed25519 in ...` | Key file missing | Production: restore the backed-up key. Fresh lab only: add `--generate-key Y` to hbbs, start hbbs first, then hbbr in the same folder. |
 | hbbs: `Fatal error: malformed private key in id_ed25519.` | Bad key file | Use an empty folder, or the correct key file. Do not delete a real server key. |
 | `error binding to 127.0.0.1:21120 ... Address already in use (os error 98)` | Port taken | `ss -ltnp | grep 21120`; use the other server or stop yours by PID. |
 | Relay never pairs, hbbr logs nothing | Relay address is loopback | Use the routable host address (5.1.3). From the VM this also applies. |

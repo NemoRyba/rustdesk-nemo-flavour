@@ -141,8 +141,9 @@ TBFDESK_MASK=192.168.0.0/16
 EOF
 chmod 0600 /etc/tbfdesk/hbbs.env && chown root:rustdesk /etc/tbfdesk/hbbs.env
 # the signing key, shared by hbbs and hbbr. Put it in place BEFORE the first start:
-# with `-k _` and no id_ed25519, hbbs and hbbr silently generate a NEW key, and every
-# provisioned client then refuses the server. Back this file up.
+# with `-k _` and no id_ed25519 both services refuse to start. A brand-new install with
+# no key yet: run `hbbs -k _ --generate-key Y` once in /var/lib/rustdesk-server as the
+# rustdesk user, stop it, and never pass that flag again. Back this file up.
 install -o rustdesk -g rustdesk -m 0600 id_ed25519 /var/lib/rustdesk-server/
 systemctl enable --now rustdesk-hbbs-nemo rustdesk-hbbr-nemo
 ```
@@ -205,8 +206,8 @@ enforced on this transport even though the config and the admin API still report
 clients fail closed on an unsecured rendezvous, so `off` also takes the whole fleet offline
 — the only thing that can still connect is a stock upstream client, in the clear and
 unauthenticated. `require` needs the server signing key, which `-k _` plus `id_ed25519` in
-the working directory already gives the unit. Without an `id_ed25519` there it does NOT refuse to boot: it
-generates a new key, which no provisioned client trusts (open item, tracked).
+the working directory already gives the unit. Without an `id_ed25519` there, hbbs and hbbr refuse to start
+(`Fatal error: no id_ed25519 ...`) rather than minting a key no client trusts.
 
 **Websocket rendezvous and relay (21118/21119) are refused.** They carried no key exchange
 and no device auth. Do not forward those ports; there is nothing behind them.
@@ -288,6 +289,24 @@ dashboard first, install and provision, then turn it back on.
 The server names every un-provisioned client in its log while it is off.
 
 ---
+
+## 5. Upgrading (2026-09-27 builds)
+
+Client and server move together. Before an upgrade, copy `/var/lib/rustdesk-server`
+(`id_ed25519`, `nemo_integration.json`, `nemo_sessions.json`, `nemo-api-cert.pem`,
+`nemo-api-key.pem`, the `nemo_*` state files). Things that break across versions:
+
+- **Port forwarding / RDP** needs both clients on the same build: the tunnel is now
+  encrypted, and an older peer still drops the cipher.
+- **Relay grants and sealed rendezvous (tag 30)**: an older client against this server,
+  or the reverse, cannot relay or cannot register.
+- **Sealed login**: fresh servers refuse unsealed logins; current clients never send one.
+- **API certificate pin**: hbbs pushes its self-signed certificate's fingerprint in the
+  signed policy. If `nemo-api-cert.pem` is regenerated, every pinned client refuses the
+  API until the pin is cleared on it. Restore the backed-up cert instead.
+
+Rollback is the same list in reverse: restore the state directory and the previous binaries
+on the server and on every client.
 
 ## What is not done
 

@@ -14,7 +14,7 @@ podman run -d --name "$NAME" \
   -p 21118:21118 -p 21119:21119 -p 21120:21120 \
   -v "${NAME}-data:/srv" \
   localhost/nemo-hbbs \
-  hbbs -k _ --nemo-api Y --nemo-api-bind 0.0.0.0:21120 --nemo-api-token "$TOKEN" \
+  hbbs -k _ --generate-key Y --nemo-api Y --nemo-api-bind 0.0.0.0:21120 --nemo-api-token "$TOKEN" \
        --nemo-api-allow-insecure Y --key-exchange offer -r 127.0.0.1
 echo "Started $NAME. Admin GUI: http://127.0.0.1:21120/nemo/admin (token: $TOKEN)"
 echo "For production: put TLS in front (--nemo-api-tls-cert/-key), use a real token, persist /srv."

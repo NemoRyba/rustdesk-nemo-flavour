@@ -304,9 +304,10 @@ payload, LDAP, and the management API's login and policy poll. What is left:
    secrecy and the replay property are unchanged; only the identity fields gained
    confidentiality.
 
-1. **Port-forward / RDP tunnels are plaintext, always.** After login both ends call
-   `set_raw()`, dropping the cipher *and* the framing. A whole RDP session — credentials
-   included — crosses the punched link, or hbbr, in the clear. **This is the worst one.**
+1. ~~Port-forward / RDP tunnels are plaintext, always.~~ **Fixed 2026-09-27:** both ends
+   used to call `set_raw()` after login, dropping the cipher and the framing. They now keep
+   the stream framed and keyed and send tunnel chunks with `send_raw()` (sealed per chunk).
+   Both ends must run the fixed client.
 2. **Direct-IP-by-address sessions are plaintext.** `Client::_start` returns a bare TCP
    stream for an `<ip>` or `<host>:<port>` peer and never calls `secure_connection`, so
    nothing anchors it — `nemo-peer-keys` is keyed by id, and an address has no id.
@@ -321,9 +322,9 @@ payload, LDAP, and the management API's login and policy poll. What is left:
    which TBFDesk ids are online.
 6. **The UDP `SoftwareUpdate` arm** answers any datagram, regardless of
    `--udp-registration`.
-7. **Frames of length ≤ 1 bypass decryption entirely** and do not advance the receive
-   counter — so they are unauthenticated on *every* otherwise-encrypted leg, and the
-   rendezvous loop treats an empty frame as a keep-alive to echo.
+7. ~~Frames of length ≤ 1 bypass decryption.~~ **Fixed 2026-09-27:** only the empty
+   keep-alive frame is exempt; a 1-byte frame is now a decryption error. The empty frame
+   carries nothing and is still echoed as a keep-alive.
 8. **The management API binds loopback as HTTP** by default (TLS keys off *routable OR
    ldap_enabled*), so the admin bearer token crosses `lo` in the clear — reachable by any
    local process or an SSH tunnel.

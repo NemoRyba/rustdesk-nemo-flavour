@@ -86,8 +86,8 @@ before reading any other document:
   keyed by TBFDesk id, so there is nothing to anchor an address to. With `nemo-require-encrypted-session`
   now ON by default the controlled side refuses such a connection rather than serving it in the clear,
   so the path is closed rather than encrypted. `direct-server` is off by default.
-- **Port-forward / RDP tunnels are plaintext always** — both ends call `set_raw()` after login, dropping
-  the cipher *and* the framing.
+- ~~Port-forward / RDP tunnels are plaintext~~ — fixed 2026-09-27: the tunnel stays encrypted. Both ends
+  must run the same client version for port forwarding.
 - **Layer 2 (LDAP) is off at shipped defaults** (`require_login` is `false`), so a logged-out technician
   whose machine holds a valid device key can still connect. Layer 1 is on; Layer 2 is opt-in.
 - **The management API is off at bare defaults** (`nemo-api` defaults `N`, bound to loopback). The
