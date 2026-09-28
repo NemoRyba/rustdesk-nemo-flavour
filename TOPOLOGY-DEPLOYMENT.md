@@ -29,9 +29,23 @@ Workstations stay **outbound-only** (no inbound rules on them). Forward only to 
 
 | Ext port | Proto | → Server | Purpose |
 |---|---|---|---|
-| 21116 | **TCP + UDP** | :21116 | hbbs rendezvous (both protocols) |
+| 21116 | TCP | :21116 | hbbs rendezvous |
 | 21117 | TCP | :21117 | hbbr relay (the on-path fast path) |
 | 21120 | TCP | :21120 | nemo-api: login, policy, address book |
+
+**UDP 21116 is deliberately not forwarded.** This row used to say "TCP + UDP". It no
+longer applies: `--udp-registration` defaults to `N`, so hbbs *refuses* plaintext UDP
+registration — that transport carries no key exchange and no device-key proof, so
+accepting it would bypass both `--key-exchange` and `require-device-key`. Clients default
+to `disable-udp=Y` to match, and hbbs skips its own UDP self-test because the arm it
+probes refuses by design. Forward UDP only if you deliberately pass `--udp-registration Y`.
+Unrelated to UDP hole punching, which is a separate client switch (`enable-udp-punch`) and
+is not implemented in this fork at all (see the bottom of this file).
+
+Ports **21115** (hbbs NAT-test helper) and **21118 / 21119** (websocket rendezvous/relay)
+stay unforwarded too. ws rendezvous is not merely unused — `rustdesk-server-nemo`'s
+`rendezvous_server.rs` refuses that branch outright, for the same "no key exchange, no
+device-key proof" reason.
 
 Double-router: outer forwards `ext → inner-WAN-IP:port`, inner forwards `port → server`. **Better:** bridge the inner router to one flat LAN (dumb AP) so it's a single forward and one predictable NAT — recommended in the roadmap (Phase 1.1a).
 
@@ -46,6 +60,16 @@ One client points at one rendezvous address, so location matters:
 ## Server config (already correct — verify after moving)
 
 - hbbs: `-r <server>:21117 --mask <covers-all-internal> -k _ --nemo-api Y --nemo-api-bind 0.0.0.0:21120 --nemo-api-token … --nemo-api-tls auto` (systemd `rustdesk-hbbs-nemo.service`).
+  The token is **mandatory, not advisory**: on a routable `--nemo-api-bind` hbbs exits at
+  startup with *"Refusing to bind Nemo management API to 0.0.0.0:21120 without
+  --nemo-api-token"*. Supply it as `NEMO_API_TOKEN=` in `/etc/tbfdesk/hbbs.env`, never on
+  the command line — argv is world-readable through `/proc` (SEC-11). The shipped unit
+  does this already, and hbbs accepts the underscore spelling precisely so an
+  `EnvironmentFile` (whose keys cannot contain dashes) is enough on its own.
+- hbbr needs the **same** signing key as hbbs (`-k _` + the shared `id_ed25519`); both log
+  an identical `Key:` line at startup, and a mismatch breaks relay pairing. Its relay
+  address must be routable — hbbr treats any loopback connection as its command port, so
+  a `127.0.0.1` relay address can never pair.
 - hbbr relay caps already lifted to 10 Gbit/s (`SINGLE_/TOTAL_/LIMIT_SPEED=10000`, systemd drop-in `rustdesk-hbbr-nemo.service.d/override.conf`) — so the on-path relay is not throttled.
 - When the server IP changes with the move: update the workstations' `custom-rendezvous-server`/`relay-server`/`api-server` (via managed policy or DNS), and hbbs `-r`.
 
