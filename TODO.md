@@ -41,6 +41,9 @@ Full detail, evidence and the still-open items: `../OPEN-POINTS-2026-09-21.md`.
   string "--force" as the value. Both fixed.
 - R6-14: the "Import device key" dialog now validates a paste against the real
   Ed25519 seed-derivation the server's own key generator uses, before committing it.
+- R6-12: no backward compatibility, by decision. An unstamped policy response
+  (issued_ts == 0) is now refused outright instead of exempted; the current server
+  has always stamped every response, so this costs nothing in practice.
 
 ## Open
 
