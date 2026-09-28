@@ -30,6 +30,18 @@ S-B sealing, M1, S-C, A4 and the L-items are the 2026-09-03 work in SECURITY-HAR
 
 Full detail, evidence and the still-open items: `../OPEN-POINTS-2026-09-21.md`.
 
+## Done (2026-09-28, later)
+
+- R6-2 removed: a user repointing their own client at a different server/key is
+  intended, not a defect.
+- R6-7: hbbs's key-generation race (two processes on a fresh host could each mint a
+  different key) closed with an atomic `hard_link` publish, no lock -- a threaded
+  test proves it can't deadlock and always converges on one key.
+- R6-13: `--option` with no key crashed; `--option key --force` wrote the literal
+  string "--force" as the value. Both fixed.
+- R6-14: the "Import device key" dialog now validates a paste against the real
+  Ed25519 seed-derivation the server's own key generator uses, before committing it.
+
 ## Open
 
 - Set a read-only **service account** (Bind DN + password) in Integration → LDAP so the directory picker can list domain users.
