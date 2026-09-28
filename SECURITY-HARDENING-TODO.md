@@ -286,12 +286,20 @@ section listed (S-B sealing, A4 pinning, M1 binding, S-C, the L-items, A1–A8) 
   version too. Verified live on loopback.
 - A request without `version` is still accepted (scripts); the admin UI always sends it.
 
-### H23/M13 — session eviction on permission change
+### H23/M13 — session eviction on permission change: fixed for real 2026-09-27
 - `evict_sessions_with_changed_permissions()` drops login sessions of users removed,
   disabled, or whose targets / admin flag / policy changed (ACL save and, since `897a00b`,
   the directory picker).
-- It drops the **login token** only. Established remote sessions keep running; cut them
-  with `/nemo/api/connections/cut`. Target checks were already live at connect time.
+- It used to drop the **login token** only, leaving established remote sessions running.
+  Server `e962e36` closes that gap: the eviction now also maps the dropped sessions'
+  device keys to their bound controller ids and issues a session revocation
+  (`terminate_all_authed_sessions`, the same lever `/nemo/api/connections/cut` pulls,
+  without blocking the target) to every workstation those controllers are connected to.
+  The workstation ends the session on its next policy poll (well under a minute).
+  Not yet exercised live end to end (needs two connected clients in a lab, tracked in
+  `../OPEN-POINTS-2026-09-21.md`).
+- Deleting a device key (M69) does the same, plus closes any open rendezvous connection
+  that authenticated with it on its next frame.
 
 ### H24 — main IPC authorization on Linux/macOS: REVERTED
 - Client `9e18fa9e1` added a uid + executable check on the `""` socket, on the premise
