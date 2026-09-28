@@ -58,7 +58,7 @@ Full detail, evidence and the still-open items: `../OPEN-POINTS-2026-09-21.md`.
 ## Open
 
 - Set a read-only **service account** (Bind DN + password) in Integration → LDAP so the directory picker can list domain users.
-- Client **window title** still "RustDesk" (APP_NAME rebrand deferred — needs `%APPDATA%` config migration).
+- ~~Client **window title** still "RustDesk"~~ **Done 2026-09-28:** all client window titles now show "TBFDesk" (main window since 2026-09-01; whiteboard, debug output box, and Linux elevation/error dialogs 2026-09-28). Internal `APP_NAME` rebrand still deferred — needs `%APPDATA%` config migration (see `RENAMING-PLAN.md`).
 - The 176 Linux host has only its policy-poll file updated (still base `10fc2b22f`); a full-parity Linux client would need a base-commit sync.
 
 ## Later Integration
