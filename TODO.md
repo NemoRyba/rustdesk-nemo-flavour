@@ -44,6 +44,16 @@ Full detail, evidence and the still-open items: `../OPEN-POINTS-2026-09-21.md`.
 - R6-12: no backward compatibility, by decision. An unstamped policy response
   (issued_ts == 0) is now refused outright instead of exempted; the current server
   has always stamped every response, so this costs nothing in practice.
+- R6-4: the integration config and sessions file are written atomically (temp +
+  fsync + rename), and a corrupt config is moved aside for inspection instead of
+  being silently overwritten by the next save.
+- R6-5: no connection to rustdesk.com, daily or otherwise, by decision. Removed the
+  last dead trace of the stock version-check request (both hbb_common copies), the
+  client's admin.rustdesk.com fallback when nothing is configured, the unreachable
+  default rendezvous-server entry on the server's hbb_common copy, and two reachable
+  UI link-outs (the "set up your own server" tip, the installer's EULA/privacy link).
+- R6-9: a disabled user's own `/api/currentUser` call is now refused too, matching
+  the check `/api/ab/get` already had.
 
 ## Open
 

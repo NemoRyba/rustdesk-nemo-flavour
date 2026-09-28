@@ -142,15 +142,16 @@ Step 2.1.2. Run the tests (known-good command). Give it a timeout of at least 30
 ```sh
 cd /projects/rustdesk/rustdesk-nemo-flavour/rustdesk-server-nemo && taskset -c 0-3,6,7,10,11,14-31 cargo test -j 12 2>&1 | tee /tmp/server-test.log | grep -E '^test result|FAILED|panicked|^error'
 ```
-Expect (the first line is the library tests; the count may be higher than 82, updated 2026-09-28):
+Expect (the first line is the library tests, the second the hbbr bin tests; the counts
+may be higher, updated 2026-09-28):
 ```
-test result: ok. 82 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in ...
-test result: ok. 2 passed; 0 failed; ...
+test result: ok. 81 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in ...
+test result: ok. 3 passed; 0 failed; ...
 test result: ok. 0 passed; 0 failed; ...
 test result: ok. 0 passed; 0 failed; ...
 test result: ok. 0 passed; 0 failed; ...
 ```
-Pass condition: every `test result:` line says `ok` and `0 failed`, and the first line says 82 or more passed.
+Pass condition: every `test result:` line says `ok` and `0 failed`, and the first line says 81 or more passed.
 Warnings (`warning: unused return value ...`) are normal.
 
 ### 2.2 Build the server binaries
@@ -202,9 +203,9 @@ cd /projects/rustdesk/rustdesk-nemo-flavour/rustdesk-client-nemo && VCPKG_ROOT=/
 ```
 Expect:
 ```
-test result: ok. 86 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in ...
+test result: ok. 87 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in ...
 ```
-Pass condition: `ok`, `0 failed`, 86 or more passed.
+Pass condition: `ok`, `0 failed`, 87 or more passed.
 
 ### 3.2 Build a runnable Linux client
 

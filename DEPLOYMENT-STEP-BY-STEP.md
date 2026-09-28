@@ -25,6 +25,14 @@ see "Not ready for production" at the end.
 - Port-forwarding (and RDP-over-port-forward) is now actually encrypted end to end.
   **Every workstation and every technician client must be upgraded together** — an old
   client talking to a new server (or the reverse) will fail to port-forward.
+- No connection to rustdesk.com anywhere, any more, by decision — the daily version
+  check, the client's fallback to RustDesk's own server when nothing is configured, and
+  two reachable UI links (a "set up your own server" tip, the installer's EULA link)
+  are all gone. Nothing to configure for this; it only matters if you were relying on
+  the old behavior for something (you shouldn't have been).
+- A management policy response with no `issued_ts` stamp is now refused outright — no
+  backward compatibility with a server predating anti-rollback protection. Only matters
+  if you somehow reintroduce such a server into the fleet, which is not supported.
 
 ---
 

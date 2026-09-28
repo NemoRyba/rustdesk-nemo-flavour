@@ -290,7 +290,7 @@ The server names every un-provisioned client in its log while it is off.
 
 ---
 
-## 5. Upgrading (2026-09-27 builds)
+## 5. Upgrading (2026-09-27/28 builds)
 
 Client and server move together. Before an upgrade, copy `/var/lib/rustdesk-server`
 (`id_ed25519`, `nemo_integration.json`, `nemo_sessions.json`, `nemo-api-cert.pem`,
@@ -304,18 +304,28 @@ Client and server move together. Before an upgrade, copy `/var/lib/rustdesk-serv
 - **API certificate pin**: hbbs pushes its self-signed certificate's fingerprint in the
   signed policy. If `nemo-api-cert.pem` is regenerated, every pinned client refuses the
   API until the pin is cleared on it. Restore the backed-up cert instead.
+- **No backward compatibility for an unstamped policy (2026-09-28):** a client now
+  refuses any management policy response with `issued_ts == 0` outright, instead of
+  accepting it. Every current server has always stamped this field, so this changes
+  nothing between current builds; it matters only if a much older, pre-anti-rollback
+  server is ever reintroduced into the fleet, which this fork explicitly does not support.
 
 Rollback is the same list in reverse: restore the state directory and the previous binaries
 on the server and on every client.
 
 ## What is not done
 
-- The Windows packaging script has **never been run** — there is no Windows host in this
-  environment. Expect to iterate on it the first time.
-- The Windows build itself is not reproducible: `build-run-windows-client.ps1` needs
-  `tools\vcpkg-120deac` and `tools\llvm-15.0.6`, which are gitignored and undocumented. A
-  packaging wrapper on a non-reproducible build gives a reproducible *wrapper*, not a
-  reproducible artifact.
+- The Windows **packaging/installer** script (`package-windows-client.ps1`) has never
+  been run. A raw cross-build (`cargo build --release --features
+  inline,hwcodec,vram`, no packaging) *was* verified in this environment on 2026-09-28,
+  built and run inside the project's own Windows VM (`vm/scripts/vmctl.sh`) — it compiled
+  clean and the resulting `rustdesk.exe` launched and rendered correctly. What remains
+  unverified is only the packaging step itself (the installer `.exe`, its licence-name
+  baking, and `install_me`'s folder-rename behaviour), not "no Windows host exists".
+- The Windows build itself is not reproducible outside that one prepared VM:
+  `build-run-windows-client.ps1` needs `tools\vcpkg-120deac` and `tools\llvm-15.0.6`,
+  which are gitignored and undocumented. A packaging wrapper on a non-reproducible build
+  gives a reproducible *wrapper*, not a reproducible artifact.
 - No `.deb`/`PKGBUILD` for a Linux client. `res/rpm.spec` is the sound template if one is
   ever wanted; `res/PKGBUILD` is broken for the sciter build (it only installs a binary
   under `if [[ ${FLUTTER} ]]`, leaving `/usr/bin/rustdesk` a dangling symlink). Note
