@@ -57,6 +57,15 @@ Full detail, evidence and the still-open items: `../OPEN-POINTS-2026-09-21.md`.
 
 ## Open
 
+- **New lab deployment target:** Ubuntu 24 VM, `85.126.226.2:1234` (SSH), user `dev`.
+  Owner wants the TBFDesk server (hbbs/hbbr) stood up there, following
+  `DEPLOYMENT-STEP-BY-STEP.md`. Owner supplied an SSH private key (as a
+  screenshot) and a sudo password for `dev`. **Not started yet** — waiting on
+  the key in reliable plain-text form (a screenshot of a private key is not
+  safe to transcribe by OCR; asked the owner to paste it as text instead, e.g.
+  via `! cat <path-to-key>` in the session). The key itself must never be
+  committed to this repo — keep it only in `~/.ssh/` or the session scratchpad
+  with `600` perms, gitignored.
 - Set a read-only **service account** (Bind DN + password) in Integration → LDAP so the directory picker can list domain users.
 - ~~Client **window title** still "RustDesk"~~ **Done 2026-09-28:** all client window titles now show "TBFDesk" (main window since 2026-09-01; whiteboard, debug output box, and Linux elevation/error dialogs 2026-09-28). Internal `APP_NAME` rebrand still deferred — needs `%APPDATA%` config migration (see `RENAMING-PLAN.md`).
 - The 176 Linux host has only its policy-poll file updated (still base `10fc2b22f`); a full-parity Linux client would need a base-commit sync.
