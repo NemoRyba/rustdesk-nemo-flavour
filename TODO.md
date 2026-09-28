@@ -21,6 +21,15 @@
 
 S-B sealing, M1, S-C, A4 and the L-items are the 2026-09-03 work in SECURITY-HARDENING-TODO.md.
 
+## Done (2026-09-27/28, the full re-sweep)
+
+- **CRITICAL:** port-forward/RDP tunnels now stay encrypted end to end (client `ad7a72f95`); 1-byte frames no longer bypass decryption (hbb_common `11ce3a9`/`1d49321`).
+- **HIGH:** missing signing key now stops hbbs/hbbr instead of minting a new one (server `469ac91`); stolen login tokens can't be replayed from another device on `/api/ab/get` or the policy poll, permission changes and device-key revocation now end live sessions, sealed login required by default (server `e962e36`); the client's TLS-fallback default is closed automatically via a server-pushed certificate pin (server `8007c34`); the client has no plaintext login fallback (client `d57037a47`).
+- **MEDIUM:** the settings dialog can no longer revert server-managed security state (client `fe84e78f3`); relay grants are minted only for sessions hbbs actually brokered (server `ef2fca7`); the integration config and sessions file are now written crash-safely (server `ef2fca7`); hbbs no longer phones home to api.rustdesk.com (server `c14d6c9`).
+- A locally-run "IPC authorization" change turned out to protect nothing (the socket was already 0600) and broke root CLI commands; reverted (client `feaf523f9`).
+
+Full detail, evidence and the still-open items: `../OPEN-POINTS-2026-09-21.md`.
+
 ## Open
 
 - Set a read-only **service account** (Bind DN + password) in Integration → LDAP so the directory picker can list domain users.

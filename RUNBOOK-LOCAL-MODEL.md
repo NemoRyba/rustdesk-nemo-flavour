@@ -142,15 +142,15 @@ Step 2.1.2. Run the tests (known-good command). Give it a timeout of at least 30
 ```sh
 cd /projects/rustdesk/rustdesk-nemo-flavour/rustdesk-server-nemo && taskset -c 0-3,6,7,10,11,14-31 cargo test -j 12 2>&1 | tee /tmp/server-test.log | grep -E '^test result|FAILED|panicked|^error'
 ```
-Expect (the first line is the library tests; the count may be higher than 77):
+Expect (the first line is the library tests; the count may be higher than 82, updated 2026-09-28):
 ```
-test result: ok. 77 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in ...
+test result: ok. 82 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in ...
 test result: ok. 2 passed; 0 failed; ...
 test result: ok. 0 passed; 0 failed; ...
 test result: ok. 0 passed; 0 failed; ...
 test result: ok. 0 passed; 0 failed; ...
 ```
-Pass condition: every `test result:` line says `ok` and `0 failed`, and the first line says 77 or more passed.
+Pass condition: every `test result:` line says `ok` and `0 failed`, and the first line says 82 or more passed.
 Warnings (`warning: unused return value ...`) are normal.
 
 ### 2.2 Build the server binaries
@@ -202,9 +202,9 @@ cd /projects/rustdesk/rustdesk-nemo-flavour/rustdesk-client-nemo && VCPKG_ROOT=/
 ```
 Expect:
 ```
-test result: ok. 84 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in ...
+test result: ok. 86 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in ...
 ```
-Pass condition: `ok`, `0 failed`, 84 or more passed.
+Pass condition: `ok`, `0 failed`, 86 or more passed.
 
 ### 3.2 Build a runnable Linux client
 
@@ -596,6 +596,66 @@ From the Windows VM, the host is `10.0.2.2` (use `10.0.2.2` instead of `127.0.0.
 
 `/projects/rustdesk/vm/scripts/h9-lab.sh up|probe|down` starts hbbs (31815), hbbr (31819), API `http://127.0.0.1:31820` (token `labtoken`) and one debug client, all from `target/debug`, in `/tmp/h9lab`. It stops its own processes safely with `down`.
 On 2026-09-27 this lab was running (ports 31814–31821 were listening). Check with `ss -ltnp | grep ':318'` before you start it.
+
+### 5.4 Two-peer connect / port-forward test (a real controller and a real controlled machine)
+
+Built and verified live on 2026-09-28. This is slower and more failure-prone than it
+looks; every gotcha below was hit for real in this session. Use the `nemo-peer2` /
+`nemo-peer3` containers (`vm/lab-clients/peer2-home`, `peer3-home` are bind-mounted to
+`/home/peer` inside them, and `/client` inside each is a **live, read-only bind mount**
+of `rustdesk-client-nemo` — a fresh host build is already the binary the container runs,
+no copy needed).
+
+1. **Do not run two clients as the same HOME on the bare host.** The main IPC socket is
+   `/tmp/RustDesk-<uid>/ipc`, keyed by UID only, not by `$HOME`. Two `rustdesk` processes
+   as the same Linux user will silently merge into one logical instance no matter what
+   `$HOME`/`$XDG_CONFIG_HOME` you give them. Always use two containers, two VMs, or two
+   different real users for a controller+controlled pair.
+2. `podman start nemo-peer2 nemo-peer3` (they use the `nemolab` bridge, so they reach
+   each other directly; `169.254.1.2` from inside either one reaches the HOST's own
+   published/listening ports — `nemo-api-bind`'s loopback-only bind is the one exception,
+   it is NOT reachable this way).
+3. Give each container's home a `RustDesk2.toml` (see 0.1's config shape) with
+   `custom-rendezvous-server = '<host-ip-or-169.254.1.2>:<PORT>'` — **the port is
+   mandatory** if it is not 21116; without it the client silently uses the compiled-in
+   default port and connects to the wrong (or no) server.
+4. Provision a **bound** device key for each: `POST /nemo/api/device-keys` with
+   `{"label":"...", "peer_id":"<the peer's TBFDesk id>"}` (you only learn the id after
+   the FIRST connect with an unbound key or by reading it off the GUI) — an unbound key
+   is refused once you also need it as a controller.
+5. Start the controlled side as an ordinary GUI client (`Xvfb` + the plain binary, no
+   flags). Screenshot it (`import -window <id>`) to read its **ID** and current
+   **one-time password** — both are plain text on the first screen.
+6. **The controller must ALSO be a persistent, already-registered peer before a
+   `--port-forward` session from it will be accepted** — `controller_policy_rejection`
+   in `nemo_management.rs` looks the controller up by id in the peer table, and a
+   one-shot `--port-forward` CLI invocation never calls `RegisterPeer` itself. Run the
+   controller's plain GUI client ONCE first (so it registers), THEN run
+   `--port-forward` from the SAME `$HOME` (it reuses the same persisted id/device key).
+7. **A freshly-registered peer defaults to blocked** (`status=0`). Call
+   `POST /nemo/api/peers/<id>/allow` for BOTH the controller and the controlled id
+   before the port-forward CLI will be let through — otherwise you get "controller is
+   blocked by TBF policy".
+8. The `--port-forward` CLI format is `<remote-id>:<local-port>:<remote-port>[:<remote-host>]`
+   as ONE colon-joined string, and the password is read from **stdin**, not a flag:
+   `./target/release/rustdesk --port-forward '<id>:<local>:<remote>:<host>' <<< '<otp>'`.
+   Its own log is NOT on stdout — it is a GUI/session process; read
+   `~/.local/share/logs/RustDesk/port-forward/rustdesk_rCURRENT.log` in that `$HOME`.
+   This opens a small GTK/session window with an empty Local-port/Remote-PC/Remote-port
+   table (the window title is literally the whole colon-joined string) — you still have
+   to fill the three fields and click "Hinzufügen" (or the localised equivalent) once;
+   the CLI only opens the window and authenticates, it does not add the row for you.
+9. Send a test payload through the tunnel with plain bash, no extra tools needed:
+   `exec 3<>/dev/tcp/127.0.0.1/<local-port>; printf 'MARKER' >&3; timeout 4 cat <&3`.
+10. UNVERIFIED / left unresolved on 2026-09-28: after several `hbbs` restarts in the
+    same lab session, a punch/relay request to an id that the admin API and the peer
+    database both reported `online: true` still failed with `PunchHole Failure:
+    ID_NOT_EXIST`. It looked like hbbs's in-memory peer/connection map disagreeing with
+    the persisted `db_v2.sqlite3` state after a restart, not a fault in the port-forward
+    code itself (the rendezvous handshake and OTP-based login worked correctly and
+    repeatedly right up to that point in every attempt). Do not spend more than one
+    retry on it: kill hbbs AND hbbr, delete the lab's `db_v2.sqlite3`, and start a fully
+    fresh pair rather than restarting hbbs alone mid-session.
 
 ---
 

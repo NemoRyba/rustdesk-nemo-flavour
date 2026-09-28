@@ -10,6 +10,8 @@ Company-focused RustDesk fork workspace for high-performance remote access to CA
 >
 > Working on this with a local model? Start with [`RUNBOOK-LOCAL-MODEL.md`](RUNBOOK-LOCAL-MODEL.md) (build, test, lab, VMs, GUI control).
 >
+> Deploying this yourself? [`DEPLOYMENT-STEP-BY-STEP.md`](DEPLOYMENT-STEP-BY-STEP.md) is the short, ordered version; [`DEPLOY.md`](DEPLOY.md) has the full detail.
+>
 > The open-items register is `../OPEN-POINTS-2026-09-21.md` (outside this repo; see *Known gaps* below).
 > `OPEN-TODOS.md` and `SECURITY-HARDENING-TODO.md` predate the September verification sweep and contain
 > items that have since been fixed, reverted, or found to be wrong — treat them as history, not as a list.
