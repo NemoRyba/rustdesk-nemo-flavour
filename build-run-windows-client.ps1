@@ -22,7 +22,7 @@ function Show-Usage {
     Write-Host "Optional:"
     Write-Host "  .\build-run-windows-client.ps1 -NoRun"
     Write-Host "  .\build-run-windows-client.ps1 -ForceBuild"
-    Write-Host "  .\build-run-windows-client.ps1 -LockedServerExe -ServerHost 192.168.0.176 -ServerKey '<key>'"
+    Write-Host "  .\build-run-windows-client.ps1 -LockedServerExe -ServerHost 192.168.1.14 -ServerKey '<key>'   # LAN; use 85.126.226.2 for internet clients"
     Write-Host ""
     Write-Host "Default no-argument mode launches plain rustdesk.exe, so server settings stay editable in the GUI."
     Write-Host "LockedServerExe mode launches a rustdesk-host=...,key=... executable, so the GUI server settings are read-only."

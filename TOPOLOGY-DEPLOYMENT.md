@@ -1,53 +1,124 @@
-# TBFDesk — Middle-Segment Server Deployment (prep)
+# TBFDesk — Middle-Segment (DMZ) Server Deployment
 
-**Status:** prep for when the two routers are set up. **Created 2026-09-02.**
+**Status:** the XCP-ng host moved into the middle segment on **2026-09-04**. Server = **192.168.1.14** (ubuntu24dev VM), public = **85.126.226.2**. Created 2026-09-02 as prep; rewritten 2026-09-04 for the real addresses. Apply script for the VM: [`scripts/vm-apply-server-address.sh`](scripts/vm-apply-server-address.sh).
 
-## The plan (yours) and the correction
+## Topology
 
-You said: *place the server between the two routers so hole punching can be possible, and the server can reach the workstation LANs.*
+```
+Internet 85.126.226.2 ── [Router A, OpenWrt, 192.168.1.1]
+                              │  192.168.1.0/24 = middle segment / DMZ
+                              ├── XCP-ng host        192.168.1.13
+                              ├── ubuntu24dev (VM)   192.168.1.14   hbbs :21115/21116, hbbr :21117, nemo-api :21120
+                              └── [Router B, OpenWrt, WAN 192.168.1.2 / LAN 192.168.0.1]
+                                       │  192.168.0.0/24 = office LAN
+                                       ├── pc2 (controller / dev box)  192.168.0.102
+                                       └── DC (LDAPS, DNS)              192.168.0.151
+```
 
-**The reach part is exactly right and it's the whole win. The "hole punching" part is a misconception worth catching now:**
+## The plan and the correction (unchanged from 2026-09-02, still true)
 
-- Putting the server in the middle segment, reachable to the workstation LANs, makes the server's **co-located relay an on-path, near-direct fast path** — and lets same-LAN peers connect **directly**. That is what gives you speed.
-- It does **not** enable internet hole-punching between a roaming controller and a workstation, for two reasons: (1) this fork's server **has no UDP hole-punch** (the rendezvous proto predates it — no `udp_port`/`is_udp`/`force_relay`), and (2) it deliberately **forces relay on a WAN↔LAN mismatch** (`rendezvous_server.rs` `peer_is_lan ^ is_lan`). Double-NAT punch is also unreliable in general.
-- **You don't need punch.** For a WAN controller → office workstation the traffic must cross the internet regardless; on-path relay adds only the one edge hop at the server (which sits at the office edge). The latency difference vs. a hypothetical direct punch is small, and punch would be fragile. **On-path relay + direct-LAN is the correct architecture here.**
+*Placing the server between the two routers so hole punching becomes possible and the server can reach the workstation LANs.* The **reach** part is the whole win; the **punch** part is a misconception:
 
-So: **middle-segment server ⇒ fast on-path relay for remote (WAN) sessions + true direct for same-LAN sessions.** Hole-punch stays an optional, gated, later optimization (see bottom).
+- This fork's hbbs has **no UDP hole-punch** (the UDP punch/hole/local-addr arms are disabled — upstream's reflection fix — and the proto predates `udp_port`/`force_relay`), and it deliberately **forces relay on a WAN↔LAN mismatch** (`rendezvous_server.rs` `peer_is_lan ^ is_lan`).
+- So a roaming controller → office workstation is **always relay**, but the relay sits on-path at the office edge: WAN→server is internet, server→workstation is LAN speed. Same-LAN peers connect **direct** (`FetchLocalAddr`).
 
-## What connects how (with this topology)
+**Middle-segment server ⇒ on-path relay for WAN sessions + true direct for LAN sessions.** Hole-punch stays a gated, later optimization (bottom of this file).
 
-| Controller | Target | Path the server chooses | Speed |
+| Controller | Target | Path hbbs chooses | Relay address handed out |
 |---|---|---|---|
-| On the office LAN (192.168.x) | Workstation on LAN | **direct** (LAN↔LAN → FetchLocalAddr) | LAN-native |
-| Roaming / internet (WAN) | Workstation on LAN | **relay** (forced by WAN↔LAN), on-path through the middle server | near-direct (server↔workstation is LAN-speed; only WAN→server is internet) |
+| Office LAN (192.168.0.x) | LAN workstation | **direct** (both inside `--mask`) | fallback relay = `--local-ip` (192.168.1.14) |
+| DMZ (192.168.1.x) | LAN workstation | direct attempt is **blocked by router B** (DMZ→LAN REJECT) → relay | `--local-ip` |
+| Internet | LAN workstation | **relay forced** (`peer_is_lan ^ is_lan`) | controller gets `-r` (85.126.226.2), workstation gets `--local-ip` |
+| Internet | Internet (roaming↔roaming) | punch attempt, relay fallback | `-r` |
 
-"LAN" = any address inside the hbbs `--mask` (currently `192.168.0.0/16`). Make sure the mask covers **every** internal segment (middle segment + workstation LANs). If a segment uses a different range (e.g. `10.0.0.0/8`), widen/add the mask.
+"LAN" = inside the hbbs `--mask` (`192.168.0.0/16` covers both 192.168.0.x and 192.168.1.x — keep it that way).
 
-## Router / forwarding (outer router → the server)
+## Routing between the office LAN and the DMZ (route, don't NAT)
 
-Workstations stay **outbound-only** (no inbound rules on them). Forward only to the **server**:
+Router B originally masqueraded the office LAN behind its WAN address and rejected everything from the DMZ. That means double NAT for the office (bad for hbbs, which then sees one IP for every workstation) and no path from the server to the DC. The correct setup:
 
-| Ext port | Proto | → Server | Purpose |
+**Router A (192.168.1.1)** — static route to the office LAN, fixed DMZ addresses:
+```sh
+uci add dhcp host; uci set dhcp.@host[-1].name='routerB'; uci set dhcp.@host[-1].mac='<router B WAN MAC>'; uci set dhcp.@host[-1].ip='192.168.1.2'
+uci add dhcp host; uci set dhcp.@host[-1].name='xcp';     uci set dhcp.@host[-1].mac='<XCP MAC>';          uci set dhcp.@host[-1].ip='192.168.1.13'
+uci add dhcp host; uci set dhcp.@host[-1].name='tbfdesk'; uci set dhcp.@host[-1].mac='<VM MAC>';           uci set dhcp.@host[-1].ip='192.168.1.14'
+uci add network route
+uci set network.@route[-1].interface='lan'
+uci set network.@route[-1].target='192.168.0.0/24'
+uci set network.@route[-1].gateway='192.168.1.2'
+# optional: DMZ DHCP clients learn the direct route (no hairpin via router A for VM→LAN replies)
+uci add_list dhcp.lan.dhcp_option='121,192.168.0.0/24,192.168.1.2'
+uci commit; /etc/init.d/network restart; /etc/init.d/dnsmasq restart
+```
+
+**Router B (192.168.0.1)** — static WAN, masquerade OFF, one DMZ→LAN hole (server → DC LDAPS):
+```sh
+uci set network.wan.proto='static'; uci set network.wan.ipaddr='192.168.1.2'; uci set network.wan.netmask='255.255.255.0'
+uci set network.wan.gateway='192.168.1.1'; uci set network.wan.dns='192.168.1.1'
+uci set firewall.@zone[1].masq='0'          # check the index: uci show firewall | grep "name='wan'"
+uci add firewall rule
+uci set firewall.@rule[-1].name='tbfdesk-server-to-DC-ldaps'
+uci set firewall.@rule[-1].src='wan';  uci set firewall.@rule[-1].src_ip='192.168.1.14'
+uci set firewall.@rule[-1].dest='lan'; uci set firewall.@rule[-1].dest_ip='192.168.0.151'
+uci set firewall.@rule[-1].proto='tcp'; uci set firewall.@rule[-1].dest_port='636'
+uci set firewall.@rule[-1].target='ACCEPT'
+uci commit; /etc/init.d/network restart; /etc/init.d/firewall restart
+```
+Keep router B's wan zone at input/forward **REJECT** — once the DMZ is internet-facing this is the defense in depth: a compromised server reaches the DC on 636 and nothing else. Optional (only if the VM should be a *controller* of LAN workstations with a direct path): a second rule `src=wan src_ip=192.168.1.14 dest=lan proto=tcp dest_port=21118` — otherwise those sessions simply relay.
+
+**Verify:** on pc2 `tracert 192.168.1.14` (1 hop), `curl -k https://192.168.1.14:21120/nemo/admin`; on the VM `nc -zv 192.168.0.151 636`. Don't use ping from the VM to pc2 as the test — the Windows firewall answers ICMP only from its own subnet, and router B rejects unsolicited DMZ→LAN anyway.
+
+## Two addresses, one server (LAN 192.168.1.14 vs public 85.126.226.2)
+
+hbbs already has the mechanism (upstream issue #24 — `rendezvous_server.rs` lines ~629–634 and ~934–937):
+
+- `-r <relay>` is what **non-LAN** peers are told to use → must be the **public** address: `-r 85.126.226.2:21117`.
+- `--local-ip <ip>` is what **LAN** peers (inside `--mask`) are told to use → `--local-ip 192.168.1.14`. (Auto-detected from the default route when omitted; set it explicitly.)
+- In the `RelayResponse` fix-up the server string-compares the workstation's chosen relay with `local_ip` and swaps in `-r` for an internet controller. So a workstation's `relay-server` option must be **exactly `192.168.1.14`** (no `:port`) or empty — never `192.168.1.14:21117`.
+- The controller side has no override: it connects to whatever relay hbbs delivers (`client.rs create_relay`). The controlled side's own `relay-server` option overrides the delivered one (`rendezvous_mediator.rs get_relay_server`).
+
+hbbs ExecStart (systemd `rustdesk-hbbs-nemo.service` on the VM):
+```
+hbbs -r 85.126.226.2:21117 --local-ip 192.168.1.14 --mask 192.168.0.0/16 -k _ --nemo-api Y --nemo-api-bind 0.0.0.0:21120 --nemo-api-token <token> --nemo-api-tls auto
+```
+hbbr unchanged (caps lifted to 10 Gbit/s in `rustdesk-hbbr-nemo.service.d/override.conf`).
+
+**Client config split:**
+
+| Client | `custom-rendezvous-server` | `relay-server` | `api-server` / `nemo-management-server` |
 |---|---|---|---|
-| 21116 | **TCP + UDP** | :21116 | hbbs rendezvous (both protocols) |
-| 21117 | TCP | :21117 | hbbr relay (the on-path fast path) |
-| 21120 | TCP | :21120 | nemo-api: login, policy, address book |
+| Office LAN + DMZ (pc2, the VM's own host client `dev` + `gdm`) | `192.168.1.14` | `192.168.1.14` | `https://192.168.1.14:21120` |
+| Internet / roaming | `85.126.226.2` | `85.126.226.2` (or empty → hbbs hands out `-r`) | `https://85.126.226.2:21120` |
 
-Double-router: outer forwards `ext → inner-WAN-IP:port`, inner forwards `port → server`. **Better:** bridge the inner router to one flat LAN (dumb AP) so it's a single forward and one predictable NAT — recommended in the roadmap (Phase 1.1a).
+Locked-exe names for the two cases (the login gate's *Server* field sets the rendezvous + api + management keys from one value; `relay=` in the exe name sets `relay-server`):
+- LAN: `rustdesk-host=192.168.1.14,key=XsN4Zx48nKhoIkVgHxPyIqtY07bHa68hW9pMIBv7Ahc=,relay=192.168.1.14,.exe`
+- Internet: `rustdesk-host=85.126.226.2,key=XsN4Zx48nKhoIkVgHxPyIqtY07bHa68hW9pMIBv7Ahc=,relay=85.126.226.2,.exe`
 
-## Client config split (important)
+**Dashboard → Global client defaults → `api-server`:** leave it EMPTY while LAN and internet clients use different addresses — it is one value pushed to every client and would break whichever side it doesn't match. Set it once a DNS name exists.
 
-One client points at one rendezvous address, so location matters:
+**DNS name (the real fix, do it early):** one name, e.g. `tbfdesk.<domain>`, resolving to `192.168.1.14` inside (A record on the DC's DNS; router B forwards LAN DNS to the DC / router A's dnsmasq gets a `host-record` for DMZ hosts) and to `85.126.226.2` outside (public DNS). Then every client, the locked-exe name, `-r` (`-r tbfdesk.<domain>:21117` — resolved per client, so the same split applies to the relay) and the certificate use the same string, and nothing is re-keyed when an address changes. The self-signed nemo-api cert has SANs `localhost` + hostname only (`nemo_management.rs resolve_rustls`), so name-based TLS validation needs a CA-signed cert (`--nemo-api-tls-cert/-key`) or the A4 fingerprint pin (`nemo-api-cert-fingerprint`).
 
-- **Controlled workstations (on the LAN):** `custom-rendezvous-server` = the server's **LAN IP** (`192.168.0.176`), `relay-server` = same, `api-server` = `https://192.168.0.176:21120`. (This is already how they're set.)
-- **Roaming / WAN controllers:** the server's **public IP** (the outer router's WAN address) or a hostname.
-- **Cleanest:** a **split-horizon DNS** name (e.g. `tbfdesk.yourco.com`) that resolves to the LAN IP inside and the public IP outside — then every client uses the same address and just works from either side. Push it to all clients via the managed policy (`api-server` / `custom-rendezvous-server`). Do this once and never re-key clients when the WAN IP changes (also bake it into the locked-exe name).
+## Internet exposure (router A port forwards → 192.168.1.14 only)
 
-## Server config (already correct — verify after moving)
+Workstations stay **outbound-only**; nothing is ever forwarded to a workstation. Forward to the server only:
 
-- hbbs: `-r <server>:21117 --mask <covers-all-internal> -k _ --nemo-api Y --nemo-api-bind 0.0.0.0:21120 --nemo-api-token … --nemo-api-tls auto` (systemd `rustdesk-hbbs-nemo.service`).
-- hbbr relay caps already lifted to 10 Gbit/s (`SINGLE_/TOTAL_/LIMIT_SPEED=10000`, systemd drop-in `rustdesk-hbbr-nemo.service.d/override.conf`) — so the on-path relay is not throttled.
-- When the server IP changes with the move: update the workstations' `custom-rendezvous-server`/`relay-server`/`api-server` (via managed policy or DNS), and hbbs `-r`.
+| Ext port | Proto | → 192.168.1.14 | Purpose | When |
+|---|---|---|---|---|
+| 21115 | TCP | :21115 | hbbs NAT-type test | now |
+| 21116 | TCP + UDP | :21116 | hbbs rendezvous (TCP punch/relay negotiation, UDP registration heartbeat) | now |
+| 21117 | TCP | :21117 | hbbr relay — the on-path fast path | now |
+| 21118 / 21119 | TCP | same | WebSocket clients | only if enabled |
+| 21120 | TCP | :21120 | nemo-api: login, policy, address book, **and the admin dashboard** | only with a CA cert or the fingerprint pin enforced AND `allow-insecure-tls-fallback` OFF — until then reach it over WireGuard |
+
+```sh
+# router A — one entry per row above (repeat with proto='udp' for 21116)
+uci add firewall redirect; uci set firewall.@redirect[-1].name='tbfdesk-21116-tcp'; uci set firewall.@redirect[-1].src='wan'
+uci set firewall.@redirect[-1].src_dport='21116'; uci set firewall.@redirect[-1].dest='lan'; uci set firewall.@redirect[-1].dest_ip='192.168.1.14'
+uci set firewall.@redirect[-1].dest_port='21116'; uci set firewall.@redirect[-1].proto='tcp'; uci set firewall.@redirect[-1].target='DNAT'
+```
+Leave fw4's default NAT reflection on: a LAN client mis-configured with the public address still works (hairpinned through router A, source rewritten to router A's LAN IP — inside the mask, so hbbs still treats it as LAN).
+
+Admin access from outside (dashboard, XCP-ng, SSH): **WireGuard on router A**, never port forwards. A road-warrior on WireGuard is simply "inside" and gets direct-IP access and LAN discovery too. Before 21120 goes public, also split the admin API from the client API (reverse proxy passing only `/api/*`, or a server-side `/nemo/*` source allowlist — small feature, not built).
 
 ## Validate when the topology is up (harness is ready)
 
@@ -59,4 +130,4 @@ Use `e2e/`:
 
 ## Only if on-path relay misses targets — the hole-punch task (Phase 1.4, deferred)
 
-Substantial, gated, and probably unnecessary here. Would require: fork `hbb_common`, add `udp_port`/`is_udp`/`force_relay` to the rendezvous proto, implement the `TestNatRequest` UDP arm + `handle_hole_sent` routing in `rendezvous_server.rs`, make the WAN↔LAN relay-forcing conditional, and flip the client's `enable-udp-punch` default. Do not start this unless measurements demand it.
+Substantial, gated, and probably unnecessary here. Would require: `hbb_common` proto fields `udp_port`/`is_udp`/`force_relay`, re-enabling a hardened `TestNatRequest` UDP arm + `handle_hole_sent` routing in `rendezvous_server.rs` (without reopening the reflection vector upstream closed), making the WAN↔LAN relay-forcing conditional, and flipping the client's `enable-udp-punch` default. Do not start this unless measurements demand it.

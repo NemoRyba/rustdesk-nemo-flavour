@@ -2,6 +2,9 @@
 
 Written for a fresh session. Read this first, then `.claude` memory `nemo-tdd-progress`.
 
+## ⚠️ TOPOLOGY 2026-09-04 — the server is no longer 192.168.0.176
+The XCP-ng host moved into the middle segment between the two OpenWrt routers. **Server VM = `192.168.1.14`** (SSH `dev@192.168.1.14`), XCP host `192.168.1.13`, **public `85.126.226.2`**; office LAN stays `192.168.0.0/24` (pc2 `.102`, DC `.151`) behind router B (`192.168.0.1`, WAN `192.168.1.2`). Every "176" below means that VM at its new address. Routing, hbbs `-r`/`--local-ip` rules and the LAN-vs-public client split are in [`TOPOLOGY-DEPLOYMENT.md`](TOPOLOGY-DEPLOYMENT.md); the VM-side changes are scripted in [`scripts/vm-apply-server-address.sh`](scripts/vm-apply-server-address.sh). pc2's `RustDesk2.toml` already points at `192.168.1.14` (backup `RustDesk2.toml.bak-2026-09-04`).
+
 ## ⭐ EOD STATE 2026-09-02 (supersedes the per-section notes below where they conflict)
 - **Everything is COMMITTED + PUSHED** (client + server → GitHub NemoRyba `nemo-tdd`, super → 176 bare `ubuntu`); the server change is DEPLOYED and the **176 working checkout is reconciled** to the pushed HEADs (residue: live db, runtime files, unfetchable hbb_common gitlink).
 - **The open-work source of truth is [`OPEN-TODOS.md`](OPEN-TODOS.md)** — every item there was VERIFIED against code/live state on 2026-09-02. Top: S-B+H4 (management-plane trust: pinned/CA cert + sealed policy responses), then the TBF update server (un-greys the dormant auto-update row).
@@ -75,10 +78,10 @@ Server (GitHub NemoRyba, nemo-tdd, HEAD `b61e4df`… then `2a3ef79`; LIVE on 176
 Docs: `SPEED-AND-CODEC-RESEARCH.md`, `SECURITY-HARDENING-TODO.md` (S-A closed), `OPEN-TODOS.md`, `build-client-fast.cmd`.
 
 ## 4. Recipes
-- **Client fast build:** `.\build-run-windows-client.ps1 -Fast -NoRun` (kill `rustdesk.exe` first so staging can copy). Then screenshot (§0). To keep pc2's controlled side up + refresh the controller download: copy `run-windows-client\rustdesk.exe` to `run-windows-client\rustdesk-host=85.126.226.2,key=XsN4Zx48nKhoIkVgHxPyIqtY07bHa68hW9pMIBv7Ahc=,relay=85.126.226.2,.exe` and `Start-Process` the plain exe.
+- **Client fast build:** `.\build-run-windows-client.ps1 -Fast -NoRun` (kill `rustdesk.exe` first so staging can copy). Then screenshot (§0). To keep pc2's controlled side up + refresh the controller downloads: copy `run-windows-client\rustdesk.exe` to the two locked names — LAN `run-windows-client\rustdesk-host=192.168.1.14,key=XsN4Zx48nKhoIkVgHxPyIqtY07bHa68hW9pMIBv7Ahc=,relay=192.168.1.14,.exe` and internet `run-windows-client\rustdesk-host=85.126.226.2,key=XsN4Zx48nKhoIkVgHxPyIqtY07bHa68hW9pMIBv7Ahc=,relay=85.126.226.2,.exe` — and `Start-Process` the plain exe.
 - **TIScript parse check (catches black-screens):** launch with `-RedirectStandardError err.txt`, grep `ERROR:TIS`. Runs on load; dialog-only code (render) isn't exercised until the dialog opens.
-- **Server deploy to 176 (no sudo):** scp the file, `diff -w` vs live to confirm only your edits, `cp` over it, `cargo build --release` with `DATABASE_URL=sqlite://./<copy>` (live db is locked), then `kill -9 $(pgrep hbbs)` (User=dev, Restart=on-failure → systemd relaunches the new binary). Verify `systemctl is-active`.
-- Server key `XsN4Zx48nKhoIkVgHxPyIqtY07bHa68hW9pMIBv7Ahc=`; api token `nemo-admin-2026`; 176 checkout `~/work/rustdesk-nemo-flavour/` (git divergent — don't touch its git, only working files + binary).
+- **Server deploy to the VM (`dev@192.168.1.14`, no sudo):** scp the file, `diff -w` vs live to confirm only your edits, `cp` over it, `cargo build --release` with `DATABASE_URL=sqlite://./<copy>` (live db is locked), then `kill -9 $(pgrep hbbs)` (User=dev, Restart=on-failure → systemd relaunches the new binary). Verify `systemctl is-active`.
+- Server key `XsN4Zx48nKhoIkVgHxPyIqtY07bHa68hW9pMIBv7Ahc=`; api token `nemo-admin-2026`; dashboard `https://192.168.1.14:21120/nemo/admin`; VM checkout `~/work/rustdesk-nemo-flavour/` (git divergent — don't touch its git, only working files + binary).
 
 ## 5. User's standing instructions (this session)
 - **DO NOT commit/push** until explicitly told ("i will tell you to do it"). Code is committed up to the HEADs in §3; anything after is uncommitted on disk.

@@ -147,7 +147,7 @@ script). Rust **1.75** is required for the Sciter bindings.
 The Flutter CI workflows in the client fork (`Flutter Nightly/Tag/Full`) remain available
 for the upstream Flutter path, but that is not the path used here.
 
-### 176 Linux controlled host
+### Linux controlled host on the server VM (192.168.1.14)
 
 The persistent Linux host (`rustdesk-nemo.service` → `/opt/nemo-rustdesk/rustdesk`) is
 built with the Ubuntu notes above and Rust 1.75:

@@ -61,8 +61,19 @@ Forked to **github.com/NemoRyba/hbb_common** (public) + a **176 bare mirror** (`
 
 ## NEEDS THE USER / infrastructure (not verifiable from the dev box)
 
-### 11. WAN/NAT path measurement + per-workstation codec tuning
-Needs the real double-NAT topology and a person at both ends (e2e/ harness is ready). Related: both OpenWrt 19.07.1 routers are EOL — upgrade (S10) before topology changes.
+### 11. Topology move 2026-09-04 — server VM is now `192.168.1.14` (DMZ), public `85.126.226.2`  *(IN PROGRESS)*
+Design + router commands: [TOPOLOGY-DEPLOYMENT.md](TOPOLOGY-DEPLOYMENT.md). Checklist:
+- [ ] Router A: static route `192.168.0.0/24 via 192.168.1.2`, DHCP reservations for `.2/.13/.14`. Router B: static WAN, wan-zone `masq=0`, ACCEPT rule `192.168.1.14 → 192.168.0.151 tcp/636` (LDAPS — without it every login fails).
+- [ ] VM: `sudo -E bash scripts/vm-apply-server-address.sh` (hbbs `-r 85.126.226.2:21117 --local-ip 192.168.1.14`, dev+gdm client configs → `192.168.1.14`, restart, reachability check).
+- [x] pc2 `RustDesk2.toml` → `192.168.1.14` (done 2026-09-04; backup kept). Then log in on the client and screenshot-verify the new *Sync clipboard between sessions* row.
+- [ ] Dashboard → Global client defaults: keep `api-server` EMPTY until a DNS name exists (one value can't serve LAN + internet clients).
+- [ ] Router A port forwards → `192.168.1.14`: TCP 21115/21116/21117 + UDP 21116 now; **21120 only after** the cert pin (#1) is enforced and `allow-insecure-tls-fallback` is off fleet-wide, or reach it via WireGuard. Never forward to a workstation.
+- [ ] DNS name (split horizon: `192.168.1.14` inside via the DC, `85.126.226.2` outside) → then use it in `-r`, all client configs, the locked-exe names, and the cert.
+- [ ] Optional server feature before 21120 goes public: source allowlist for `/nemo/*` (admin API + dashboard) so only LAN/VPN reaches it while `/api/*` stays open to clients.
+- Whereabouts of the second VM (was `192.168.0.179`) after the move: unknown — decide whether it comes back as `192.168.1.x`.
+
+### 11b. WAN/NAT path measurement + per-workstation codec tuning
+Needs the real topology (now in place, see 11) and a person at both ends (e2e/ harness is ready). Related: both OpenWrt 19.07.1 routers are EOL — upgrade (S10) before exposing the DMZ to the internet.
 
 ---
 
