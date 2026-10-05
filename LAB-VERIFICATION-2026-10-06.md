@@ -101,6 +101,57 @@ the remote screen; this run bounds the path, not the codec.
 
 ---
 
+## 3b. Access control — enforced, in both directions
+
+Tested by flipping policy on the live server and attempting a real connection each time.
+The client messages are specific, not generic failures:
+
+| Scenario | Server event | What the operator sees |
+|---|---|---|
+| Target blocked | `policy-rejection: target peer is not allowed by TBF policy` | *"target peer is not allowed by TBF policy"* |
+| Controller blocked | `policy-rejection: peer is blocked` | *"Outgoing connections are disabled by TBF policy"* |
+
+A blocked peer is also refused at **registration** (`register-pk: public key rejected`), not
+just at connect time — so it cannot re-announce itself while blocked.
+
+### …but blocking does NOT cut a session already running
+
+With a live session up, blocking the target and waiting: the controlled side's connection
+manager still showed the session connected, timer advancing **00:26:18 → 00:27:13**.
+
+This confirms `OPEN-TODOS.md` #6 ("cut only blocks NEW connections") as real, and sharpens
+it: it holds **even for a relayed session**, where hbbr *is* on the data path — once hbbr
+has paired the two sockets it forwards blindly, so there is no point at which revocation
+takes effect. Operationally: revoking a compromised technician does not disconnect them;
+they stay connected until they hang up or the processes are killed. Worth knowing before
+anyone treats the Block button as an incident-response control.
+
+## 3c. Port forwarding / RDP tunnel — encrypted in source, NOT provable on the wire here
+
+The CRITICAL fix is present and correct in source: `src/port_forward.rs` makes **zero**
+calls to `set_raw()`, and its comment documents exactly the old failure ("both ends used to
+call set_raw() here, dropping the session cipher AND the framing"). The stream stays framed
+and encrypted — `send_raw()` seals each chunk, `next()` opens it.
+
+**But I could not confirm it on the wire**, because the tunnel never carried data. Driving
+the port-forward UI (local 19999 → remote `127.0.0.1:9999`, against a canary echo server)
+produced a listening local socket and a real session — hbbs brokered it and the controlled
+side logged `new connection #37: 91090423` — after which the controlled side's
+per-connection child process **panicked**:
+
+```
+thread 'main' panicked at library/std/src/thread/local.rs:429:25:
+cannot access a Thread Local Storage value during or after destruction: AccessError
+```
+
+The canary was never dialled, and two tunnel attempts timed out. The main client process
+survives; desktop sessions over the same build are unaffected (one ran 27 minutes). So this
+is specific to the port-forward path on the **Linux** controlled side in this headless
+(Xvfb) lab. Production targets are Windows, so this may not affect the real deployment —
+but **RDP-over-port-forward should be proven on a Windows target before anyone relies on
+it**, and until then the end-to-end encryption of that path is a code claim, not a measured
+one.
+
 ## 4. Other things confirmed working
 
 - Both clients authenticate with `auth_mode=device-key` — the rollout instrument from
@@ -132,6 +183,11 @@ the remote screen; this run bounds the path, not the codec.
   *"presented no valid device key"* refusal immediately before each successful
   registration. Harmless today (the retry succeeds) but it matches known gap #1 in
   `REQUIREMENTS-SECURITY-LAYERS.md` and is noise in the log.
+- **Blocking does not end a session in progress** (§3b) — the one finding here with real
+  operational weight, because it makes the Block button useless for incident response.
+- **The port-forward path crashes the Linux controlled side's connection handler** (§3c),
+  so that tunnel's encryption is source-verified only. Prove it on Windows before relying
+  on RDP-over-tunnel.
 - The one-time password **rotates after every successful session**, so automation needs a
   permanent password — which `--password` refuses to set without `is_installed() && is_root()`.
 - Screen capture on the lab VM needs `RUSTDESK_FORCED_DISPLAY_SERVER=x11`, because its
