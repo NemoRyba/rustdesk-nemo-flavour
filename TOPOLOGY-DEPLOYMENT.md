@@ -83,6 +83,19 @@ hbbs -r 85.126.226.2:21117 --local-ip 192.168.1.14 --mask 192.168.0.0/16 -k _ --
 ```
 hbbr unchanged (caps lifted to 10 Gbit/s in `rustdesk-hbbr-nemo.service.d/override.conf`).
 
+Two things that are start-time hard failures or silent pairing breaks, not preferences:
+
+- **The API token is mandatory, not advisory.** On a routable `--nemo-api-bind`, hbbs
+  exits at startup with *"Refusing to bind Nemo management API to 0.0.0.0:21120 without
+  --nemo-api-token"*. Supply it as `NEMO_API_TOKEN=` in `/etc/tbfdesk/hbbs.env`, **never**
+  on the command line — argv is world-readable through `/proc` (SEC-11). The shipped unit
+  does this already, and hbbs accepts the underscore spelling precisely so an
+  `EnvironmentFile` (whose keys cannot contain dashes) suffices on its own.
+- **hbbr needs the SAME signing key as hbbs** (`-k _` + the shared `id_ed25519`); both log
+  an identical `Key:` line at startup, and a mismatch breaks relay pairing silently. Its
+  relay address must also be routable — hbbr treats any loopback connection as its command
+  port, so a `127.0.0.1` relay address can never pair.
+
 **Client config split:**
 
 | Client | `custom-rendezvous-server` | `relay-server` | `api-server` / `nemo-management-server` |
@@ -105,13 +118,28 @@ Workstations stay **outbound-only**; nothing is ever forwarded to a workstation.
 | Ext port | Proto | → 192.168.1.14 | Purpose | When |
 |---|---|---|---|---|
 | 21115 | TCP | :21115 | hbbs NAT-type test | now |
-| 21116 | TCP + UDP | :21116 | hbbs rendezvous (TCP punch/relay negotiation, UDP registration heartbeat) | now |
+| 21116 | TCP | :21116 | hbbs rendezvous (TCP punch/relay negotiation) | now |
 | 21117 | TCP | :21117 | hbbr relay — the on-path fast path | now |
 | 21118 / 21119 | TCP | same | WebSocket clients | only if enabled |
 | 21120 | TCP | :21120 | nemo-api: login, policy, address book, **and the admin dashboard** | only with a CA cert or the fingerprint pin enforced AND `allow-insecure-tls-fallback` OFF — until then reach it over WireGuard |
 
+**UDP 21116 is deliberately NOT forwarded.** This row used to say "TCP + UDP"; that has
+been wrong since `--udp-registration` landed with a default of `N` (verified in
+`rendezvous_server.rs:287`). hbbs *refuses* plaintext UDP registration — that transport
+carries no key exchange and no device-key proof, so honouring it would bypass both
+`--key-exchange` and `require-device-key`. Clients default to `disable-udp=Y` to match,
+and hbbs skips its own UDP self-test (`:401`) because the arm it probes refuses by
+design. Forwarding it buys an edge-firewall hole for nothing. Forward UDP only if you
+deliberately pass `--udp-registration Y`. Unrelated to UDP hole punching, which is a
+separate client switch (`enable-udp-punch`) and is not implemented in this fork at all
+(see the bottom of this file).
+
+`21115` and `21118`/`21119` are listed above for completeness but stay unforwarded in
+practice: ws rendezvous is not merely unused — `rendezvous_server.rs` refuses that branch
+outright, for the same "no key exchange, no device-key proof" reason.
+
 ```sh
-# router A — one entry per row above (repeat with proto='udp' for 21116)
+# router A — one entry per row above (all TCP; see the UDP note below)
 uci add firewall redirect; uci set firewall.@redirect[-1].name='tbfdesk-21116-tcp'; uci set firewall.@redirect[-1].src='wan'
 uci set firewall.@redirect[-1].src_dport='21116'; uci set firewall.@redirect[-1].dest='lan'; uci set firewall.@redirect[-1].dest_ip='192.168.1.14'
 uci set firewall.@redirect[-1].dest_port='21116'; uci set firewall.@redirect[-1].proto='tcp'; uci set firewall.@redirect[-1].target='DNAT'

@@ -45,9 +45,12 @@ production layout:
    paths and (later) hole punching predictable.
 2. **Server VM near the workstations**, on the LAN. Run `hbbs` (rendezvous) and
    `hbbr` (relay) on it.
-3. **Outer router: forward only to the server VM** — `21116/tcp`, `21116/udp`
-   (hbbs), `21117/tcp` (hbbr). Workstations need **no** inbound rules; they only
-   connect outbound.
+3. **Outer router: forward only to the server VM** — `21116/tcp` (hbbs),
+   `21117/tcp` (hbbr), `21120/tcp` (nemo-api). Workstations need **no** inbound
+   rules; they only connect outbound. `21116/udp` is **not** forwarded:
+   `--udp-registration` defaults to `N`, so hbbs refuses plaintext UDP
+   registration (no key exchange, no device-key proof on that transport) and
+   clients default to `disable-udp=Y`. See `TOPOLOGY-DEPLOYMENT.md`.
 4. **Keys.** Generate one server keypair, configure every client with the
    matching public key. For local testing, the simplest is to run `hbbs -k <pub>`
    with the same key baked into the client (locked-exe filename or
