@@ -184,16 +184,52 @@ packet    = encoded minus its leading "U2FsdGVkX1"
 The HMAC covering the form *with* the `Salted__` prefix — which is not the string that goes
 on the wire — is the one non-obvious detail; the daemon re-adds the prefix before checking.
 
-Two tests pin this down, and they are the contract with `fwknopd`:
+Three tests pin this down, and they are the contract with `fwknopd`:
 
 - `spa_matches_a_real_fwknop_packet` — decrypts a datagram fwknop itself produced and
   recovers every field.
 - `spa_encoder_reproduces_the_real_fwknop_packet` — given fwknop's own nonce, timestamp and
   salt, our encoder emits **byte-identical** output. If this ever fails, `fwknopd` has
   stopped accepting our knocks.
+- `knock_is_accepted_by_a_live_fwknopd` — `#[ignore]`d, because it needs a daemon running.
+  Sends a real knock through the production `knock()` path and lets `fwknopd` judge it. The
+  test body carries the one-liner to start a daemon unprivileged (UDP server mode binds a
+  high port, `-t` skips the firewall commands), so this is re-runnable in a few seconds.
 
 Being wire-compatible means the audited daemon decides whether a knock is genuine. We never
 have to be that authority.
+
+### Verified against the real daemon, 2026-10-07
+
+`fwknopd 2.6.11` in UDP + test mode, three knocks from our `knock()`, each accepted:
+
+```
+udp_server: Got UDP datagram (204 bytes) from: 127.0.0.1
+(stanza #1) SPA Packet from IP: 127.0.0.1 received with access source match
+[127.0.0.1] (stanza #1) SPA Decode (res=0):
+   Random Value: 5481073202948673      Message Type: 1 (Access msg)
+       Username: nemo                Message String: 0.0.0.0,tcp/21118
+      Timestamp: 1791324349             Digest Type: 3 (SHA256)
+    FKO Version: 3.0.0                    HMAC Type: 3 (SHA256)
+                                    Encryption Type: 1 (Rijndael) / CBC
+[127.0.0.1] (stanza #1) --test mode enabled, skipping firewall manipulation.
+```
+
+`res=0` is a full success: HMAC verified, decryption succeeded, every field recovered, and
+it would have opened `tcp/21118`. Three distinct random values, no replay rejections — the
+nonce varies correctly in practice.
+
+Negative control, so the accepts mean something — the reference `fwknop` client with a
+**wrong** HMAC key against the same daemon:
+
+```
+Error creating fko context: Args contain invalid data: FKO_ERROR_INVALID_DATA_HMAC_COMPAREFAIL
+(stanza #1) Non-corresponding HMAC for this stanza
+```
+
+The daemon is genuinely enforcing. **The knock half is proven end-to-end against the real
+daemon**; what is still untested is the knock opening an actual firewall rule on a real
+edge, which needs a router that can host `fwknopd` (`OPEN-TODOS.md` 11c).
 
 Crypto comes from `aes`/`cbc`/`md-5`/`hmac`/`sha2` (RustCrypto), all already in the lock
 file. Not `openssl`, despite it having `pkcs5::bytes_to_key` ready-made: this crate only
@@ -227,8 +263,18 @@ On the daemon side, `fwknopd -f -v` logs each accepted SPA with the source it op
 
 ## Still open
 
-- **Live end-to-end test** of both halves against real port forwards. The code is tested
-  (7 client + 3 server tests, including the byte-exact fwknop contract) but has not yet run
-  against a `fwknopd`, because no router in the lab can host one yet (`OPEN-TODOS.md` 11c).
-- **Throughput measurement on the direct path**, to confirm it recovers the missing ~36%.
-- `nemo-knock-port` on the router must be forwarded to wherever `fwknopd` ends up.
+**Done:** 8 client + 3 server tests, the byte-exact fwknop contract, and the knock accepted
+by a real `fwknopd` with a working negative control (above).
+
+**Not yet done — all of it needs a router change, so it is the user's half:**
+
+- **A real port forward.** Nothing has yet connected to a direct endpoint over a live
+  forward. On the lab server 21118/21119 are hbbs's own websocket ports and no client is
+  running there, so there is no forward to borrow — this needs one workstation forwarded on
+  both routers, then an endpoint set for it in the dashboard.
+- **The knock opening an actual firewall rule.** Verified up to `res=0` and
+  "would have opened tcp/21118"; the `-t` that made an unprivileged test possible is exactly
+  what skipped the `iptables` call. Needs a host that can run `fwknopd` for real
+  (`OPEN-TODOS.md` 11c).
+- **Throughput on the direct path**, to confirm it recovers the missing ~36%.
+- **`nemo-knock-port` forwarded** on the router to wherever `fwknopd` ends up.
