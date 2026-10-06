@@ -114,17 +114,41 @@ The client messages are specific, not generic failures:
 A blocked peer is also refused at **registration** (`register-pk: public key rejected`), not
 just at connect time — so it cannot re-announce itself while blocked.
 
-### …but blocking does NOT cut a session already running
+### Ending a session already in progress — CORRECTED, and then fixed
 
-With a live session up, blocking the target and waiting: the controlled side's connection
-manager still showed the session connected, timer advancing **00:26:18 → 00:27:13**.
+**An earlier revision of this file said force-disconnect did not exist. That was wrong,
+and the error was mine: I pulled the wrong lever.** Recorded here because the wrong
+version was committed, and because the difference matters operationally.
 
-This confirms `OPEN-TODOS.md` #6 ("cut only blocks NEW connections") as real, and sharpens
-it: it holds **even for a relayed session**, where hbbr *is* on the data path — once hbbr
-has paired the two sockets it forwards blindly, so there is no point at which revocation
-takes effect. Operationally: revoking a compromised technician does not disconnect them;
-they stay connected until they hang up or the processes are killed. Worth knowing before
-anyone treats the Block button as an incident-response control.
+What is actually true:
+
+- `/nemo/api/connections/cut` **does** end a running session. It blocks the peer *and*
+  stamps a revocation (`set_peer_terminate`), which the controlled side reads as
+  `terminate_sessions_before` on its next managed-policy poll and acts on by calling
+  `terminate_all_authed_sessions` → `ipc::Data::Close` on every authorised session. The
+  whole chain was already built on both sides; `OPEN-TODOS.md` #6 is stale.
+- `/peers/:id/block` **did not** — it set the policy and nothing else. That is what I
+  tested, and the session kept streaming (timer advancing 00:26:18 → 00:27:13).
+
+So the real defect was not a missing feature but an inconsistency between two levers, and
+the one that failed was the one named "block" — the one an operator reaches for to revoke a
+compromised machine. Fixed in server `0c4c2ca`: `block_peer` now stamps the same revocation
+`cut` does.
+
+**Verified end to end after the fix**, on a live relayed session: the block stamped
+`1791266853`, the client's `nemo-terminate-acked` matched it **within 20 s**, and the
+session died with *"Von der Gegenstelle manuell geschlossen"* — the signature of the
+client closing it on instruction, not a network drop or an "offline" timeout.
+
+Two properties worth keeping in mind:
+
+- **It is not instantaneous.** Teardown rides the policy poll, so budget up to one
+  interval (`POLL_INTERVAL_SECS = 30`); measured 20 s. The dashboard's Cut confirmation
+  used to claim "Active direct sessions end when closed" — corrected in the same commit.
+- **It is performed by the controlled machine**, which is the right place: that is the
+  asset the operator owns, and the controller cannot veto it. The poll is device-key
+  gated and deliberately does *not* gate on peer status, so a blocked peer still receives
+  the instruction telling it to hang up.
 
 ## 3c. Port forwarding / RDP tunnel — encrypted in source, NOT provable on the wire here
 
@@ -151,6 +175,37 @@ is specific to the port-forward path on the **Linux** controlled side in this he
 but **RDP-over-port-forward should be proven on a Windows target before anyone relies on
 it**, and until then the end-to-end encryption of that path is a code claim, not a measured
 one.
+
+## 3d. Auto-update — the signed-manifest path works
+
+Tested against the live server by publishing a manifest and verifying its signature
+independently, the same way the key-exchange offers were checked:
+
+- Publishing requires the admin token (**401** without it).
+- `GET /nemo/api/update/latest` returns `{version, url, sha256, sig}`; with nothing
+  published it is a clean **404**, not an unsigned shape.
+- The signature is Ed25519 over `version|url|sha256`. **Verified valid** against the
+  server's public key, and a one-character change to the version makes it **fail** — so
+  the signature really does cover the fields a client decides on.
+
+The test manifest was deleted afterwards (`/update/delete`, back to 404), so no client
+will act on it.
+
+## 3e. Permanent password — how to set one without an installed client
+
+`--password` refuses unless `is_installed() && is_root()`, which a lab build satisfies
+neither of, and the one-time password regenerates after every successful session — so
+automation against it is a losing race.
+
+The storage format makes this easy to do directly: it is a **hash, not a reversible
+encryption** — `storage = "01" + base64(SHA256(password || salt))`
+(`compute_permanent_password_h1`). Writing that value plus the matching `salt` into
+`RustDesk.toml`, with `verification-method = 'use-permanent-password'` in
+`RustDesk2.toml`, gives a stable password. Done on the lab VM and used for every session
+since; the one-time field correctly shows `-` and no longer rotates.
+
+Worth noting for the incident I caused: because it is a hash, a lost `password` value is
+not recoverable and nothing secret leaks from the file — the only remedy is to set a new one.
 
 ## 4. Other things confirmed working
 
@@ -183,13 +238,12 @@ one.
   *"presented no valid device key"* refusal immediately before each successful
   registration. Harmless today (the retry succeeds) but it matches known gap #1 in
   `REQUIREMENTS-SECURITY-LAYERS.md` and is noise in the log.
-- **Blocking does not end a session in progress** (§3b) — the one finding here with real
-  operational weight, because it makes the Block button useless for incident response.
 - **The port-forward path crashes the Linux controlled side's connection handler** (§3c),
   so that tunnel's encryption is source-verified only. Prove it on Windows before relying
   on RDP-over-tunnel.
-- The one-time password **rotates after every successful session**, so automation needs a
-  permanent password — which `--password` refuses to set without `is_installed() && is_root()`.
+- `OPEN-TODOS.md` #6 ("Real force-disconnect — cut only blocks NEW connections") is
+  **stale** and should be closed; see §3b. The revocation it calls unbuilt has been built
+  on both sides and is now verified working.
 - Screen capture on the lab VM needs `RUSTDESK_FORCED_DISPLAY_SERVER=x11`, because its
   logind session is Wayland (gdm3) even when the client runs on Xvfb. Environmental, not a
   product defect — real targets are Windows workstations.
