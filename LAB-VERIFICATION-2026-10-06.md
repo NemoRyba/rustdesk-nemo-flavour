@@ -176,7 +176,30 @@ but **RDP-over-port-forward should be proven on a Windows target before anyone r
 it**, and until then the end-to-end encryption of that path is a code claim, not a measured
 one.
 
-## 3d. Auto-update — the signed-manifest path works
+## 3d. Auto-update and the admin dashboard — exercised through the real UI
+
+The dashboard was driven as an operator would: browser, certificate gate, **token pasted
+into the login shell**, then clicking through the tabs. Reached over an **SSH tunnel to the
+server's LAN address**, never over the public IP.
+
+What the UI corroborated, independently of the API tests:
+
+- Header reads `Build e670ddb+ 2026-10-06` — the deployed build.
+- **Peers** tab: both peers `device key`, a `FORCED RELAY` counter of 1, and
+  `RELAY 85.126.226.2:21117` — the `-r` fix visible in the product.
+- **Settings**: both provisioned device keys listed; *Require a provisioned device key* and
+  *Only deliver secrets sealed to a device key* both on. The api-server placeholder shows
+  the text from `86d6f82`, confirming that deploy is live.
+- **Software update**: filled version / URL / SHA-256 and clicked Save →
+  *"Saved — clients now see version 1.4.8-labgui"*. The manifest it produced was then
+  signature-verified externally (below) and deleted again.
+
+The UI also explains the `require_sealed_request: false` flag reported earlier: the
+*Encrypted client requests* panel has **"Require encrypted policy & address-book requests"
+unchecked**, and states the reason — *"Both switches are off until you turn them on… Roll
+the client update out first"*. So it is a deliberate staged-rollout position, not an
+oversight. The log names clients still sending readable requests, which is how you find the
+stragglers before flipping it.
 
 Tested against the live server by publishing a manifest and verifying its signature
 independently, the same way the key-exchange offers were checked:
@@ -206,6 +229,33 @@ since; the one-time field correctly shows `-` and no longer rotates.
 
 Worth noting for the incident I caused: because it is a hash, a lost `password` value is
 not recoverable and nothing secret leaks from the file — the only remedy is to set a new one.
+
+## 3f. File transfer and clipboard — driven through the GUI
+
+Both exercised by clicking the real interface (xdotool on a virtual display), not by
+calling APIs, over the same forced-relay WAN→LAN path.
+
+**File transfer.** Opened a file-transfer session, navigated the remote pane into a
+directory on the VM, selected a 20 MB random-data file and clicked *Empfangen*. The GUI
+reported `Fertiggestellt 1 / 1` and the file arrived with a **matching SHA-256**
+(`0cec55ba…`), so the transfer is byte-exact.
+
+- **20 MB in 22.5 s = 7.1 Mbit/s (0.89 MB/s)** through the relay.
+- For context, the raw path measures 11.1 Mbit/s down, so file transfer achieves roughly
+  **64 % of the link** — the rest is protocol and the relay hop, not a throttle (hbbr is
+  capped at 10 Gbit/s).
+
+**Clipboard — works in both directions.** With a session open:
+
+| Direction | Marker | Result |
+|---|---|---|
+| Controlled → controller | `TBFCLIP-VM-7h2k9` set on the VM | appeared in the local clipboard |
+| Controller → controlled | `TBFCLIP-LOCAL-4m8x2` copied locally | appeared in the VM's clipboard |
+
+**And the clipboard is encrypted on the wire.** A capture of the relay during a sync of
+`CLIPSECRET-ZQ91XKPV` — **750 packets** — contains **zero** cleartext occurrences of that
+marker or either earlier one. Worth stating explicitly because the clipboard is the one
+channel users habitually put passwords through.
 
 ## 4. Other things confirmed working
 
