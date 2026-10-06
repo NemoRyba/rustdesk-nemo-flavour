@@ -75,6 +75,40 @@ Design + router commands: [TOPOLOGY-DEPLOYMENT.md](TOPOLOGY-DEPLOYMENT.md). Chec
 ### 11b. WAN/NAT path measurement + per-workstation codec tuning
 Needs the real topology (now in place, see 11) and a person at both ends (e2e/ harness is ready). Related: both OpenWrt 19.07.1 routers are EOL — upgrade (S10) before exposing the DMZ to the internet.
 
+### 11c. Router: upgrade firmware, then run `fwknopd` at the edge  *(DEFERRED 2026-10-06 — needs a firmware flash)*
+*Verified 2026-10-06:* installing `fwknopd 2.6.10-3` on the **external** router (LuCI → Software) fails with
+`Required dependency package kernel is not available in any repository`. The package pulls
+`iptables` → `kmod-ipt-core` → `kernel`, and every OpenWrt `kmod-*` is pinned to the exact kernel of
+the build the router is running. Nothing in the repo matches, so **no kernel module can be installed
+on that router at all** — not just this one. Expected on an EOL 19.07.1 whose kmod feed is gone or
+re-spun. (The dialog also showed `iptables` itself as NOT INSTALLED, which would be unusual on
+19.07/fw3 — so confirm the actual release before choosing a path.)
+
+Diagnose first: `cat /etc/openwrt_release; uname -r; opkg print-architecture; which iptables nft fw3 fw4`.
+
+Paths, in order of preference:
+1. **Upgrade both routers to a supported OpenWrt release**, then install `fwknopd` from a live feed.
+   This is the real fix and S10 already requires it before the DMZ faces the internet. An EOL router
+   is a poor place to *add* a security control.
+2. If the router turns out to be 22.03+ with **fw4/nftables**: try `iptables-nft` instead of legacy
+   `iptables`. It provides the iptables CLI over nftables with **no legacy kmods**, which may satisfy
+   `fwknopd`'s dependency without touching the kernel at all.
+3. **ImageBuilder** a firmware with `fwknopd` and deps baked in. Reliable and reproducible for both
+   routers — but it is a flash either way, so (1) is better.
+4. **Move the gate off the router:** run `fwknopd` on the server VM (default-DROP, opened per source
+   by a valid SPA) with the router forwarding blindly. Protects the *server* ports (21120 admin,
+   21116/21117) and needs no router packages. Does **not** cover per-workstation direct ports — the
+   gate must live where the traffic lands, and fwknop on Windows is Cygwin-based and not deployable.
+
+**Until a router can gate:** per-workstation direct forwards are protected by **source-IP allowlists**
+on the router (no packages, works on 19.07 as-is) — adequate while technician IPs are static, and the
+only option left if they roam. Do (4) for 21120 regardless, since it is the admin surface.
+
+**None of this blocks the client work:** the knock is implemented and the SPA packets are byte-for-byte
+fwknop-compatible (`rustdesk-client-nemo/src/nemo_direct.rs`, contract test
+`spa_encoder_reproduces_the_real_fwknop_packet`), so it does not care whether `fwknopd` ends up on the
+router, the server VM, or a replacement edge box. Only `nemo-knock-port` changes.
+
 ---
 
 ## LOW — polish / housekeeping
