@@ -261,20 +261,105 @@ On the daemon side, `fwknopd -f -v` logs each accepted SPA with the source it op
 
 ---
 
+## End-to-end simulation, 2026-10-07
+
+Run against the real `hbbs` (`build_id 18a2f00`) on the lab's own data volume, a real
+`fwknopd 2.6.11`, and a real client — no stubs anywhere in the path. Loopback stands in for
+the two routers; everything above the IP layer is the production code path.
+
+**1. The API rejects what an operator would get wrong.** All six refused with HTTP 400 and
+the reason, including `203.0.113.5:21118;evil,198.51.100.1:21118` — the separator injection
+that would otherwise forge extra rows in every client's policy. `  127.0.0.1:31118  `
+accepted, trimmed, normalized, persisted to `nemo_peer_endpoints.json`.
+
+**2. The endpoint is withheld from a blocked peer.** The first poll after setting it carried
+`direct-server: Y` and `nemo-peer-keys` but **no** `nemo-direct-endpoints` — the peer was
+blocked. After `POST /peers/:id/allow`, the next poll carried
+`nemo-direct-endpoints: "91090423,127.0.0.1:31118"`. The blocked-peer filter works in the
+live system, not just in its unit test.
+
+**3. The direct path is taken, and it is anchored.**
+
+```
+TBFDesk direct: trying 127.0.0.1:31118 for 91090423 (budget 2500ms)
+TBFDesk direct: established with 127.0.0.1:31118 in 854.135µs, no relay
+```
+
+`nemo-require-encrypted-session` defaults on, so "established" is only reachable through
+`secure_connection_direct` verifying the peer's self-signed `SignedId` against the
+server-pushed `nemo-peer-keys` and binding it to the id asked for. A failed anchor would
+have bailed and fallen back.
+
+**4. A dead endpoint costs latency, not connectivity.** Endpoint repointed to a closed port:
+
+```
+TBFDesk direct: trying 127.0.0.1:39999 for 91090423 (budget 2500ms)
+TBFDesk direct: 127.0.0.1:39999 unusable (Failed to connect to 127.0.0.1:39999); falling back to hole punch / relay
+```
+
+No error surfaced to the session. This is the additive guarantee, observed.
+
+**5. The knock, from pushed policy to real daemon to connection.** Knock settings pushed
+through `PUT /nemo/api/global-policy`, then **re-saved with the masks** the dashboard sends
+back for untouched secrets. Client:
+
+```
+04:02:01.674278  TBFDesk direct: trying 127.0.0.1:31118 for 91090423 (budget 2500ms)
+04:02:01.674354  TBFDesk knock: sent 225 byte SPA to 127.0.0.1:62201 requesting 0.0.0.0,tcp/31118
+04:02:01.978508  TBFDesk direct: established with 127.0.0.1:31118 in 304.213371ms, no relay
+```
+
+Daemon, on that same packet:
+
+```
+(stanza #1) SPA Packet from IP: 127.0.0.1 received with access source match
+[127.0.0.1] (stanza #1) SPA Decode (res=0):
+       Username: tbfdesk
+ Message String: 0.0.0.0,tcp/31118
+      HMAC Type: 3 (SHA256)
+```
+
+Three things fall out of this at once. The knock requests **the endpoint's own port**, not a
+hardcoded one. The sequence is knock → delay → connect (304 ms ≈ the 300 ms
+`nemo-knock-delay-ms` plus a 4 ms connect). And `res=0` means the HMAC verified against the
+key the server still held **after** the masked re-save — so `restore_masked_secrets_from`
+preserved the real key; had it stored the literal `<managed-secret>`, this would have been
+`HMAC_COMPAREFAIL`.
+
+### Two environment constraints this surfaced
+
+Neither is caused by this feature, but both shape how it can be tested:
+
+- **The client IPC socket path is UID-based** (`/tmp/RustDesk-1000/ipc`), not HOME- or
+  XDG-derived. Two full clients cannot coexist as one user on one host — the second dies
+  with `Address already in use`. This is also the likely mechanism behind the earlier
+  incident where a sandboxed test client wrote over a real config despite
+  `XDG_CONFIG_HOME` isolation.
+- **The peer id is machine-derived**, so two clients on one host generate the *same* id and
+  the second overwrites the first's pinned key on the server. Distinct peers need distinct
+  hosts/containers.
+
+Because of these, step 3 used one client as both ends. That still exercises the real
+anchored handshake (the `SignedId` is verified against the server-pushed key and bound to
+the requested id), but it does not exercise two *different* machines' keys.
+
 ## Still open
 
-**Done:** 8 client + 3 server tests, the byte-exact fwknop contract, and the knock accepted
-by a real `fwknopd` with a working negative control (above).
+**Done:** 8 client + 3 server tests, the byte-exact fwknop contract, the knock accepted by a
+real `fwknopd` with a working negative control, and the end-to-end simulation above.
 
-**Not yet done — all of it needs a router change, so it is the user's half:**
+**Not yet done — all of it needs real network topology, so it is the user's half:**
 
-- **A real port forward.** Nothing has yet connected to a direct endpoint over a live
-  forward. On the lab server 21118/21119 are hbbs's own websocket ports and no client is
-  running there, so there is no forward to borrow — this needs one workstation forwarded on
-  both routers, then an endpoint set for it in the dashboard.
-- **The knock opening an actual firewall rule.** Verified up to `res=0` and
-  "would have opened tcp/21118"; the `-t` that made an unprivileged test possible is exactly
-  what skipped the `iptables` call. Needs a host that can run `fwknopd` for real
+- **A real port forward over the two routers.** The simulation used loopback. On the lab
+  server 21118/21119 are hbbs's own websocket ports and no client runs there, so there was
+  no forward to borrow — this needs one workstation forwarded on both routers, then its
+  endpoint set in the dashboard.
+- **The knock opening an actual firewall rule.** Verified up to `res=0` and "would have
+  opened tcp/31118"; the `-t` that made an unprivileged daemon possible is exactly what
+  skipped the `iptables` call. Needs a host that can run `fwknopd` for real
   (`OPEN-TODOS.md` 11c).
-- **Throughput on the direct path**, to confirm it recovers the missing ~36%.
+- **Two distinct machines' keys** through the anchored handshake — see the id/IPC
+  constraints above.
+- **Throughput on the direct path**, to confirm it recovers the missing ~36%. This is the
+  number that justifies the whole feature and it cannot be measured on loopback.
 - **`nemo-knock-port` forwarded** on the router to wherever `fwknopd` ends up.
