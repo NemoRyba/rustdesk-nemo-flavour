@@ -75,6 +75,35 @@ Build from a **real git checkout**, not an scp'd tarball, or the build id stamps
 
 ---
 
+## 1b. The server key — get this right or nothing registers
+
+Every client needs the server's Ed25519 public key, as **both** `key` and
+`nemo-management-public-key` (or baked into the licence name as `key=…`). With the wrong
+one the client never registers and never accepts policy.
+
+**As of 2026-10-15 the live key is:**
+
+```
+zn4AbcDYxxlvp+czrKHEWOY3JBvYw5dKLbwRslK4nlo=
+```
+
+**Do not take it from a file in a repo checkout.** `hbbs` silently generates a keypair in
+its working directory whenever it finds none, so every lab or dev run leaves behind an
+`id_ed25519.pub` that looks authoritative and is not. On 2026-10-15 there were **four**
+distinct keys in circulation — the live one above, one in this box's Sep-4 client config
+(`XsN4…`, pre-dating a Sep-28 rotation), and one stray `id_ed25519.pub` in each of two repo
+checkouts (`853J…`, `KZTG…`). A build was nearly configured against one of the strays.
+
+Authoritative sources, in order:
+
+1. Dashboard → **Settings** → *Server identity key* (read-only, click to copy).
+2. `GET /nemo/api/health` → `server_public_key`.
+3. On the server: `/var/lib/rustdesk-server/id_ed25519.pub`.
+
+If the dashboard shows a **"Restart pending"** warning there, the key was rotated and hbbs
+has not been restarted — the running key and the file disagree. Ask the operator which one
+to provision against before building anything.
+
 ## 2. Roles
 
 Simplest topology, and the one to use:
