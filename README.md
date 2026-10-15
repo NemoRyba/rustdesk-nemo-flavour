@@ -71,6 +71,13 @@ Server-driven management on top of RustDesk, administered from the server dashbo
   workstations — the same code path, the same checks, no role branch. `require_device_key` defaults on,
   so a client without one is refused outright. This, not the LDAP login, is the control the deployment
   rests on.
+- **First-use binding, with operator confirmation** (not deployed yet, see
+  [DEVICE-KEY-CLAIM.md](DEVICE-KEY-CLAIM.md)). A key generated *without* an id is a one-shot
+  provisioning token: the first client that proves it is **still refused** and files a claim the operator
+  confirms in the dashboard, which is what resolves the deadlock where a key wants an id that a client
+  cannot show until it is past its provisioning gate. The signature proves possession of the key; the
+  reported id is self-asserted, so a human attests the pairing. A pending claim grants nothing, which
+  makes it double as the "a client is here, unverified" view the dashboard never had.
 - Settings as a modal dialog (DE/EN, plain-language tooltips), address-book reload
   button, multi-screen tiled view, build-id readout bottom-left.
 
