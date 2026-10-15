@@ -26,6 +26,57 @@ The **peer/relay wire protocol, `licence_key`, and peer keys do not depend on `A
 
 Doing Layer 0 first gets the searchable name with none of the migration risk below.
 
+**Layer 0 is DONE (2026-10-16, client `nemo-tdd`).** `get_display_name()` / `DISPLAY_NAME`
+in `common.rs`; shortcut file names, the Start-menu folder, the uninstall `DisplayName`
+and `Publisher` now use it; `build.rs` sets `ProductName` / `FileDescription` /
+`OriginalFilename` / `CompanyName` explicitly; the installer deletes the old `.lnk` names
+and the old Start-menu folder (and so does the uninstaller, for both names), so an
+upgraded machine does not show two entries. Window title and tray tooltip already read
+TBFDesk. `APP_NAME`, the config dir, the service name, the registry key name, the exe
+file name and the URI scheme are untouched — Layers 1–5 below are still open.
+Unverified on Windows: this cannot be compiled or installed from the Linux dev box, so
+the acceptance checks (Start-menu search for "TBF", Apps & Features, Explorer's
+Description column, ID/password surviving) still have to be run on the test workstation.
+
+### Bucket triage for OPEN-TODOS #18 (what "remove RustDesk" does and does not cover)
+Done 2026-10-16 as **bucket 1 — user-visible labels** (client `nemo-tdd`):
+- `src/lang/*.rs`: **892 translated VALUES** across 49 locales renamed to TBFDesk. Keys
+  are the lookup strings used throughout the code and are never touched — which is also
+  why three of them (`About RustDesk`, `Keep RustDesk background service`,
+  `Show RustDesk`) showed the old name in English and German: their value was empty or
+  missing, so `translate()` fell back to the key. They now have values.
+- Kept on purpose: the AGPL attribution `Based on the open-source RustDesk project.`
+  (key *and* value), and the two `rustdesk.com/docs/...` links, which are upstream
+  documentation that genuinely explains those OS permission steps.
+- `res/`: display fields only — `.desktop` `Name` + `Keywords`, `rustdesk.service`
+  `Description`, `PKGBUILD` `pkgdesc`, the four rpm specs' `Summary` and `%description`.
+  `Exec`, `Icon`, `StartupWMClass`, `MimeType`, `pkgname`, rpm `Name` and every path
+  stay: they are identity (bucket 2).
+- `flutter/lib/desktop/widgets/tabbar_widget.dart`: one hard-coded window label.
+
+Deliberately NOT changed, with the reason:
+- **`res/msi/`** — the MSI build is parameterised: `preprocess.py --app-name` substitutes
+  `RustDesk` → the given name across the `.wxs`/`.wxl` files, *including the service name
+  and paths*. Hard-coding TBFDesk in those files would be a bucket-2 identity change
+  dressed up as a label change. An MSI build must pass `--app-name` instead. We ship the
+  exe installer (`install_me`), so nothing in the deployment depends on this today.
+- **`res/DEBIAN/*`** — maintainer scripts; every occurrence is a path or the service name.
+- **`src/platform/*`, `src/ui/*`, `Cargo.toml`** — the remaining matches are `APP_NAME`
+  consumers, the crate name, and the `rustdesk`/`librustdesk` library names. Bucket 2/3.
+- **Our own docs and scripts** (`DEPLOY.md`, `DEPLOYMENT-STEP-BY-STEP.md`, `HANDOFF*.md`,
+  `RUNBOOK-LOCAL-MODEL.md`, `LAB-VERIFICATION-*.md`, `UPSTREAM-SYNC.md`, `e2e/*.ps1`,
+  `scripts/vm-apply-server-address.sh`, `build-client-fast.cmd`) — audited line by line:
+  what is left is `%APPDATA%\RustDesk`, `RustDesk2.toml`, `RustDesk.exe`,
+  `/tmp/RustDesk-<uid>`, `~/.local/share/logs/RustDesk/`, the `FOCUS RustDesk` window
+  class, the `/projects/rustdesk/...` host paths, and discussion of the upstream project.
+  Those are bucket 2 and 3: renaming them in the docs **before** Layer 2 ships would
+  make the runbooks wrong, which is exactly what #18 warns against. The prose already
+  says TBFDesk everywhere.
+- **Android**: the accessibility-service label the `android_input_permission_tip2` /
+  `[RustDesk Input]` strings point at is still derived from `APP_NAME`, so on Android the
+  tip now names TBFDesk while the system list shows RustDesk Input. Harmless here (no
+  Android client is deployed) and it resolves itself at Layer 1.
+
 ### Layer 1 — flip the constant
 `config.rs:111` `APP_NAME` `"RustDesk"` → `"TBFDesk"`. This alone re-points config dir, service name, registry subkey, install path, exe name, `/tmp`, and logs to `TBFDesk`.
 

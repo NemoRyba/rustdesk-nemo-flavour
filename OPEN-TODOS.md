@@ -45,11 +45,16 @@ Keys can now be **bound to a peer id** (`DeviceKey.peer_id`); `verify_device_sig
 
 ## PERFORMANCE / observability — verified open
 
-### 7. Relay-vs-direct **byte** metrics
-*Verified:* `relay_server.rs` exports no per-session byte counters. To PROVE sessions stay direct, surface hbbr per-session relay bytes to the dashboard.
+### 7. Relay-vs-direct **byte** metrics  *(DONE 2026-10-16, not seen live — server `nemo-tdd`)*
+*Was:* `relay_server.rs` exported no per-session byte counters, so the dashboard could only show relay NEGOTIATIONS — which say a path was offered, not that a byte went through it.
+**Done:** hbbr gained `usage-json`/`uj` (the machine-readable twin of `usage`, which is unchanged); hbbs remembers `label -> (controller id, workstation id)` when it mints a relay grant and polls hbbr over its existing **loopback** admin channel, so no new authentication is involved and the live grant never leaves hbbs — the join key is `common::relay_session_label`, a hash of it. Cumulative samples are folded into deltas (fleet total counted once, both peers charged individually). Dashboard: a **Relayed bytes** panel (bytes, rate, peak, duration, live/ended/**unused — went direct**), the fleet total in the Connections header, and a per-peer row in the detail panel. Flags: `--nemo-relay-metrics <host:port>` (default `127.0.0.1:21117`, `""` or `N` disables), `--nemo-relay-metrics-interval` (default 5s).
+**Open:** needs an hbbr answering `uj` on the same host to show anything — not verified against a real relayed session yet. hbbr binds its admin channel to loopback, so a relay on another host needs a tunnel (or the feature off).
 
-### 8. `NemoSource` protobuf field  *(protocol robustness)*
-*Verified:* controller identity still rides smuggled in the rendezvous `version` string (`nemo-source-v1:<id>:<uuid>[:token]`). A real field on `PunchHoleRequest`/`RequestRelay` closes the advisory-policy bypass. Forks `hbb_common` → do together with #9.
+### 8. `NemoSource` protobuf field  *(DONE 2026-10-16, not seen live)*
+*Was:* controller identity rode smuggled in the rendezvous `version` string (`nemo-source-v1:<id>:<uuid>[:token]`) and, on the relay path, in `licence_key`.
+**Done:** `NemoSource {id, uuid, token}` on `PunchHoleRequest` (field 11) and `RequestRelay` (field 10) — hbb_common `nemo-tdd` `7ad1c09` / `nemo` `a8396b5`, the same commit on both branches. New field numbers only, so an un-updated peer on either end keeps working. The server's `controller_source_any()` prefers the typed field, falls back to the marker, and logs a client that sends both and disagrees with itself; the field is threaded through all four controller gates and both recorders, and is wiped from the relay frame before it is forwarded (it carries the technician's session token, like `licence_key`). The client sends both for now.
+**Still asserted, not proved** — and deliberately so: what proves a controller is the device-key handshake, which `resolve_controller_identity` keeps preferring. The field removes the ambiguity, not the need for the proof.
+**Open:** a lockstep rollout is still what makes the marker removable; nothing can be deleted until every client in the field sends the field.
 
 ### 9. hbb_common fork remote  ✅ RESOLVED 2026-09-03
 Forked to **github.com/NemoRyba/hbb_common** (public) + a **176 bare mirror** (`~/git/hbb_common.git`). The `nemo` branch (`40adca6` + A4 `b6aa3ca`) is pushed to both; the client `.gitmodules` now points at NemoRyba (branch `nemo`) and the gitlink is committed (`ef99cce88`, pushed to NemoRyba + 176). Fresh recursive clones now resolve. hbb_common remotes: `origin`=NemoRyba, `ubuntu`=176, `upstream`=rustdesk/hbb_common.
@@ -142,7 +147,11 @@ The 2026-10-16 message breaks off mid-sentence, so the ask is unknown. For the r
 Provisioning deadlocks: the key wants the TBFDesk id, the client shows no id until it is past the provisioning gate, and it cannot pass the gate without a key. Design (2026-10-16): an unbound key is a one-shot provisioning token; the first client that proves it **files a pending claim** the operator confirms or denies in the peers panel; only that confirmation writes the binding. A pending claim grants nothing, so it doubles as the "unverified client" view.
 **Done 2026-10-16** (server `nemo-tdd`, client `nemo-tdd`): pending-claim store with per-key and global caps, both enforcement points converted to *prove → file a request → refuse*, approve/deny/forget/bind-by-hand routes, the confirm/deny UI in the peers panel **and** a pending section in the Device keys panel (the rendezvous handshake precedes `register_pk`, so a claim can name an unregistered id), a distinguishable 403 and a *"Waiting for approval by your administrator"* gate card in the Sciter client, and 96/96 tests — including the TASK #14 canary, green again **without** editing its assertion. `persist()` is now a no-op under `#[cfg(test)]`, which closes the hazard of a test writing `nemo_integration.json` into the checkout. **Open:** not deployed (the lab VM still runs `0747b0b`), no Flutter gate card, and the address-book/login endpoints still answer the generic 403. Full detail in `DEVICE-KEY-CLAIM.md`.
 
-### 17. Windows: the installed client is **not findable as "TBFDesk"** — Start menu, Apps list and Explorer all still say RustDesk
+### 17. Windows: the installed client is **not findable as "TBFDesk"**  *(DONE 2026-10-16, UNVERIFIED on Windows — client `nemo-tdd`)*
+**Done:** `DISPLAY_NAME`/`get_display_name()` in `common.rs`; the shortcut file names, the Start-menu folder and the uninstall `DisplayName`/`Publisher` use it; `build.rs` sets `ProductName`/`FileDescription`/`OriginalFilename`/`CompanyName`; the installer deletes the old `.lnk` names and the old Start-menu folder, and the uninstaller clears both names, so an upgrade does not leave two entries. `APP_NAME`, the config dir, the service, the registry key name, the exe file name and the URI scheme are untouched.
+**The acceptance checks still have to be run on the test workstation** — this cannot be compiled or installed from the Linux dev box: search "TBF" in the Start menu, Apps &amp; Features, Explorer's Description column, and prove the ID and saved password survive the upgrade.
+
+Original report:
 Every OS-level label derives from `APP_NAME`, still `"RustDesk"` by design (`libs/hbb_common/src/config.rs:111`, via `common.rs:1064`; see 14 and `RENAMING-PLAN.md`). Windows Start-menu search indexes the **shortcut file name** and the exe's **version-info**, and both read RustDesk today:
 - shortcuts are built as `{app_name}.lnk` / `Uninstall {app_name}.lnk` / `{app_name} Tray.lnk` (`src/platform/windows.rs:1572/1591/1622-1623`), where `app_name = get_app_name()`;
 - `ProductName` / `FileDescription` / `OriginalFilename` fall back to winres defaults, i.e. to `Cargo.toml:2` `name = "rustdesk"` and `:7` `description = "RustDesk Remote Desktop"`, because `build.rs:41-47` sets only the icon and the manifest;
@@ -156,7 +165,11 @@ Every OS-level label derives from `APP_NAME`, still `"RustDesk"` by design (`lib
 This is the cheap, non-breaking slice of what `RENAMING-PLAN.md` defers — recorded there as **Layer 0**.
 **Acceptance:** typing "TBF" in the Start menu finds the client; Apps & Features shows TBFDesk; Explorer's Description column on the exe reads TBFDesk; config dir, service and registry are provably unchanged (no re-registration, ID and saved password survive).
 
-### 18. Finish removing "RustDesk" from the program, the deployment and the operator steps
+### 18. Finish removing "RustDesk" from the program, the deployment and the operator steps  *(bucket 1 DONE 2026-10-16; buckets 2–3 open by design)*
+**Done (bucket 1, user-visible labels):** 892 translated values across 49 locales; the three keys whose EMPTY value made English and German fall back to the key text (`About RustDesk`, `Keep RustDesk background service`, `Show RustDesk`); `res/` display fields (`.desktop` `Name`/`Keywords`, the service `Description`, `PKGBUILD` `pkgdesc`, the rpm specs' `Summary`/`%description`); one hard-coded Flutter window label. Kept on purpose: the AGPL attribution and the two `rustdesk.com/docs` links. Left alone with the reason recorded: `res/msi` (its `--app-name` substitution also renames the service and paths, so that is a bucket-2 change in disguise), `res/DEBIAN/*`, and **our own docs** — audited line by line, what remains is `%APPDATA%\RustDesk`, `RustDesk2.toml`, `RustDesk.exe`, `/tmp/RustDesk-<uid>`, the `FOCUS RustDesk` window class, host paths and upstream discussion, i.e. exactly the things #18 warns not to rename before Layer 2 ships. Per-file verdicts: `RENAMING-PLAN.md`.
+**Open:** buckets 2 and 3, which are `RENAMING-PLAN.md` Layers 1–5 plus the config migration.
+
+Original report:
 `RENAMING-PLAN.md` already specifies the app-side job (Layers 1–5 plus the migration, recommended *after* server-driven updates #5 exist). What the 2026-10-16 report adds is that the ask covers **deployment and the written steps**, not just the binary.
 
 Measured state 2026-10-16 (lines matching `RustDesk|rustdesk`): `src/lang/de.rs` **1** — the German UI is effectively done; `src/lang` overall **952** (the other locales); `res/` **242** (`.desktop`, `PKGBUILD`, `DEBIAN`, `msi`, rpm/flatpak specs); `src/platform` **94**; `flutter/lib` **93**; `Cargo.toml` **28**; `src/ui` **16**. Our own docs/scripts still carrying the name: `DEPLOY.md`, `DEPLOYMENT-STEP-BY-STEP.md`, `HANDOFF.md`, `HANDOFF-WINDOWS-DIRECT.md`, `README.md`, `RUNBOOK-LOCAL-MODEL.md`, `LAB-VERIFICATION-2026-10-06.md`, `UPSTREAM-SYNC.md`, `e2e/*.ps1`, `scripts/vm-apply-server-address.sh`, `build-client-fast.cmd`.
@@ -172,13 +185,14 @@ Do **17** first: it delivers the thing actually complained about (searchability)
 
 ## LOW — polish / housekeeping
 
-### 12. Settings dialog: swap **Alias** and **Direct IP access** between sections
+### 12. Settings dialog: swap **Alias** and **Direct IP access** between sections  *(DONE 2026-10-16, client `nemo-tdd`)*
+Alias now sits under **Allgemein**, direct IP access (and its port row) under **Sicherheit & Netzwerk**, next to the IP whitelist that gates it. Not screenshot-verified — the Sciter UI cannot be built from the Linux dev box.
 User request 2026-09-02, in `index.tis` `NemoSettingsDialog.render()`:
 - **Alias** (`aRow("nemo-alias", …)`) moves from "Sicherheit & Netzwerk" (`sec`) → "Allgemein" (`gen`) — it's a friendly display name, not a security setting.
 - **Direkten IP-Zugang aktivieren** (`tRow("direct-server", …)` + its dependent `aRow("edit-direct-port")`) moves from "Allgemein" (`gen`) → "Sicherheit & Netzwerk" (`sec`) — it IS a network/exposure setting.
 
-### 13. About-dialog placeholder links
-"Webseite/Support/Datenschutz: (wird ergänzt)" — fill in the real TBF website URL, support contact, privacy link; the clickable `.link .custom-event url='…'` wiring is already in place (`index.tis` `showAbout()`).
+### 13. About-dialog placeholder links  *(HANDLED 2026-10-16; still needs the real URLs)*
+The three rows are now **omitted** rather than shown as "(wird ergänzt)" — a dialog that names a support channel and then says the address is missing is worse than one that does not mention it, because the reader cannot tell "not set up yet" from "we lost the page". Fill `NEMO_ABOUT_LINKS` in `index.tis` `showAbout()` (one array, label + URL; an empty URL hides its row) and the rows come back as real clickable links through the wiring that was already there. **What is still needed from TBF: the website URL, the support contact, the privacy-statement URL.**
 
 ### 14. `%APPDATA%` dir rebrand (deferred, cosmetic)
 `APP_NAME` stays `RustDesk` so config dir/service/registry are unchanged; a true rename needs a config-migration step. **Not cosmetic any more in one respect:** the same constant is why Windows cannot find the app as "TBFDesk" — see **17**, which fixes the searchable name *without* this migration.

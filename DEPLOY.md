@@ -177,6 +177,25 @@ the renewal hook needs to restart hbbs — it reads the certificate once at boot
 `--mask` decides which peers count as "same intranet"; set it to cover every internal
 network or cross-subnet pairs are forced to relay.
 
+### Relayed-byte metrics (TODO 7)
+
+The dashboard's **Relayed bytes** panel is how you prove sessions are going direct rather
+than taking your word for it. hbbs reads the counters from hbbr over hbbr's **loopback**
+admin channel, so the default works as-is when both run on the same host, which the
+shipped unit does:
+
+```bash
+# defaults; set them only to change or disable this
+#   NEMO_RELAY_METRICS=127.0.0.1:21117     # "" or N turns it off
+#   NEMO_RELAY_METRICS_INTERVAL=5          # seconds
+```
+
+Two consequences of that channel being loopback-only: a relay on **another** host shows no
+bytes unless you tunnel its port to the hbbs host, and nothing but a hash of the relay
+grant crosses it — hbbr never learns a peer id, and the live grant (a 60-second capability
+to join a session) never leaves hbbs. A session row with **no bytes** is the good outcome:
+the relay was offered, the two machines went direct, the grant expired unused.
+
 **hbbr needs the same signing key as hbbs.** Since the relay control-frame encryption
 landed, hbbr offers a signed KeyExchange of its own and the client verifies it against
 the server key it already trusts.
