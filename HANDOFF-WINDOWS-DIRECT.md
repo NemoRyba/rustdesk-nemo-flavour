@@ -29,21 +29,21 @@ As of 2026-10-15 the direct-endpoint work is committed but **NOT pushed**:
 You cannot build what you cannot clone. Confirm `git log --oneline -1` on `nemo-tdd` shows
 at least `0ced5ee8c` in the client submodule before building.
 
-### 0b. The lab server is running a build WITHOUT this feature
+### 0b. The server — DONE 2026-10-15
 
-Verified on the VM 2026-10-15:
+`hbbs` with the direct-endpoint feature is **deployed and live** on the VM:
 
 ```
-/usr/bin/hbbs          Okt  6 08:01     <- predates the feature
-rustdesk-hbbs-nemo.service   active (running)   since 2026-10-06 08:01
-rustdesk-hbbr-nemo.service   active (running)
-strings /usr/bin/hbbs | grep -c nemo-direct-endpoints   ->  0
+/usr/bin/hbbs                Okt 15 21:26   build_id "18a2f00 2026-10-07"
+rustdesk-hbbs-nemo.service   active (running)
+previous binary kept at      /usr/bin/hbbs.bak-2026-10-15   (rollback)
 ```
 
-So the server **cannot yet hand out endpoints**. Someone must rebuild `hbbs` from
-`nemo-tdd` and redeploy it to the VM (`85.126.226.2:1234`, user `dev`) first. That is a
-Linux-side job, not yours. Until it is done, every direct attempt will correctly fall back
-to the relay and you will see nothing but `TBFDesk direct:` lines absent from the log.
+Verified live: both registered peers now carry the `direct_endpoint` field, and
+`POST /nemo/api/peers/:id/direct-endpoint` refuses a malformed value with a 400 and the
+reason. `hbbr` was unchanged (no relay-side changes in this work).
+
+So the only remaining blocker is 0a.
 
 ---
 
