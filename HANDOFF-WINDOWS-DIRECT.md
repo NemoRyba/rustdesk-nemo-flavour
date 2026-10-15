@@ -114,18 +114,28 @@ Notes, each of which has bitten someone already:
 
 ---
 
-## 4. The two port forwards
+## 4. The port forward — already done for you
 
-Forward **external TCP port → the workstation's `direct-access-port`** on both routers in
-series. Pick an external port that is not already in use; on the lab server 21115–21120 are
-taken by hbbs/hbbr, but on a workstation path that does not matter.
+The operator has forwarded **external TCP 21666 → this test workstation** (2026-10-15). So:
 
-Verify from outside before going further — a forward that silently does not work is the most
-common cause of "it still relays":
+```
+internet ──→ 85.126.226.2:21666 ──→ <this workstation>:21118
+                (router)              (direct-access-port)
+```
+
+You do not need to touch the router. What you DO need is for the workstation to actually be
+listening on 21118 — see §3.
+
+**Expect `21666` to read as closed/filtered until your client is running.** A forward to a
+host with nothing listening behind it looks exactly like no forward at all. Probing it before
+the client is up proves nothing; probe it after. From the internet side:
 
 ```powershell
-Test-NetConnection -ComputerName <router-wan-ip> -Port <external-port>
+Test-NetConnection -ComputerName 85.126.226.2 -Port 21666
 ```
+
+If it is still refused once `Direct server listening on: Some(Ok([::]:21118))` is in your log,
+then the problem is the forward or the Windows firewall (see §9).
 
 ---
 
@@ -134,11 +144,15 @@ Test-NetConnection -ComputerName <router-wan-ip> -Port <external-port>
 Dashboard → **Peers** → select the Windows workstation → **Direct connection** → *Reachable at*:
 
 ```
-<router-wan-ip>:<external-port>
+85.126.226.2:21666
 ```
 
-That is the **router's external** address and port. Save. The value is validated server-side,
-so a typo comes back as an HTTP 400 with the reason rather than silently doing nothing.
+That is the **router's external** address and the port forwarded to this workstation. Save.
+The value is validated server-side, so a typo comes back as an HTTP 400 with the reason
+rather than silently doing nothing.
+
+Do **not** put `21118` here — that is what the workstation listens on internally, and the
+router translates `21666 → 21118`.
 
 Clients pick it up on their next policy poll (≤30 s).
 
@@ -150,11 +164,21 @@ both have already caused confusion:
 
 If the controller's policy never shows `nemo-direct-endpoints`, check those two first.
 
-**Admin page access:** as of 2026-10-15 port 21120 is restricted on the router to
-`150.228.29.99`, but the dev box now egresses as **150.228.29.172** — the Starlink address
-rotated, so that allowlist no longer matches and 21120 is unreachable from it. Either update
-the allowlist, or reach the dashboard through an SSH tunnel:
-`ssh -L 21120:127.0.0.1:21120 -p 1234 dev@85.126.226.2` then `https://127.0.0.1:21120/nemo/admin`.
+**Admin page access.** The operator reaches the dashboard over the internet from an
+allowlisted source; port 21120 is source-restricted on the router, so it will likely be
+**closed from wherever you are**. You probably do not need it — the operator sets the
+endpoint (this section) — but if you do:
+
+- From the LAN: `https://192.168.1.14:21120/nemo/admin`.
+- From anywhere with SSH to the VM:
+  `ssh -L 21120:127.0.0.1:21120 -p 1234 dev@85.126.226.2`, then
+  `https://127.0.0.1:21120/nemo/admin`.
+- The bearer token is `NEMO_API_TOKEN` in `/etc/tbfdesk/hbbs.env` on the VM (root-readable;
+  ask the operator rather than guessing). It is deliberately not written into this file.
+
+Note the allowlist is pinned to a Starlink address, which rotates — it moved from
+`150.228.29.99` to `150.228.29.172` between 2026-10-07 and 2026-10-15. If the dashboard is
+suddenly unreachable for the operator, that is the first thing to check, not a server fault.
 
 ---
 
@@ -213,7 +237,39 @@ Neither is caused by this feature; both will waste your time if you hit them bli
 
 ---
 
-## 9. Report back
+## 9. If it still goes through the relay — in order of likelihood
+
+1. **Windows Defender Firewall is blocking inbound 21118.** This is the single most likely
+   cause and it is silent: the listener is up, the forward is right, and the TCP SYN is
+   dropped at the host. Nothing in the TBFDesk log says so. Add the rule:
+
+   ```powershell
+   New-NetFirewallRule -DisplayName "TBFDesk direct access" -Direction Inbound `
+     -Protocol TCP -LocalPort 21118 -Action Allow -Profile Any
+   ```
+
+   Then re-probe `85.126.226.2:21666` from outside.
+
+2. **The client is not registered.** Check for `register_pk ... due to key not confirmed`
+   looping in the log — that means `disable-udp = 'Y'` is missing (§3). The peer shows
+   offline in the dashboard and gets no policy at all.
+
+3. **No endpoint in the policy.** Grep the client config for `nemo-direct-endpoints`. If
+   absent: the endpoint is not set (§5), the peer is blocked, or the controller's
+   `nemo-outbound-targets` excludes this target.
+
+4. **The controller is the old binary.** The direct-endpoint logic lives on the *connecting*
+   side. An older controller ignores the endpoint entirely and goes straight to the punch —
+   with no `TBFDesk direct:` line at all, which looks identical to case 3.
+
+5. **The endpoint has the internal port in it.** `85.126.226.2:21118` instead of `:21666`
+   will connect to nothing (or to the wrong thing). The dashboard field takes the
+   **router's external** port.
+
+Each of these produces a *working* session over the relay, so "it works but it is slow" is
+the symptom for all five. Use the log lines in §6 to tell them apart, not the session itself.
+
+## 10. Report back
 
 1. Did the direct path establish? Paste the `TBFDesk direct:` lines verbatim.
 2. Throughput on the direct path vs the 7.1 Mbit/s relay baseline, as Mbit/s and % of link.
