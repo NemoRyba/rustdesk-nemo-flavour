@@ -111,6 +111,61 @@ router, the server VM, or a replacement edge box. Only `nemo-knock-port` changes
 
 ---
 
+## PROVISIONING UX + Windows branding — reported 2026-10-16 from the Windows test workstation
+*(16 is a rollout blocker and is placed here by priority; the numbers continue at 16 so existing references to 12–15 stay valid. Code refs below re-checked against the tree on 2026-10-16.)*
+
+### 16. "Geräteschlüssel importieren" dialog: **Ctrl+V does nothing**  *(blocks provisioning)*
+Reported on the installed Windows client. This dialog is the **only** way a device key reaches a client (`rustdesk-client-nemo/src/ui/index.tis:601` `open_import_device_key_dialog`), the key is a 44-char base64 secret nobody will retype correctly, and Layer 1 makes it mandatory — so broken paste is a rollout blocker, not a cosmetic bug.
+
+**Already ruled out** (static read, no VM needed): no TIS handler eats the keystroke. The two in scope — `msgbox.tis:303` and `index.tis:2365` — both guard on `if (!evt.shortcutKey)`, so they skip every Ctrl-combination, and neither returns `true`; the third (`common.tis:219`) is scoped to the chatbox behavior and never sees this dialog.
+
+**Constraint on any fix:** the field is `<input|password name='devkey'>` (`index.tis:608`) and the masking is deliberate — `index.tis:602-604` records why: with the key rendered, a remote operator watching the screen could copy this machine's Layer 1 identity straight out of the input. A fix must keep that property.
+
+**First diagnostic (≈2 min on the workstation, no rebuild)** — try Ctrl+V in each of:
+1. the **permanent-password** dialog — also `input|password` (`index.tis:1279`),
+2. the **IP-whitelist** dialog — a plain `<textarea>` (`index.tis:645`),
+3. the **ID field** on the main window.
+
+All three fail → host/Sciter clipboard integration. Only the two password fields fail → Sciter's masked edit refuses paste. Only this dialog fails → something specific to it. Also try **Shift+Insert** and right-click in the field; whichever works is the interim line to add to the provisioning instructions.
+
+**Candidate fixes, best first:**
+- **An "Einfügen" button beside the field** that reads the clipboard on the Rust side and sets the value. Sidesteps Sciter's edit behavior entirely, keeps the masking, and works whichever layer turns out to be at fault. Needs no new dependency: `arboard` is already in `Cargo.toml:109` and the UI↔Rust bridge exists (`src/ui/inline.rs`).
+- A **"Schlüssel anzeigen"** toggle that switches the field to `input|text` while held — cheap, but erodes the on-screen-secret property above; worth it only *alongside* the button, not instead of it.
+- Chasing it inside Sciter's own `behavior:edit` — last resort, we do not control that code.
+
+**Acceptance:** a key can be entered by Ctrl+V *and* by the button; a bad paste still keeps the dialog open with the existing error (`index.tis:618-624`); the key is still never rendered in plaintext.
+
+### 16b. "creating Geräteschlüssel at …" — **report truncated, needs one detail**
+The 2026-10-16 message breaks off mid-sentence, so the ask is unknown. For the record, the flow it points at: keys are minted in the dashboard's **Device keys** panel (`rustdesk-server-nemo/src/nemo_admin.html:931`, button `#generateDeviceKey` → `POST /nemo/api/device-keys`), the private half is **shown once** and must be copied immediately, then pasted into the client via 16's dialog. Open question for the user: is this (a) a second bug on that panel, (b) the same copy/paste problem at the *server* end, or (c) a request to document where keys are created?
+
+### 17. Windows: the installed client is **not findable as "TBFDesk"** — Start menu, Apps list and Explorer all still say RustDesk
+Every OS-level label derives from `APP_NAME`, still `"RustDesk"` by design (`libs/hbb_common/src/config.rs:111`, via `common.rs:1064`; see 14 and `RENAMING-PLAN.md`). Windows Start-menu search indexes the **shortcut file name** and the exe's **version-info**, and both read RustDesk today:
+- shortcuts are built as `{app_name}.lnk` / `Uninstall {app_name}.lnk` / `{app_name} Tray.lnk` (`src/platform/windows.rs:1572/1591/1622-1623`), where `app_name = get_app_name()`;
+- `ProductName` / `FileDescription` / `OriginalFilename` fall back to winres defaults, i.e. to `Cargo.toml:2` `name = "rustdesk"` and `:7` `description = "RustDesk Remote Desktop"`, because `build.rs:41-47` sets only the icon and the manifest;
+- plus hard-coded `…\RustDesk\…` staging paths at `windows.rs:1975-1976`.
+
+**The point: this does not need the `APP_NAME` migration.** `RENAMING-PLAN.md` defers the rename because `APP_NAME` anchors the config dir, the service name and the registry — but none of those are what Windows *searches*. Separate the **display** name from the **identity** name:
+- add `get_display_name()` → `"TBFDesk"` (new constant, `APP_NAME` untouched), used only for shortcut labels, the uninstall `DisplayName` **value** (the key *name* stays), the window title and the tray tooltip;
+- in `build.rs`, set `ProductName` / `FileDescription` / `OriginalFilename` explicitly — three lines, and no crate rename (the plan recommends keeping `name = "rustdesk"`);
+- **upgrade detail:** renaming the `.lnk` leaves the old `RustDesk.lnk` in place, so the installer must delete the old shortcut names or an upgraded machine shows *both* entries.
+
+This is the cheap, non-breaking slice of what `RENAMING-PLAN.md` defers — recorded there as **Layer 0**.
+**Acceptance:** typing "TBF" in the Start menu finds the client; Apps & Features shows TBFDesk; Explorer's Description column on the exe reads TBFDesk; config dir, service and registry are provably unchanged (no re-registration, ID and saved password survive).
+
+### 18. Finish removing "RustDesk" from the program, the deployment and the operator steps
+`RENAMING-PLAN.md` already specifies the app-side job (Layers 1–5 plus the migration, recommended *after* server-driven updates #5 exist). What the 2026-10-16 report adds is that the ask covers **deployment and the written steps**, not just the binary.
+
+Measured state 2026-10-16 (lines matching `RustDesk|rustdesk`): `src/lang/de.rs` **1** — the German UI is effectively done; `src/lang` overall **952** (the other locales); `res/` **242** (`.desktop`, `PKGBUILD`, `DEBIAN`, `msi`, rpm/flatpak specs); `src/platform` **94**; `flutter/lib` **93**; `Cargo.toml` **28**; `src/ui` **16**. Our own docs/scripts still carrying the name: `DEPLOY.md`, `DEPLOYMENT-STEP-BY-STEP.md`, `HANDOFF.md`, `HANDOFF-WINDOWS-DIRECT.md`, `README.md`, `RUNBOOK-LOCAL-MODEL.md`, `LAB-VERIFICATION-2026-10-06.md`, `UPSTREAM-SYNC.md`, `e2e/*.ps1`, `scripts/vm-apply-server-address.sh`, `build-client-fast.cmd`.
+
+**This is not a find-replace.** Triage the inventory into three buckets before touching anything:
+1. **User-visible labels** → rename (the remaining locales, packaging display names, installer text, docs addressed to operators/users).
+2. **Identity, paths, service and binary names** → only via `RENAMING-PLAN.md`'s migration; renaming these in docs *before* the code moves makes the runbooks wrong (the lab server's unit, binaries and paths genuinely are `rustdesk*` today).
+3. **Upstream references** → **keep**: the `rustdesk-org` git dependencies, the `rustdesk`/`librustdesk` crate names, `UPSTREAM-SYNC.md`'s discussion of the upstream project, and the `rustdesk-client-nemo` / `rustdesk-server-nemo` submodule paths. Scrubbing these loses the provenance we need to keep merging upstream.
+
+Do **17** first: it delivers the thing actually complained about (searchability) at a fraction of the risk.
+
+---
+
 ## LOW — polish / housekeeping
 
 ### 12. Settings dialog: swap **Alias** and **Direct IP access** between sections
@@ -122,7 +177,7 @@ User request 2026-09-02, in `index.tis` `NemoSettingsDialog.render()`:
 "Webseite/Support/Datenschutz: (wird ergänzt)" — fill in the real TBF website URL, support contact, privacy link; the clickable `.link .custom-event url='…'` wiring is already in place (`index.tis` `showAbout()`).
 
 ### 14. `%APPDATA%` dir rebrand (deferred, cosmetic)
-`APP_NAME` stays `RustDesk` so config dir/service/registry are unchanged; a true rename needs a config-migration step.
+`APP_NAME` stays `RustDesk` so config dir/service/registry are unchanged; a true rename needs a config-migration step. **Not cosmetic any more in one respect:** the same constant is why Windows cannot find the app as "TBFDesk" — see **17**, which fixes the searchable name *without* this migration.
 
 ### 15. Inherited upstream code markers (informational)
 - server `utils.rs:97/109/119` (OSX reverse-DNS, "ICMP ping?", "key check"); `rendezvous_server.rs:284` (`unreachable!()?`), `:1505` (udp self-poll workaround).

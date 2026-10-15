@@ -18,6 +18,14 @@
 The **peer/relay wire protocol, `licence_key`, and peer keys do not depend on `APP_NAME`.** A renamed TBFDesk client and an un-renamed RustDesk client interoperate at the protocol level. So the fleet can be migrated machine-by-machine.
 
 ## The rename in layers
+### Layer 0 — the display name only (NO migration, do this first)  *(added 2026-10-16, OPEN-TODOS #17)*
+"User-visible text = TBFDesk" above is true only *inside* the app's own UI. Every **OS-level** label still says RustDesk, and those are exactly what Windows Search indexes — so an installed client is not findable as "TBFDesk" (reported from the Windows test workstation). Fixable without touching `APP_NAME`, because none of the searched surfaces are the config dir, the service or the registry key *name*:
+- introduce `get_display_name()` → `"TBFDesk"` (new constant; `APP_NAME` unchanged) and use it only for shortcut labels (`platform/windows.rs:1572/1591/1622-1623`), the uninstall `DisplayName` **value**, the window title and the tray tooltip;
+- set `ProductName` / `FileDescription` / `OriginalFilename` explicitly in `build.rs:41-47` — today they fall back to winres defaults, i.e. `Cargo.toml` `name = "rustdesk"` / `description = "RustDesk Remote Desktop"`;
+- the installer must **delete the old `.lnk` names**, or an upgraded machine shows both entries.
+
+Doing Layer 0 first gets the searchable name with none of the migration risk below.
+
 ### Layer 1 — flip the constant
 `config.rs:111` `APP_NAME` `"RustDesk"` → `"TBFDesk"`. This alone re-points config dir, service name, registry subkey, install path, exe name, `/tmp`, and logs to `TBFDesk`.
 
@@ -50,4 +58,4 @@ Because `is_custom_client()` becomes **true** after the rename (`common.rs:2313`
 - Treat the rename as **one-way**: once users are on `…\TBFDesk`, reverting needs the reverse migration. Test exhaustively before fleet rollout.
 
 ## Recommendation
-Do the full rename as **one coordinated release, after the server-driven update feature exists** (so migration can be pushed and verified centrally). Until then, the current split — **user-visible TBFDesk, internal RustDesk** — is the correct, non-breaking state and requires no action.
+Do **Layer 0 now** — it is what makes the app findable as TBFDesk and carries no migration risk. Do the full rename (Layers 1–5) as **one coordinated release, after the server-driven update feature exists** (so migration can be pushed and verified centrally). Until then, the split — **user-visible TBFDesk, internal RustDesk** — stays the correct, non-breaking state.
