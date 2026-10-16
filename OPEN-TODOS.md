@@ -6,6 +6,114 @@
 
 ---
 
+## 🔴 CRITICAL — field report 2026-10-16 (lab, build `11c4cac`)
+
+Found on the Windows test workstation against the live server. **All six block the
+provisioning workflow or make the dashboard untrustworthy**, which is worse than a
+missing feature: an operator cannot tell a working fleet from a broken one.
+
+**Read first:** the tested client is build `11c4cac`, which predates
+`3467315 fix(setup import): propagate to the service over IPC`. Retest 21/22 on a build
+that includes it *before* digging — part of the symptom may already be fixed.
+
+### 21. Setup string imports the ID server and nothing else  *(CRITICAL — client)*
+*Reported:* importing a setup string **with** a device key "still not working properly".
+The only working route is import the device key, then type the server settings by hand.
+After importing, the client's settings show **`custom-rendezvous-server` only** — no
+`relay-server`, no `api-server`, no server `key`.
+
+`apply_setup` (`src/nemo_setup.rs`) writes every value through `Config::set_option`, so
+the **config file** should be complete — check that first, with
+`tbfdesk --option api-server` and by reading `%APPDATA%\RustDesk\config\RustDesk2.toml`.
+If the file is right and the UI is wrong, it is one of these two, and they are easy to
+tell apart:
+
+1. **The locked-exe guard.** `ui_interface::set_option` returns silently when
+   `nemo_exe_custom_server_configured()` and the key is one of
+   `NEMO_SERVER_CONFIG_KEYS` = `custom-rendezvous-server`, `relay-server`, `api-server`,
+   `key`, `nemo-company-network-only` (`src/ui_interface.rs:83-107`). A client installed
+   from a `rustdesk-host=…,key=…,relay=….exe` name is permanently in that state, and
+   `nemo_preserve_locked_server_options` *re-writes* those four keys on every
+   `set_options`. So the IPC propagation added in `3467315` drops exactly the four values
+   that are missing. **This is the prime suspect**, and note the 1:1 match with what the
+   user sees. If confirmed: either the setup string must be refused on a locked-exe
+   client with a clear message ("this build is locked to <host> by its file name"), or
+   importing one must be an explicit override of the exe name — decide which, do not let
+   it half-apply.
+2. **The policy poll overwrites it.** `api-server` is also a *Global client defaults*
+   key pushed to every client; with `allow_user_override=false` it lands in the fixed map
+   and then `is_option_fixed` makes `set_option` a no-op and `nemo_restore_fixed_options`
+   re-inserts the server's value. `TOPOLOGY-DEPLOYMENT.md` already says to leave that
+   field EMPTY while LAN and WAN clients differ — **check what the dashboard has in it**.
+
+**Acceptance:** on a clean Windows client, one paste of a with-key setup string leaves
+all six values set, survives a service restart and a policy poll, and the client reaches
+the server with nothing typed by hand.
+
+### 22. Address book stays empty after a setup-string import  *(CRITICAL — client/server)*
+Probably downstream of 21 (no `api-server` → no `/api/ab/get`), but confirm rather than
+assume: the address book also needs a **login** (`access_token`), so check in this order —
+`api-server` correct → signed in → `nemo-ab-version` arriving in the policy poll →
+`getAb()` firing. If it is empty with all four right, it is its own bug.
+
+### 23. A connected, relaying client shows "provisioned, not polled"  *(CRITICAL — server GUI)*
+*Reported:* peer `480170882` is online, allowed, has connected over the relay, and the
+Peers panel still reads *provisioned, not polled*.
+
+That label is **literally correct**: `auth_mode` is recorded only in `client_policy`
+(`record_peer_auth_mode`, `nemo_management.rs:460`), i.e. only when the client makes a
+**management poll** — the rendezvous handshake does not set it. A client whose
+`api-server`/`nemo-management-server` is unset never polls, so it is provisioned (a key
+is bound, read from the pinned registry) and never polled. **So this is a symptom of 21,
+not a separate server bug** — but it reads as a server fault, which is why it is here.
+Fix the label to say what to do: *"no management poll yet — check this client's
+api-server"*, and consider counting a rendezvous device-key handshake as evidence of the
+key being in use (it is the same key, proved more strongly).
+
+### 24. The Relayed-bytes panel says "went direct" for sessions that were relayed  *(CRITICAL — server GUI)*
+*Reported, with screenshots:* the Connections panel shows the session as **relay** via
+`192.168.1.14`, the client's own window says relayed — and the Relayed bytes panel lists
+five sessions, every one of them **"unused — went direct"**, with the header reading
+`0 B relayed`.
+
+The panel is wrong, and the cause is in the labelling, not the measurement:
+`nemo_admin.html` renders `unused = !r.last_sample_at` → *went direct*
+(`nemo_admin.html:2305`). **"No sample" means "the relay told us nothing", which is not
+the same as "nothing was relayed"** — and when the metrics poller cannot reach hbbr at
+all (`--nemo-relay-metrics`, loopback-only admin channel; hbbs and hbbr are in separate
+containers here), *every* session gets that label. A dashboard that invents "went direct"
+out of missing data is worse than one that shows nothing.
+
+**Fix:** carry the poller's own state into the response (never-connected / last-success
+timestamp) and render three distinct states — *relayed N bytes*, *unused — went direct*
+(only when the poller is known-good and reported nothing for that session), and *no data
+from the relay* (with the reason). Until it is known-good, the panel must say so at the
+top instead of per-row verdicts. **Then** find out why `uj` is unreachable in the
+container deployment.
+
+### 25. "Cut" blocks the peer instead of just ending the session  *(CRITICAL — server)*
+*Reported:* cutting a relayed connection leaves the peer **blocked** in Peers; the
+operator then has to find it and allow it again. Not what "cut" means.
+
+Confirmed in `cut_connection` (`nemo_management.rs`): it calls
+`set_peer_policy(&pm, target, Some(0))` — a permanent admission change — *and*
+`set_peer_terminate`, which is the part that actually ends the live session (the
+controlled machine tears it down on its next poll; a direct session has no server-side
+data path to interrupt).
+
+**Fix:** cut = `set_peer_terminate` + drop the connection row only. Blocking stays the
+separate, explicit **Block** action the Peers panel already has. If an operator wants
+both, they press both — and the dashboard's confirm text must stop promising a block.
+
+### 26. "Load from file…" in the import dialog is misaligned  *(CRITICAL by request — client UI)*
+The button sits in its own `<div>` inside `.form .set-password`
+(`src/ui/index.tis`, `open_import_device_key_dialog`), whose CSS lays out
+label/input pairs; a lone button lands in the label column instead of under the field.
+Give the row the same shape as the input row (an empty label cell, or a class that spans
+both columns) and check it at the dialog's two widths.
+
+---
+
 ## SECURITY
 
 > **2026-09-27:** This file is history. The live open-items register is `../OPEN-POINTS-2026-09-21.md` (see README *Known gaps*). On 2026-09-25 three items landed: H11/H20/H22 ACL version check and H23/M13 session eviction (server `0231ccd`, completed by `897a00b` — as first committed the admin UI emptied its allowlist after a save), and H24 main-IPC authorization (client `9e18fa9e1`, reverted in `feaf523f9`: the socket was already 0600 in a 0700 dir, and the check broke root CLI commands). S-B sealing, M1, S-C, A4 and the L-items are the **2026-09-03** work below, not new.
