@@ -8,7 +8,7 @@
 Internet 85.126.226.2 ── [Router A, OpenWrt, 192.168.1.1]
                               │  192.168.1.0/24 = middle segment / DMZ
                               ├── XCP-ng host        192.168.1.13
-                              ├── ubuntu24dev (VM)   192.168.1.14   hbbs :21115/21116, hbbr :21117, nemo-api :21120
+                              ├── ubuntu24dev (VM)   192.168.1.14   hbbs :21115/21116, hbbr :21117, nemo-api :21120 (admin), :21121 (clients)
                               └── [Router B, OpenWrt, WAN 192.168.1.2 / LAN 192.168.0.1]
                                        │  192.168.0.0/24 = office LAN
                                        ├── pc2 (controller / dev box)  192.168.0.102
@@ -66,6 +66,14 @@ uci commit; /etc/init.d/network restart; /etc/init.d/firewall restart
 ```
 Keep router B's wan zone at input/forward **REJECT** — once the DMZ is internet-facing this is the defense in depth: a compromised server reaches the DC on 636 and nothing else. Optional (only if the VM should be a *controller* of LAN workstations with a direct path): a second rule `src=wan src_ip=192.168.1.14 dest=lan proto=tcp dest_port=21118` — otherwise those sessions simply relay.
 
+**Port split (2026-10-16).** `:21120` serves the dashboard *and* every admin route, so it is the
+port to firewall to the operator's own address. `--nemo-client-api-bind 0.0.0.0:21121` then carries
+**only** what clients call (tls-cert-info, login, address book, policy poll, audit, update manifest)
+and no admin route at all, so remote clients keep working while the admin surface stays closed.
+**Both must be forwarded for a client outside the LAN:** 21116/21117 to connect, **21121** to be
+managed. Without the 21121 forward a remote client registers (and appears in Peers) but fails every
+poll, login and device-key claim. Same certificate on both binds — clients pin its fingerprint.
+
 **Verify:** on pc2 `tracert 192.168.1.14` (1 hop), `curl -k https://192.168.1.14:21120/nemo/admin`; on the VM `nc -zv 192.168.0.151 636`. Don't use ping from the VM to pc2 as the test — the Windows firewall answers ICMP only from its own subnet, and router B rejects unsolicited DMZ→LAN anyway.
 
 ## Two addresses, one server (LAN 192.168.1.14 vs public 85.126.226.2)
@@ -79,7 +87,7 @@ hbbs already has the mechanism (upstream issue #24 — `rendezvous_server.rs` li
 
 hbbs ExecStart (systemd `rustdesk-hbbs-nemo.service` on the VM):
 ```
-hbbs -r 85.126.226.2:21117 --local-ip 192.168.1.14 --mask 192.168.0.0/16 -k _ --nemo-api Y --nemo-api-bind 0.0.0.0:21120 --nemo-api-token <token> --nemo-api-tls auto
+hbbs -r 85.126.226.2:21117 --local-ip 192.168.1.14 --mask 192.168.0.0/16 -k _ --nemo-api Y --nemo-api-bind 0.0.0.0:21120 --nemo-client-api-bind 0.0.0.0:21121 --nemo-api-token <token> --nemo-api-tls auto
 ```
 hbbr unchanged (caps lifted to 10 Gbit/s in `rustdesk-hbbr-nemo.service.d/override.conf`).
 
@@ -101,7 +109,7 @@ Two things that are start-time hard failures or silent pairing breaks, not prefe
 | Client | `custom-rendezvous-server` | `relay-server` | `api-server` / `nemo-management-server` |
 |---|---|---|---|
 | Office LAN + DMZ (pc2, the VM's own host client `dev` + `gdm`) | `192.168.1.14` | `192.168.1.14` | `https://192.168.1.14:21120` |
-| Internet / roaming | `85.126.226.2` | `85.126.226.2` (or empty → hbbs hands out `-r`) | `https://85.126.226.2:21120` |
+| Internet / roaming | `85.126.226.2` | `85.126.226.2` (or empty → hbbs hands out `-r`) | `https://85.126.226.2:21121` |
 
 Locked-exe names for the two cases (the login gate's *Server* field sets the rendezvous + api + management keys from one value; `relay=` in the exe name sets `relay-server`):
 - LAN: `rustdesk-host=192.168.1.14,key=XsN4Zx48nKhoIkVgHxPyIqtY07bHa68hW9pMIBv7Ahc=,relay=192.168.1.14,.exe`
