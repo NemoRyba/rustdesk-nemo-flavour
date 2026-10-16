@@ -6,17 +6,62 @@
 
 ---
 
-## 🔴 CRITICAL — field report 2026-10-16 (lab, build `11c4cac`)
+## 🔴 CRITICAL — field report 2026-10-16  *(ALL SIX FIXED; verified through the GUI in the lab)*
 
 Found on the Windows test workstation against the live server. **All six block the
 provisioning workflow or make the dashboard untrustworthy**, which is worse than a
 missing feature: an operator cannot tell a working fleet from a broken one.
 
-**Read first:** the tested client is build `11c4cac`, which predates
-`3467315 fix(setup import): propagate to the service over IPC`. Retest 21/22 on a build
-that includes it *before* digging — part of the symptom may already be fixed.
+**Status 2026-10-16 (later the same day):** all six are fixed, and the whole flow was
+re-run end to end as a user — real clicks, real pastes, real sessions — in a lab built for
+it (`vm/scripts/lab2-up.sh`, `lab2-client.sh`, `lab2-peer.sh`, `lab2-admin.sh`): two
+clients wiped to nothing, provisioned by pasting a setup string into the first-run dialog,
+claimed and approved in the dashboard, signed in against a real LDAP, address book
+populated, then one direct and one relayed session, then a cut. What each item needed is
+under it. **Still unverified on Windows** — the lab run was Linux (host + two containers);
+a Windows build from this tree is the remaining step.
 
-### 21. Setup string imports the ID server and nothing else  *(CRITICAL — client)*
+Chasing these turned up **five more defects of the same kind**, each of which broke the
+flow on its own and none of which was in the report:
+
+- **The dashboard could not approve a device-key claim at all.** `escapeAttr()` slugged
+  and lower-cased every value it escaped, so the Approve button carried
+  `evudkktkksqoqp0f` for key `eVudkkTkKsqoQp0F` and the server answered "no such pending
+  device-key claim". It hid because peer ids are digits, where lower-casing is a no-op.
+  Fixed (escape only; `cssToken()` kept for the one CSS-class use) and pinned by a test.
+- **No client could sign in, so no client had an address book.** The HTTP header string
+  the Sciter UI sends (`Authorization: Bearer …`, and `""` when there is none) hit a
+  JSON-only parser — inherited from upstream's tcp-proxy refactor (#14633) — so
+  `/api/login-key`, `/api/login` and `/api/ab/get` failed *before* reaching the network
+  with "EOF while parsing a value". Both shapes are accepted again. This is the real
+  root cause behind 22.
+- **A setup string never switched the managed poll on** (`nemo-management-enabled`), so a
+  client provisioned the recommended way talked to nobody: no policy, no login gate, no
+  address-book version, no direct endpoints, no audit — while looking perfectly
+  configured. It is why 23's "provisioned, not polled" was literally true. The Windows
+  exe-name bootstrap always set it, which is why only setup-string clients were affected.
+- **`direct-access-port` could not be set anywhere in the dashboard**, although the peer
+  panel tells the operator to set it; and a logged-in user's policy replaced the device
+  policy, so the port a machine listens on vanished the moment someone signed in. Added to
+  the policy editor, and injected next to `direct-server=Y` so it survives any policy.
+- **The first-run gate's button overflowed the window** at 800×600 (the German label is 50
+  characters) and the import dialog's label was clipped mid-word by a 30 %-wide label
+  column. Both fixed; both are the first screen a new machine shows.
+
+### 21. Setup string imports the ID server and nothing else  *(FIXED 2026-10-16, lab-verified)*
+**Fixed:** `apply_setup` now READS BACK every value it writes and reports what would not
+store, with the reason (`SetupOutcome::refused`) — the dialog and `--import-setup` show it
+and the CLI exits non-zero, so a half-applied bundle can no longer look like a success.
+The GUI writes through `ui_interface::nemo_set_provisioned_options`, one batch, past both
+guards that used to drop exactly the four server keys (`is_option_fixed` and the
+locked-exe `nemo_is_server_config_key`), because an import is a deliberate
+re-provisioning; a `host=…,key=…` exe name is overridden explicitly
+(`nemo-setup-overrides-exe-name`, honoured by `nemo_exe_custom_server_configured` and by
+`bootstrap()`). The bundle also turns the managed poll on. **Verified in the lab:** a
+wiped client, one Ctrl+V paste, and the dialog listed ID server, api-server, management
+server, server key, management key, relay, certificate pin, managed policy poll and the
+device key — with nothing refused, and all of them in `RustDesk2.toml` afterwards.
+
 *Reported:* importing a setup string **with** a device key "still not working properly".
 The only working route is import the device key, then type the server settings by hand.
 After importing, the client's settings show **`custom-rendezvous-server` only** — no
@@ -50,13 +95,30 @@ tell apart:
 all six values set, survives a service restart and a policy poll, and the client reaches
 the server with nothing typed by hand.
 
-### 22. Address book stays empty after a setup-string import  *(CRITICAL — client/server)*
+### 22. Address book stays empty after a setup-string import  *(FIXED 2026-10-16, lab-verified)*
+**Two root causes, both found by running it:** the header parser rejected the Sciter UI's
+`Authorization: Bearer …` (and `""`), so the login and address-book calls never left the
+machine; and a setup string left the managed poll off, so no `nemo-ab-version` ever
+arrived. Both fixed (see the block at the top). The address book is also refetched right
+after an import, and an empty one now says WHY — "the server shared no computers with this
+account, check the user's access rights" — instead of a bare "Empty". **Verified in the
+lab:** sign-in against a real LDAP, then the book listed the other peer with its hostname,
+and the client's own id filtered out.
+
 Probably downstream of 21 (no `api-server` → no `/api/ab/get`), but confirm rather than
 assume: the address book also needs a **login** (`access_token`), so check in this order —
 `api-server` correct → signed in → `nemo-ab-version` arriving in the policy poll →
 `getAb()` firing. If it is empty with all four right, it is its own bug.
 
-### 23. A connected, relaying client shows "provisioned, not polled"  *(CRITICAL — server GUI)*
+### 23. A connected, relaying client shows "provisioned, not polled"  *(FIXED 2026-10-16, lab-verified)*
+**Fixed on both sides.** The cause was real and is item 21's: a setup-string client never
+polled. The label was also wrong to show as a server fault, so the Peers panel now reads
+the rendezvous proof too (`device_key_proved_at`, recorded where the handshake verifies
+the signature) and says **"device key — handshake only"** with what to check
+(this client's api-server), or **"no management poll yet"**, instead of
+"provisioned, not polled". **Verified in the lab:** a client that had proved its key but
+not yet polled showed the handshake-only state; after the poll it showed "device key".
+
 *Reported:* peer `480170882` is online, allowed, has connected over the relay, and the
 Peers panel still reads *provisioned, not polled*.
 
@@ -70,7 +132,20 @@ Fix the label to say what to do: *"no management poll yet — check this client'
 api-server"*, and consider counting a rendezvous device-key handshake as evidence of the
 key being in use (it is the same key, proved more strongly).
 
-### 24. The Relayed-bytes panel says "went direct" for sessions that were relayed  *(CRITICAL — server GUI)*
+### 24. The Relayed-bytes panel says "went direct" for sessions that were relayed  *(FIXED 2026-10-16, lab-verified)*
+**Fixed:** the poller's own state is carried into the response (`relay_poller`: enabled,
+target, last success, last error) and the panel renders three states instead of two —
+*relayed N bytes*, *unused — went direct* (only while the relay is known to be answering)
+and *no data from the relay* (with the reason, plus a banner at the top of the panel). The
+fleet counter says "not measured" rather than `0 B`, and the peer detail no longer claims
+"0 — nothing relayed" when nothing is measuring. `--nemo-relay-metrics` and
+`--nemo-relay-metrics-interval` are now real flags (they were env-only, while the log told
+operators to pass them). **Verified in the lab:** one live relayed session showed
+*5.33 KiB · 3 kb/s · live* while an earlier direct one showed *unused — went direct*, in
+the same table. Also found while testing: **the live server's own "no data" may simply be
+an hbbr that predates `uj`** — the lab reproduced the symptom exactly with a 2026-09-28
+hbbr, and rebuilding it fixed it. Check the relay's build before digging further.
+
 *Reported, with screenshots:* the Connections panel shows the session as **relay** via
 `192.168.1.14`, the client's own window says relayed — and the Relayed bytes panel lists
 five sessions, every one of them **"unused — went direct"**, with the header reading
@@ -91,7 +166,15 @@ from the relay* (with the reason). Until it is known-good, the panel must say so
 top instead of per-row verdicts. **Then** find out why `uj` is unreachable in the
 container deployment.
 
-### 25. "Cut" blocks the peer instead of just ending the session  *(CRITICAL — server)*
+### 25. "Cut" blocks the peer instead of just ending the session  *(FIXED 2026-10-16, lab-verified)*
+**Fixed:** `cut_connection` revokes the sessions and drops the connection rows, and no
+longer writes `status=0`. It returns the peer's UNCHANGED policy (so the row does not flip
+to blocked), still answers 404 for an unregistered id, and the audit line says
+"admission unchanged". The dashboard's confirm text, button title and column header say
+what it does now. Pinned by `cutting_a_connection_revokes_sessions_and_leaves_admission_alone`.
+**Verified in the lab:** cutting a live relayed session left the peer `allowed` /
+`allowed_for_control: true`.
+
 *Reported:* cutting a relayed connection leaves the peer **blocked** in Peers; the
 operator then has to find it and allow it again. Not what "cut" means.
 
@@ -105,7 +188,13 @@ data path to interrupt).
 separate, explicit **Block** action the Peers panel already has. If an operator wants
 both, they press both — and the dashboard's confirm text must stop promising a block.
 
-### 26. "Load from file…" in the import dialog is misaligned  *(CRITICAL by request — client UI)*
+### 26. "Load from file…" in the import dialog is misaligned  *(FIXED 2026-10-16, lab-verified)*
+**Fixed, and more than reported:** the row shape was wrong for this dialog twice over. The
+label now sits on its own full-width row (the 30 %-wide label column clipped the German
+"Einrichtungszeichenfolge oder Geräteschlüssel" mid-word) and the button lines up under
+the input. **Verified in the lab** at the dialog's own width, by opening it on a wiped
+client.
+
 The button sits in its own `<div>` inside `.form .set-password`
 (`src/ui/index.tis`, `open_import_device_key_dialog`), whose CSS lays out
 label/input pairs; a lone button lands in the label column instead of under the field.
