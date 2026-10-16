@@ -119,7 +119,14 @@ router, the server VM, or a replacement edge box. Only `nemo-knock-port` changes
 ## PROVISIONING UX + Windows branding — reported 2026-10-16 from the Windows test workstation
 *(16 is a rollout blocker and is placed here by priority; the numbers continue at 16 so existing references to 12–15 stay valid. Code refs below re-checked against the tree on 2026-10-16.)*
 
-### 16. "Geräteschlüssel importieren" dialog: **Ctrl+V does nothing**  *(blocks provisioning)*
+### 20. Client setup string  *(DONE 2026-10-16, not seen live)*
+A fresh client needed **six** exact server values typed in before it could reach the server at all — ID/rendezvous server, relay, api-server URL, management URL, the server's identity key, its certificate fingerprint — plus the device key. One wrong character fails as "cannot reach the server".
+**Done:** the dashboard hands them over as `tbfdesk-setup-v1:<base64 json>`. *Settings → Device keys* has the editable fields (prefilled from the dashboard's own Host header) with **Copy string** / **Download file**; generating a device key returns the same bundle **with that key inside it**. The client's *Import device key* dialog takes either a bare key or a setup string, plus **Load from file…**; `tbfdesk --import-setup <file|string>` does it unattended. Server `/nemo/api/client-setup` (GET defaults, POST edits), overrides `--nemo-client-id-server` / `--nemo-client-relay` / `--nemo-client-api`.
+**Open:** not exercised against a real client yet (no Windows/Sciter build here). The bundle is the client's trust anchor and is deliberately unsigned — what a signature would be checked against is the key inside it — so it must be handed over like a password.
+**Side effect worth knowing:** *Load from file…* is also a working paste-free route into that dialog, which is most of what **16** below is about.
+
+### 16. "Geräteschlüssel importieren" dialog: **Ctrl+V does nothing**  *(blocks provisioning — partly worked around by 20)*
+**2026-10-16:** the setup-string work (20) added a **Load from file…** button to this dialog, which is candidate fix #1 from the list below and sidesteps the clipboard entirely: the operator downloads the `.tbfsetup` from the dashboard and picks it. Ctrl+V itself is still unfixed, and the diagnostic below is still the way to find out which layer eats it.
 Reported on the installed Windows client. This dialog is the **only** way a device key reaches a client (`rustdesk-client-nemo/src/ui/index.tis:601` `open_import_device_key_dialog`), the key is a 44-char base64 secret nobody will retype correctly, and Layer 1 makes it mandatory — so broken paste is a rollout blocker, not a cosmetic bug.
 
 **Already ruled out** (static read, no VM needed): no TIS handler eats the keystroke. The two in scope — `msgbox.tis:303` and `index.tis:2365` — both guard on `if (!evt.shortcutKey)`, so they skip every Ctrl-combination, and neither returns `true`; the third (`common.tis:219`) is scoped to the chatbox behavior and never sees this dialog.

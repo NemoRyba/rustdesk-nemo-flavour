@@ -71,6 +71,13 @@ Server-driven management on top of RustDesk, administered from the server dashbo
   workstations — the same code path, the same checks, no role branch. `require_device_key` defaults on,
   so a client without one is refused outright. This, not the LDAP login, is the control the deployment
   rests on.
+- **One-paste client setup.** The dashboard hands out a **setup string** carrying everything
+  a fresh client cannot reach the server without — ID/rendezvous server, relay, api-server
+  and management URL, the server's identity key and its certificate fingerprint — and,
+  when generated together with a device key, that key as well. The client's *Import device
+  key* dialog takes either one (or loads the downloaded file), and
+  `tbfdesk --import-setup` does the same unattended. It is the client's trust anchor, so
+  it is moved like a password, not like a config file.
 - **First-use binding, with operator confirmation** (not deployed yet, see
   [DEVICE-KEY-CLAIM.md](DEVICE-KEY-CLAIM.md)). A key generated *without* an id is a one-shot
   provisioning token: the first client that proves it is **still refused** and files a claim the operator

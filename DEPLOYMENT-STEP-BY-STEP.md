@@ -101,13 +101,25 @@ Firewall, lab/internal subnet only:
 1. Open `https://<server>:21120/nemo/admin` (self-signed cert warning is expected on the
    very first visit — that is what the fingerprint push in step 0 then fixes for every
    client after their first policy poll).
-2. Switch `require_device_key` **off** in the dashboard for the duration of this step
-   only (it is on by default now).
-3. Install the client on each workstation, let it connect once (so it registers and
-   gets a TBFDesk id).
-4. For each workstation: **Device Keys → generate one**, bound to that workstation's id.
-   Import it on that machine (client → *Import device key*).
-5. Once every real workstation has a bound key, switch `require_device_key` back **on**.
+2. Check the **setup string** fields under *Settings → Device keys*: the ID/rendezvous
+   server, the relay and the api-server URL. They are prefilled from **the address you
+   are reading the dashboard on**, which is the one address a client is proven to reach —
+   but a LAN address is wrong for a machine that will connect from outside, and the client
+   gets no second chance to guess. Fix them here, once, before you hand anything out.
+3. For each workstation: **Device keys → generate one** (bind it to the workstation's id
+   if it already has one; leave the id empty to use first-use claiming, see
+   `DEVICE-KEY-CLAIM.md`). The result includes a **setup string** — that key *plus* the
+   six server values a fresh client cannot reach the server without. **Copy string** or
+   **Download file**.
+4. On the workstation: client → *Import device key* → paste the setup string, or
+   **Load from file…** and pick the downloaded `.tbfsetup`. One paste and the machine is
+   configured and keyed; nothing else is typed in by hand. Unattended instead:
+   `tbfdesk --import-setup <file|string>`, which prints what it changed.
+   The dialog accepts a bare device key just as it did before, so a machine that is
+   already configured needs nothing new.
+5. Once every real workstation has a bound key, switch `require_device_key` back **on**
+   (it is on by default; if you turned it off to get a first machine registered, this is
+   where it goes back).
 6. If you use LDAP login, configure it under Integration, then set `require_login` on
    once the allowlist is populated (see `DEPLOY.md` "Integration").
 
