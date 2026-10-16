@@ -154,6 +154,21 @@ Back up, on every change and before every upgrade:
 Upgrade server and every client together — see `DEPLOY.md` section 5 ("Upgrading") for
 exactly what breaks if you don't.
 
+**Resetting one Windows client's settings** (re-provisioning a machine, or clearing a
+botched import): `scripts/reset-windows-client-config.ps1`, elevated. It stops the
+service, backs up and deletes the `*.toml` in **both** config directories — the signed-in
+user's `%APPDATA%\RustDesk\config` and the service's own copy under
+`C:\Windows\ServiceProfiles\LocalService\…`, which is the one people miss — then starts
+the service again.
+
+Three consequences, all intended: the machine loses its **device key** and server
+settings (import a setup string again), it comes back with a **new TBFDesk ID**, so the
+old key on the server is bound to an ID that no longer exists (clear or re-point its
+*Bound to ID*, or delete it and issue a new one), and the `.bak` files the script leaves
+behind **still contain the device key** — fine for a repair, delete them for a
+decommission. The full removal, including the uninstall and every leftover path and
+registry key, is in the client repo's `docs/nemo-provisioning.md`.
+
 ---
 
 ## Not ready for production yet
