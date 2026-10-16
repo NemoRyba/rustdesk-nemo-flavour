@@ -76,6 +76,12 @@ Two properties fall out of the ordering, and both are load-bearing:
   the fact, or clear to re-arm the key as a claimable token. Both paths **drop that key's pending
   rows**, denials included, so a stale denial cannot refuse the first client that proves a re-armed
   key. Deleting a key drops its rows too.
+- **`normalize_peer_id()`** — the operator-typed id is accepted the way the **client displays** it:
+  `456 456 456` is stored as `456456456`. All whitespace goes, `is_whitespace` rather than `== ' '`, so
+  a non-breaking space pasted out of a GUI works too. It runs on exactly two paths, the editable field
+  and the generate form, and **not** on the approve path or anywhere on the request path: a pending
+  claim holds the id the *client* reported and has to keep matching byte-for-byte — which is why
+  `valid_peer_id()` still refuses an id containing a space.
 - **`device_key_for_peer()`**, **`unclaimed_device_key_count()`** — provisioning state read from the
   pinned registry, so unlike the poll-derived auth mode it survives a restart.
 
