@@ -74,7 +74,10 @@ Server-driven management on top of RustDesk, administered from the server dashbo
 - **One-paste client setup.** The dashboard hands out a **setup string** carrying everything
   a fresh client cannot reach the server without — ID/rendezvous server, relay, api-server
   and management URL, the server's identity key and its certificate fingerprint — and,
-  when generated together with a device key, that key as well. The client's *Import device
+  when generated together with a device key, that key as well. Exported **twice**, for
+  inside the network and from the internet, because the server has two addresses and a
+  client carries one set; the public one is never derived from the dashboard's own
+  address, so an operator working over the LAN cannot bake a LAN address into it. The client's *Import device
   key* dialog takes either one (or loads the downloaded file), and
   `tbfdesk --import-setup` does the same unattended. It is the client's trust anchor, so
   it is moved like a password, not like a config file.

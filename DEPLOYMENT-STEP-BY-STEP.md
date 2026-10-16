@@ -101,16 +101,27 @@ Firewall, lab/internal subnet only:
 1. Open `https://<server>:21120/nemo/admin` (self-signed cert warning is expected on the
    very first visit — that is what the fingerprint push in step 0 then fixes for every
    client after their first policy poll).
-2. Check the **setup string** fields under *Settings → Device keys*: the ID/rendezvous
-   server, the relay and the api-server URL. They are prefilled from **the address you
-   are reading the dashboard on**, which is the one address a client is proven to reach —
-   but a LAN address is wrong for a machine that will connect from outside, and the client
-   gets no second chance to guess. Fix them here, once, before you hand anything out.
+2. Check the **setup string** fields under *Settings → Device keys*. There are **two**
+   blocks, because this server has two addresses and a client carries only one set:
+   - **Inside the network (LAN)** — prefilled from the address you are reading the
+     dashboard on, else `--local-ip`; its relay is the LAN address, so an internal
+     session does not hairpin out through the router and back.
+   - **From the internet (public)** — prefilled from the server's `-r` address, and
+     never from the dashboard address. If hbbs was started without `-r`, this block is
+     empty and asks you to fill it in; that is deliberate, because the alternative is a
+     LAN address inside the "from the internet" string.
+
+   Fix both here, once, before you hand anything out. For the lab topology the values are
+   in `TOPOLOGY-DEPLOYMENT.md`'s client-config table (LAN `192.168.1.14`, internet
+   `85.126.226.2`); the lasting fix for a laptop that is on both sides is the
+   split-horizon DNS name recommended there, which makes the two strings identical.
 3. For each workstation: **Device keys → generate one** (bind it to the workstation's id
    if it already has one; leave the id empty to use first-use claiming, see
-   `DEVICE-KEY-CLAIM.md`). The result includes a **setup string** — that key *plus* the
-   six server values a fresh client cannot reach the server without. **Copy string** or
-   **Download file**.
+   `DEVICE-KEY-CLAIM.md`). The result includes **both setup strings** — that key *plus*
+   the six server values a fresh client cannot reach the server without, once for each
+   side of the network. **Copy** or **Download file** the one that matches where that
+   machine connects from (`…-lan…` vs `…-wan…` in the file name); handing over the wrong
+   one fails like a network fault.
 4. On the workstation: client → *Import device key* → paste the setup string, or
    **Load from file…** and pick the downloaded `.tbfsetup`. One paste and the machine is
    configured and keyed; nothing else is typed in by hand. Unattended instead:
