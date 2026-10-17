@@ -401,6 +401,20 @@ Do **17** first: it delivers the thing actually complained about (searchability)
 
 ## LOW — polish / housekeeping
 
+### 27. Every tab label truncated on an installed client  *(DONE 2026-10-17, verified on Windows 11)*
+Four tabs appear once the client is installed ("Im LAN erkannt" joins the other three),
+and `MultipleSessions.onSize()` in `ab.tis` shared the row's width out between them in
+proportion to each label's character count and set a hard `max-width`. With `@ELLIPSIS`
+on the span that meant: as soon as the labels did not fit, **all four were cut** —
+"Letzte Sitz… / Favor… / Im LAN e… / Adres…". German needs more room than English, so
+that was the normal case on an installed German client, not an edge one.
+
+`onSize()` and its `view.on("size")` hook are gone; with nothing clamping them the spans
+are ordinary inline-blocks and the row wraps to a second line, every label whole. Do
+**not** give `.sessions-tab` a wrapping `flow` to "help" — inside the horizontal
+`.sessions-bar` with `width:*` both `horizontal-wrap` and `horizontal-flow` collapse it to
+zero width and the tabs vanish entirely; tried both ways in the lab.
+
 ### 12. Settings dialog: swap **Alias** and **Direct IP access** between sections  *(DONE 2026-10-16, client `nemo-tdd`)*
 Alias now sits under **Allgemein**, direct IP access (and its port row) under **Sicherheit & Netzwerk**, next to the IP whitelist that gates it. Not screenshot-verified — the Sciter UI cannot be built from the Linux dev box.
 User request 2026-09-02, in `index.tis` `NemoSettingsDialog.render()`:
