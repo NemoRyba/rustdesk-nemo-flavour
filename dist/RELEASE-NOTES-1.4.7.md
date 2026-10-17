@@ -1,5 +1,11 @@
 # TBFDesk 1.4.7 — Windows x64
 
+> **Superseded by 1.4.8** ([RELEASE-NOTES-1.4.8.md](RELEASE-NOTES-1.4.8.md)), which carries
+> everything below **plus** the rename: the install directory, the exe, the service, the
+> registry key, `%APPDATA%` and the URI scheme all read TBFDesk, and an existing install is
+> migrated rather than orphaned. 1.4.7 was built and verified but never published; ship
+> 1.4.8 instead.
+
 | | |
 |---|---|
 | file | `tbfdesk-1.4.7-x64-install.exe` (17.2 MiB) |

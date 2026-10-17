@@ -4,27 +4,35 @@
 
     Run elevated: it stops/starts the service and writes under C:\Windows.
 
-    WHAT THIS CLEARS (the *.toml in both config directories)
-      RustDesk.toml          this machine's ID, its keypair, the permanent password
-      RustDesk2.toml         every option - INCLUDING the device key (nemo-device-key)
+    WHAT THIS CLEARS (the *.toml in every config directory)
+      TBFDesk.toml           this machine's ID, its keypair, the permanent password
+      TBFDesk2.toml          every option - INCLUDING the device key (nemo-device-key)
                              and the server settings a setup string wrote
-      RustDesk_local.toml    per-user local state, including the login access token
-      RustDesk_status.toml, RustDesk_lan_peers.toml
+      TBFDesk_local.toml     per-user local state, including the login access token
+      TBFDesk_status.toml, TBFDesk_lan_peers.toml
 
-    Both directories, because the service keeps its own copy and a machine whose
-    user config alone was cleared comes back with its old identity:
-      %APPDATA%\RustDesk\config                                        (the signed-in user)
-      C:\Windows\ServiceProfiles\LocalService\AppData\Roaming\RustDesk\config   (the service)
+    Both profiles, because the service keeps its own copy and a machine whose user
+    config alone was cleared comes back with its old identity:
+      %APPDATA%\TBFDesk\config                                              (the signed-in user)
+      C:\Windows\ServiceProfiles\LocalService\AppData\Roaming\TBFDesk\config  (the service)
+
+    AND the RustDesk-named directories of the same two profiles. Since 1.4.8 the app
+    is TBFDesk and a first start MIGRATES a RustDesk-named config into the new
+    location (RENAMING-PLAN Layer 2), so a machine whose TBFDesk config alone was
+    cleared would come back with its OLD identity on the very next start, out of the
+    directory 1.4.7 left behind. A reset that leaves that copy in place is a reset
+    that silently did not happen - and every "fresh machine" test after it is
+    measuring a provisioned machine.
 
     WHAT THIS LEAVES
       peers\*.toml           per-peer settings (a subdirectory, not matched)
-      RustDesk_ab, RustDesk_group    address-book / group cache (no .toml extension)
-      %APPDATA%\RustDesk\log         logs
+      TBFDesk_ab, TBFDesk_group      address-book / group cache (no .toml extension)
+      %APPDATA%\TBFDesk\log          logs
       the installation, the service, the registry entries, the shortcuts
       *** the .bak files this script writes ***
 
-    THE BACKUPS ARE SECRETS. RustDesk2.toml.bak still contains the device key - the
-    machine's Layer 1 identity - and RustDesk.toml.bak its keypair and password hash.
+    THE BACKUPS ARE SECRETS. TBFDesk2.toml.bak still contains the device key - the
+    machine's Layer 1 identity - and TBFDesk.toml.bak its keypair and password hash.
     For a repair they are exactly what you want; for a decommission, delete them (or
     the whole directory) afterwards.
 
@@ -40,8 +48,28 @@
     (uninstall + every leftover) is in the client repo's docs/nemo-provisioning.md.
 #>
 
-Stop-Service RustDesk -Force -EA 0; Start-Sleep 2
-foreach($d in @("$env:APPDATA\RustDesk\config",'C:\Windows\ServiceProfiles\LocalService\AppData\Roaming\RustDesk\config')){
-  if(Test-Path $d){ Get-ChildItem $d -Filter *.toml | %{ Copy-Item $_.FullName "$($_.FullName).bak" -Force; Remove-Item $_.FullName -Force } }
+$svc  = 'TBFDesk'
+$dirs = @(
+  "$env:APPDATA\TBFDesk\config"
+  "$env:APPDATA\RustDesk\config"
+  'C:\Windows\ServiceProfiles\LocalService\AppData\Roaming\TBFDesk\config'
+  'C:\Windows\ServiceProfiles\LocalService\AppData\Roaming\RustDesk\config'
+)
+
+# Pre-1.4.8 machines still run the RustDesk-named service; stop whichever exists.
+foreach ($n in @($svc, 'RustDesk')) { Stop-Service $n -Force -EA 0 }
+Start-Sleep 2
+
+foreach ($d in $dirs) {
+  if (Test-Path $d) {
+    Get-ChildItem $d -Filter *.toml | ForEach-Object {
+      Copy-Item $_.FullName "$($_.FullName).bak" -Force
+      Remove-Item $_.FullName -Force
+      "cleared $($_.FullName)"
+    }
+  }
 }
-Start-Service RustDesk; (Get-Service RustDesk).Status
+
+if (Get-Service $svc -EA 0) { Start-Service $svc; (Get-Service $svc).Status }
+elseif (Get-Service RustDesk -EA 0) { Start-Service RustDesk; (Get-Service RustDesk).Status }
+else { "no TBFDesk service installed" }
