@@ -34,9 +34,14 @@ and the old Start-menu folder (and so does the uninstaller, for both names), so 
 upgraded machine does not show two entries. Window title and tray tooltip already read
 TBFDesk. `APP_NAME`, the config dir, the service name, the registry key name, the exe
 file name and the URI scheme are untouched — Layers 1–5 below are still open.
-Unverified on Windows: this cannot be compiled or installed from the Linux dev box, so
-the acceptance checks (Start-menu search for "TBF", Apps & Features, Explorer's
-Description column, ID/password surviving) still have to be run on the test workstation.
+**VERIFIED on Windows 2026-10-17** (test VM, packaged installer built from client
+`83d505e2b`): Start menu `Programs\TBFDesk\TBFDesk.lnk` + `Uninstall TBFDesk.lnk` +
+`Startup\TBFDesk Tray.lnk`, desktop `TBFDesk.lnk`, Apps & Features **TBFDesk /
+TBFDesk / 1.4.7**, and the exe's version info — what Windows Search and Explorer's
+Description column actually read — `ProductName TBFDesk`,
+`FileDescription "TBFDesk Remote Desktop"`, `OriginalFilename TBFDesk.exe`,
+`CompanyName "TBF GmbH"`. The service is still registered as `RustDesk` and the config
+still lives in `%APPDATA%\RustDesk`, which is Layer 0 working exactly as designed.
 
 ### Bucket triage for OPEN-TODOS #18 (what "remove RustDesk" does and does not cover)
 Done 2026-10-16 as **bucket 1 — user-visible labels** (client `nemo-tdd`):
