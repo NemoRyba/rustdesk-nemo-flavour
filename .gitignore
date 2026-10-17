@@ -20,3 +20,8 @@
 # Runtime DB snapshots + local repair helper
 /server-db-snapshot.sqlite3*
 /repair-claude-code-runtime.ps1
+
+# Build output: the packaged Windows installer is ~18 MB and is published as a
+# release asset, not committed. The notes next to it are.
+dist/*.exe
+dist/*.exe.sha256
