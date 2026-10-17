@@ -1,6 +1,14 @@
 # TBFDesk — Complete Rename Plan (RustDesk → TBFDesk) without breaking installs
 
-**Status:** PLAN (not yet executed). **Current safe state:** user-visible text = **TBFDesk**; internal `APP_NAME` = **RustDesk** (so config dir / service / registry / protocol are unchanged and nothing breaks). This doc is how to finish the job — flip the internal identity too — as **one coordinated, migration-safe release**.
+**Status: Layers 0, 1, 2, 4 and 5 are DONE (2026-10-17, client `cfbf275a4` + hbb_common
+`40b4e27`). Layer 3 (packaging / bundle ids) is the only one left.** `APP_NAME` is
+`TBFDesk`, so the config directory, the Windows service, the registry key, the install
+directory, the exe file name, the IPC pipe, the logs and the URI scheme all say TBFDesk —
+and an existing RustDesk-named install is migrated rather than orphaned. The sections
+below are kept as the record of what each layer covered and what was deliberately left.
+
+The text that follows describes the state **before** that release; each layer now carries
+a DONE block with what actually shipped.
 
 ## Why it's deferred by default
 `APP_NAME` (`libs/hbb_common/src/config.rs:111`) is the single anchor; **50+ sites derive from it** at runtime. A blind rename orphans every existing install's config, the installed Windows service, the registry, and upgrade-in-place. So the rename is not a find-replace — it's a constant change **plus a migration**.
@@ -83,7 +91,20 @@ Deliberately NOT changed, with the reason:
   Android client is deployed) and it resolves itself at Layer 1.
 
 ### Layer 1 — flip the constant
-`config.rs:111` `APP_NAME` `"RustDesk"` → `"TBFDesk"`. This alone re-points config dir, service name, registry subkey, install path, exe name, `/tmp`, and logs to `TBFDesk`.
+`config.rs` `APP_NAME` `"RustDesk"` → `"TBFDesk"`. This alone re-points config dir, service name, registry subkey, install path, exe name, `/tmp`, and logs to `TBFDesk`.
+
+**DONE 2026-10-17.** `APP_NAME` is initialised from a new `DEFAULT_APP_NAME` constant, and
+`LEGACY_APP_NAME = "RustDesk"` is a constant too, so the code that has to find and clean
+up the old name does not carry the literal around.
+
+One site the plan did not list and that decides whether the install works at all:
+**`install_me` never renamed the copied exe.** The installer XCOPYs the folder it is
+running from, so the file lands under its SOURCE name — `rustdesk.exe`, because the crate
+is still called rustdesk (Layer 3 keeps it) and the packer extracts it under that name —
+while the service, the shortcuts, the UninstallString and the URI handler registered by
+the same script all point at `{path}\{APP_NAME}.exe`. Those agreed only while the two
+words were the same. `install_me` now calls `rename_exe_cmd`, which `update_me` always
+did.
 
 ### Layer 2 — MIGRATION for existing installs (the critical, must-not-skip part)
 Add to the installer/first-run path (`platform::run_after_install`, `core_main.rs --after-install`, and a first-run check):
@@ -92,15 +113,84 @@ Add to the installer/first-run path (`platform::run_after_install`, `core_main.r
 3. **Registry:** migrate `HKLM/HKCU\…\RustDesk` → `…\TBFDesk` (uninstall entry, Run key, stored settings).
 4. Make every step **idempotent** and safe to re-run.
 
+**DONE 2026-10-17**, in two halves.
+
+`Config::migrate_legacy_app_name()` (hbb_common) does the config half on **every**
+platform, from `core_main()` — not from `run_after_install`, because it has to run before
+the first config read, and a portable or not-yet-installed client needs it too. It copies
+the old directory's files into the new one **and renames them**, which is the part the
+plan above missed: `Config::file_()` spells them `{APP_NAME}.toml`, `{APP_NAME}2.toml`,
+`{APP_NAME}_local.toml`, `{APP_NAME}_hwcodec.toml`, `{APP_NAME}_ab`, `{APP_NAME}_group`,
+so a directory copy alone would leave `RustDesk2.toml` — the file holding the server key,
+the management key and the device key — somewhere nothing reads it. It is a **copy**: the
+old directory stays as the rollback path. It is a no-op once the new directory has its own
+`{APP_NAME}.toml`, never overwrites a destination file, skips subdirectories (`log`,
+`peers`), and reloads the in-memory config afterwards so call order cannot matter.
+
+It covers the service account too without any privileged copying: the service process runs
+`core_main()` as well, so it migrates its own profile
+(`C:\Windows\ServiceProfiles\LocalService\AppData\Roaming\…`) when it starts.
+
+`get_legacy_cleanup()` (platform/windows.rs) does the OS half, spliced into `install_me`
+before anything new is written, and into `run_after_install` for the MSI path: stop and
+delete the old service, delete both uninstall registry keys (32- and 64-bit views), delete
+the `.rustdesk` association and the `rustdesk` URI scheme, delete the firewall rules,
+delete the shortcuts under both names, and remove the old install directory — never the
+directory being installed into. Its `taskkill` carries the `PID ne` filter, because the
+installer process is itself called `rustdesk.exe` and would otherwise kill itself.
+
+What is NOT migrated, on purpose: `HKCU`-stored settings (this fork keeps none; everything
+is in the config directory) and the old config directory itself, which is the rollback
+copy.
+
 ### Layer 3 — packaging / bundle identifiers
 - `Cargo.toml` bundle `name` → `TBFDesk`; bundle `identifier` `com.carriez.rustdesk` → `com.tbf.tbfdesk`. **macOS caveat:** changing the bundle id makes the OS treat it as a new app (breaks in-place/Sparkle upgrade) — plan a signed migration/first-install.
 - Crate `name = "rustdesk"` → **optional / KEEP**. It's invisible to users, and renaming it churns hundreds of internal references + the `librustdesk`/service target names. Recommend leaving the crate name as-is; rename only user-facing packaging.
 
+**STILL OPEN — and it is the one place where Layer 1 left an inconsistency.** On Linux the
+*package* installs `rustdesk.service`, `rustdesk.desktop`, `/etc/rustdesk/xorg.conf`,
+`/etc/rustdesk/startwm.sh` and `/etc/pam.d/rustdesk`, and the binary is `rustdesk` because
+the crate is. Those strings used to be written as `get_app_name().to_lowercase()`, which
+was right only while the app name and the package name were the same word. They now read
+`platform::linux::PACKAGE_NAME`, so an installed Linux client keeps working — it does not
+start hunting for a unit and a desktop entry no package ever wrote. So the state is:
+**Linux config directory = `~/.config/tbfdesk` (migrated), Linux package = still
+`rustdesk`.** That is deliberate and it works; Layer 3 is what makes the two agree.
+No Linux package is built from this tree today (we ship the Windows exe installer), so
+nothing is shipped in that mixed state.
+
 ### Layer 4 — protocol URI scheme
-`rustdesk://` → `tbfdesk://` (`common.rs:1014`). Register the new scheme; if any deep links are in use, **keep `rustdesk://` registered too** during a transition window.
+`rustdesk://` → `tbfdesk://` (`common.rs`). Register the new scheme; if any deep links are in use, **keep `rustdesk://` registered too** during a transition window.
+
+**DONE 2026-10-17** — it falls out of Layer 1, since `get_uri_prefix()` is
+`get_app_name().to_lowercase()`. The installer registers `tbfdesk` and **deletes** the old
+`rustdesk` keys rather than keeping both: their `shell\open\command` pointed into the
+install directory the same script removes, so leaving them would leave a scheme that fails
+silently. Nothing in this fleet emits `rustdesk://` links. If that changes, re-register
+the old scheme pointing at the new exe — four `reg add` lines in `get_after_install`.
 
 ### Layer 5 — audit `is_custom_client()` flips
-Because `is_custom_client()` becomes **true** after the rename (`common.rs:2313`), re-check every `is_custom_client`-gated branch (e.g. the "customized edition / contact your administrator" update text, `powered_by_me`) so nothing unwanted turns on.
+Because `is_custom_client()` becomes **true** after the rename (`common.rs`), re-check every `is_custom_client`-gated branch (e.g. the "customized edition / contact your administrator" update text, `powered_by_me`) so nothing unwanted turns on.
+
+**DONE 2026-10-17 — and the audit says it must NOT flip.** The predicate asks "did an
+embedded custom-client blob override the app name?", and the only writer besides the
+default is `read_custom_client()`. It was spelled `!= "RustDesk"` because that *was* the
+default. Comparing against `DEFAULT_APP_NAME` keeps the original meaning and stays correct
+through any future rename. Had it been left as a literal it would have become
+unconditionally true and silently turned on:
+
+- the **"powered by" link** in the left pane (`index.tis`, unless `hide-powered-by-me`);
+- **five option defaults** — language, approve mode (→ `password-click`), whitelist and
+  two Y/N pairs — which `index.tis` picks differently for a custom client;
+- `hide_cm` in the ipc option read.
+
+`is_rustdesk()` is the same story: its one caller is `lang::translate`, where `false`
+turns on "rewrite the word RustDesk into the app name" for every translated string. This
+fork's strings are already branded, and the few that still say RustDesk say it on purpose.
+One of them is the **AGPL attribution**, which has no value in `en.rs` — so `translate`
+falls back to the key, and the rewrite would have produced "Based on the open-source
+TBFDesk project." It is now excluded by name in `lang.rs`, with a test over four locales,
+so even a genuinely renamed custom build cannot rewrite the attribution.
 
 ## Rollout procedure
 1. Build a TBFDesk-named client **with** the Layer-2 migration wired into first-run/after-install.
@@ -113,5 +203,33 @@ Because `is_custom_client()` becomes **true** after the rename (`common.rs:2313`
 - **macOS bundle-id change** breaks in-place upgrade — needs a signed migration/first-install.
 - Treat the rename as **one-way**: once users are on `…\TBFDesk`, reverting needs the reverse migration. Test exhaustively before fleet rollout.
 
-## Recommendation
+## Recommendation (superseded — kept for the reasoning)
 Do **Layer 0 now** — it is what makes the app findable as TBFDesk and carries no migration risk. Do the full rename (Layers 1–5) as **one coordinated release, after the server-driven update feature exists** (so migration can be pushed and verified centrally). Until then, the split — **user-visible TBFDesk, internal RustDesk** — stays the correct, non-breaking state.
+
+## What actually shipped, 2026-10-17
+
+Layers 1, 2, 4 and 5 went out together, ahead of the server-driven update feature, because
+the fleet is small enough to push an installer and the migration proved out on a machine
+that genuinely had something to lose. Layer 3 is deferred and Linux packaging is pinned to
+`PACKAGE_NAME` so nothing breaks while it is.
+
+Where the names now live:
+
+| | before | after |
+|---|---|---|
+| install dir | `C:\Program Files\RustDesk` | `C:\Program Files\TBFDesk` |
+| exe | `rustdesk.exe` (registered as `RustDesk.exe`) | `tbfdesk.exe` |
+| service | `RustDesk` / "RustDesk Service" | `TBFDesk` / "TBFDesk Service" |
+| uninstall key | `…\Uninstall\RustDesk` | `…\Uninstall\TBFDesk` |
+| user config | `%APPDATA%\RustDesk\config` | `%APPDATA%\TBFDesk\config` |
+| service config | `…\ServiceProfiles\LocalService\…\RustDesk` | `…\TBFDesk` |
+| config files | `RustDesk.toml`, `RustDesk2.toml`, … | `TBFDesk.toml`, `TBFDesk2.toml`, … |
+| URI scheme | `rustdesk://` | `tbfdesk://` |
+| Linux config | `~/.config/rustdesk` | `~/.config/tbfdesk` |
+| Linux package | `rustdesk` | **unchanged — Layer 3** |
+
+**Rollback.** The old config directory is still there, untouched. A RustDesk-named build
+installed over the top finds it and comes up with the same ID, password and device key.
+The reverse migration the "Risks" section warns about is therefore not needed — as long as
+the old directory is not deleted. Do not add a step that deletes it without replacing this
+paragraph.

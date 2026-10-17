@@ -375,7 +375,15 @@ This is the cheap, non-breaking slice of what `RENAMING-PLAN.md` defers — reco
 
 ### 18. Finish removing "RustDesk" from the program, the deployment and the operator steps  *(bucket 1 DONE 2026-10-16; buckets 2–3 open by design)*
 **Done (bucket 1, user-visible labels):** 892 translated values across 49 locales; the three keys whose EMPTY value made English and German fall back to the key text (`About RustDesk`, `Keep RustDesk background service`, `Show RustDesk`); `res/` display fields (`.desktop` `Name`/`Keywords`, the service `Description`, `PKGBUILD` `pkgdesc`, the rpm specs' `Summary`/`%description`); one hard-coded Flutter window label. Kept on purpose: the AGPL attribution and the two `rustdesk.com/docs` links. Left alone with the reason recorded: `res/msi` (its `--app-name` substitution also renames the service and paths, so that is a bucket-2 change in disguise), `res/DEBIAN/*`, and **our own docs** — audited line by line, what remains is `%APPDATA%\RustDesk`, `RustDesk2.toml`, `RustDesk.exe`, `/tmp/RustDesk-<uid>`, the `FOCUS RustDesk` window class, host paths and upstream discussion, i.e. exactly the things #18 warns not to rename before Layer 2 ships. Per-file verdicts: `RENAMING-PLAN.md`.
-**Open:** buckets 2 and 3, which are `RENAMING-PLAN.md` Layers 1–5 plus the config migration.
+**Bucket 2 DONE 2026-10-17** — `RENAMING-PLAN.md` Layers 1, 2, 4 and 5 shipped together
+with the config migration (see **14**). What a user sees in Windows now reads TBFDesk from
+the Start menu down to `C:\Program Files\TBFDesk\tbfdesk.exe`, the `TBFDesk` service and
+`%APPDATA%\TBFDesk`. The docs this item warned not to rename early can now be corrected:
+the runbooks that say `%APPDATA%\RustDesk`, `RustDesk2.toml`, `RustDesk.exe` and
+`/tmp/RustDesk-<uid>` describe the pre-rename world and are wrong as of this release —
+except where they describe the **live Linux server**, whose unit and binaries genuinely
+are `rustdesk*` (that is Layer 3, still open).
+**Open:** bucket 3 (upstream references — keep by design) and Layer 3 packaging.
 
 Original report:
 `RENAMING-PLAN.md` already specifies the app-side job (Layers 1–5 plus the migration, recommended *after* server-driven updates #5 exist). What the 2026-10-16 report adds is that the ask covers **deployment and the written steps**, not just the binary.
@@ -402,8 +410,19 @@ User request 2026-09-02, in `index.tis` `NemoSettingsDialog.render()`:
 ### 13. About-dialog placeholder links  *(HANDLED 2026-10-16; still needs the real URLs)*
 The three rows are now **omitted** rather than shown as "(wird ergänzt)" — a dialog that names a support channel and then says the address is missing is worse than one that does not mention it, because the reader cannot tell "not set up yet" from "we lost the page". Fill `NEMO_ABOUT_LINKS` in `index.tis` `showAbout()` (one array, label + URL; an empty URL hides its row) and the rows come back as real clickable links through the wiring that was already there. **What is still needed from TBF: the website URL, the support contact, the privacy-statement URL.**
 
-### 14. `%APPDATA%` dir rebrand (deferred, cosmetic)
-`APP_NAME` stays `RustDesk` so config dir/service/registry are unchanged; a true rename needs a config-migration step. **Not cosmetic any more in one respect:** the same constant is why Windows cannot find the app as "TBFDesk" — see **17**, which fixes the searchable name *without* this migration.
+### 14. `%APPDATA%` dir rebrand  *(DONE 2026-10-17 — RENAMING-PLAN Layers 1+2)*
+`APP_NAME` is `TBFDesk`. The config directory, the file names inside it, the Windows
+service, the registry key, the install directory, the exe, the IPC pipe, the logs and the
+URI scheme all follow, and `Config::migrate_legacy_app_name()` carries an existing
+install's ID, permanent password, device key and settings across — as a **copy**, so the
+old directory remains the rollback path. Windows additionally gets
+`get_legacy_cleanup()`: old service, both uninstall keys, `.rustdesk` / `rustdesk://`,
+firewall rules, shortcuts and the old `C:\Program Files\RustDesk` all go.
+
+Still open: **Layer 3** (packaging / bundle ids). On Linux the package is still
+`rustdesk` — unit, desktop entry, `/etc/rustdesk/*`, pam — now pinned to a
+`PACKAGE_NAME` constant instead of following `APP_NAME`, so an installed Linux client
+keeps working. No Linux package is built from this tree today.
 
 ### 15. Inherited upstream code markers (informational)
 - server `utils.rs:97/109/119` (OSX reverse-DNS, "ICMP ping?", "key check"); `rendezvous_server.rs:284` (`unreachable!()?`), `:1505` (udp self-poll workaround).
