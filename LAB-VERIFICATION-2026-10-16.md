@@ -90,12 +90,33 @@ Plus one operational finding for the live server: **"no data from the relay" may
 an hbbr that predates the `uj` command.** The lab reproduced the symptom exactly with a
 2026-09-28 hbbr binary; rebuilding it fixed it. Check the relay's build first.
 
-## Not verified here
+## Windows, on a build from this tree
 
-**Windows.** This run was Linux: the host client plus two containerised ones. The client
-fixes are platform-independent (`src/`), but the Windows leg — fresh install, the Ctrl+V
-paste that OPEN-TODOS 16 is about, and the service/IPC path — needs a Windows build from
-this tree. The test VM has the full toolchain (VS 2022 BuildTools, Windows SDK, vcpkg with
-ffmpeg/aom/libvpx/libyuv/opus for `x64-windows-static`, LLVM 15.0.6, Rust); the source is
-at `C:\src` and `C:\src\winbuild.cmd` builds it with `--features inline,hwcodec`. Run it as
-a scheduled task — a build started over SSH dies with the session.
+Built in the test VM (`C:\src\winbuild.cmd`, `--features inline,hwcodec`, ~6 min with the
+prepared vcpkg tree) and run on Windows 11 with the settings **wiped first** by
+`scripts/reset-windows-client-config.ps1`:
+
+1. First run shows the provisioning gate, button wrapped inside its card.
+2. The import dialog's label is on its own line and the "Aus Datei laden…" button lines up
+   under the input — the two layout faults, fixed, on the platform they were reported on.
+3. **`Ctrl+V` pastes the setup string** (OPEN-TODOS 16's dialog), and one OK applies all of
+   it: ID server, api-server, management server, server key, management key, relay,
+   certificate pin, **managed policy poll** and the device key, nothing refused. This is
+   exactly the "imports the ID server and nothing else" report, no longer reproducible.
+4. The claim appears in the dashboard, is approved, the peer registers (`device key`
+   proved on the handshake), is allowed, and the client reaches the **login gate** — which
+   proves the managed poll runs on Windows too.
+5. LDAP sign-in works (it could not before the header fix), and the address book fills
+   with all three other peers, the **⇄ direct** badge on the one that has an endpoint.
+
+Two faults surfaced here and were fixed on the spot: the gate's Server box came up empty
+on a machine provisioned in that same session (it read the UI's option cache, not the
+config), and the certificate pin overflowed the summary dialog.
+
+Not reachable in this topology: a direct connection *from* the Windows VM — QEMU user-mode
+networking cannot route into the rootless-podman peers. Direct was exercised between the
+two container peers instead.
+
+Build notes for next time: run the build as a **scheduled task**; a build started over SSH
+dies with the session. The VM keeps the whole toolchain (VS 2022 BuildTools, Windows SDK,
+vcpkg with ffmpeg/aom/libvpx/libyuv/opus for `x64-windows-static`, LLVM 15.0.6, Rust).

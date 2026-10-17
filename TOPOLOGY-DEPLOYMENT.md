@@ -2,6 +2,26 @@
 
 **Status:** the XCP-ng host moved into the middle segment on **2026-09-04**. Server = **192.168.1.14** (ubuntu24dev VM), public = **85.126.226.2**. Created 2026-09-02 as prep; rewritten 2026-09-04 for the real addresses. Apply script for the VM: [`scripts/vm-apply-server-address.sh`](scripts/vm-apply-server-address.sh).
 
+## Live deploy 2026-10-17
+
+`hbbs` **94c12b7** and — for the first time since 2026-10-05 — a rebuilt **hbbr**. Both
+services active; the server key (`af38ae8e…`), the two device keys and their bindings, the
+ACL and the database were untouched, and the client API on **:21121** still answers from
+the internet (HTTP 200). Rollback copies: `/usr/bin/{hbbs,hbbr}.bak-20261017-091511`.
+
+**hbbr was the reason the Relayed-bytes panel had no data.** The binary in service
+predated the `uj` admin command the metrics poller reads, so the poller connected and got
+an empty answer on every tick. Since the deploy the poller reports
+`last_success_at` with `last_error: None`, i.e. the relay is being measured. The same
+mistake is easy to repeat: **deploy hbbr whenever you deploy hbbs** — they share a tree and
+the relay half is the one nobody notices is stale.
+
+Live state right after the deploy: `352069946` (tbfpc2) allowed, **auth device-key**,
+device key proved on the rendezvous handshake, endpoint `85.126.226.2:21666` and
+**1 endpoint delivered** to it on its last poll; `480170882` (lenovo) allowed but has never
+polled — which the Peers panel now says in those words instead of "provisioned, not
+polled".
+
 ## Topology
 
 ```
