@@ -263,6 +263,39 @@ Forked to **github.com/NemoRyba/hbb_common** (public) + a **176 bare mirror** (`
 
 ## NEEDS THE USER / infrastructure (not verifiable from the dev box)
 
+### 27. The server never hears about direct sessions  *(OPEN 2026-10-18, next)*
+A direct session bypasses hbbs, so the dashboard's Connections panel and log have no
+record of it, and nothing to debug from. Wanted: one small report per session from the
+clients through the existing client-audit channel: the path, the endpoint, the
+handshake time and the end reason. Sent at most once at setup and once at close, never
+during the session. The controlled side already audits incoming connections; it lacks
+the path.
+
+### 28. Direct vs relay throughput on the real path  *(MEASURED 2026-10-18, one run each)*
+Method: a TBFDesk TCP tunnel from the lenovo through pc2 to a Hetzner test file
+(`nbg1-speed.hetzner.com`), so pc2 fetches and the lenovo↔pc2 leg is the only part that
+differs. Direct vs forced relay (`352069946/r`); the operator accepted each connection
+on pc2. Scripts: `vm/scripts/lenovo/speed.ps1` and `baseline.ps1`.
+
+| path | throughput |
+|---|---|
+| lenovo's own download (ceiling) | 11.9 Mbit/s |
+| **direct** (61.6 ms handshake) | **7.7 Mbit/s** (80.8 MB / 84 s) |
+| relay | 4.6 Mbit/s (33.7 MB / 59 s) |
+
+Direct is 67% faster; the relay costs ~40%, consistent with the ~36% measured in the lab.
+Direct still reaches only 65% of the lenovo's own download, so the next limit is on pc2's
+side (office uplink, or the tunnel itself). Repeat at another time of day before taking
+the exact numbers as final.
+
+### 11-0. Router A answers TCP 21666 itself — the one thing between pc2 and a direct session  *(FIXED 2026-10-18 21:54 — operator corrected the forwards; verified from outside and with the lenovo's client: established in 84 ms, no relay)*
+From outside, `85.126.226.2:21666` is **reset by Router A** (TTL-proven), while ports with no
+rule are dropped. So the rule exists but delivers to the router itself, not to Router B
+`192.168.1.2:21666`. Router B, pc2's listener and the direct protocol were proven working.
+Fix: a Port Forward on Router A to **Internal IP 192.168.1.2**, port 21666, and no input
+Traffic Rule for 21666. Then re-probe from outside. Full evidence and the post-fix test:
+[HANDOFF-LENOVO-PC2-DIRECT.md](HANDOFF-LENOVO-PC2-DIRECT.md).
+
 ### 11. Topology move 2026-09-04 — server VM is now `192.168.1.14` (DMZ), public `85.126.226.2`  *(IN PROGRESS)*
 Design + router commands: [TOPOLOGY-DEPLOYMENT.md](TOPOLOGY-DEPLOYMENT.md). Checklist:
 - [ ] Router A: static route `192.168.0.0/24 via 192.168.1.2`, DHCP reservations for `.2/.13/.14`. Router B: static WAN, wan-zone `masq=0`, ACCEPT rule `192.168.1.14 → 192.168.0.151 tcp/636` (LDAPS — without it every login fails).
