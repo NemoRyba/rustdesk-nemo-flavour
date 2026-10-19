@@ -331,6 +331,28 @@ client updated through `10.0.2.2:31120` and, separately, through a port-translat
 Use: Settings → Software update → choose the installer → Upload & publish; switch on
 **Automatic client updates** (Global defaults, or a named device policy for a pilot group).
 
+### 35. Update hardening: a release-signing key that is not on the server  *(TODO, operator decision 2026-10-19)*
+Today the key that signs the update manifest is the server's management key. Whoever
+controls the server can publish any installer, and every client with automatic updates
+installs it with full system rights. Plan: a separate Ed25519 **release key** kept offline
+(the operator's PC); the operator signs each installer (or its manifest) locally; clients
+pin the release public key at provisioning and accept only installers signed with it. The
+server then only distributes. Needs: a small signing tool for the operator, the release
+public key in the setup bundle, a manifest field for the release signature, and a rotation
+story. (Hardening 1, the pinned download, is done: client 020d113ed, which also fixed the
+pin itself, hbb_common 69260a8.)
+
+### 36. Update experience: a dialog on Windows, a notice everywhere, self-update on Linux  *(IN PROGRESS, operator request 2026-10-19)*
+- Windows: a visible "update ready" dialog instead of a silent restart; never during a
+  session (already enforced by the updater: no install while an incoming or outgoing
+  session is open).
+- All clients without automatic install: a German notice that a new version exists.
+- Linux is part of the fleet: per-platform installers in the manifest and an installing
+  updater on Linux.
+
+### 37. TBFDesk for Android  *(TO PLAN, operator request 2026-10-19)*
+Control a computer from the phone; possibly control an Android phone from a computer.
+
 ### 29. "Cut" is undone by an immediate reconnect  *(THINK OVER — operator report 2026-10-19)*
 The operator cut a live **direct** session from the dashboard's Connections panel. The
 controller had the password remembered and was back in at once.
