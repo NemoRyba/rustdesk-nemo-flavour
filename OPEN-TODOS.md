@@ -263,13 +263,14 @@ Forked to **github.com/NemoRyba/hbb_common** (public) + a **176 bare mirror** (`
 
 ## NEEDS THE USER / infrastructure (not verifiable from the dev box)
 
-### 27. The server never hears about direct sessions  *(OPEN 2026-10-18, next)*
-A direct session bypasses hbbs, so the dashboard's Connections panel and log have no
-record of it, and nothing to debug from. Wanted: one small report per session from the
-clients through the existing client-audit channel: the path, the endpoint, the
-handshake time and the end reason. Sent at most once at setup and once at close, never
-during the session. The controlled side already audits incoming connections; it lacks
-the path.
+### 27. The server never hears about direct sessions  *(BUILT 2026-10-19, lab-verified — live needs the hbbs deploy + clients on 1.4.11)*
+Client `06a9ea753` / server `139cc6e`. The controller reports each attempt at a published
+endpoint (client-audit kind `direct`: target, endpoint, established / failed /
+not-tried, ms, reason). That is one POST per attempt, deduplicated per (peer, outcome)
+for 10 min, sent off-thread. The controlled side adds `path` to the `new` connection audit
+it already sent. The dashboard shows the session in Connections as **direct-endpoint**
+(green) or **direct-failed** (red), the target's stats count both, and the Peers table's
+Direct column shows them. Verified in the lab end to end, including a refused endpoint.
 
 ### 28. Direct vs relay throughput on the real path  *(MEASURED 2026-10-18, one run each)*
 Method: a TBFDesk TCP tunnel from the lenovo through pc2 to a Hetzner test file
