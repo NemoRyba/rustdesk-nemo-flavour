@@ -272,6 +272,46 @@ it already sent. The dashboard shows the session in Connections as **direct-endp
 (green) or **direct-failed** (red), the target's stats count both, and the Peers table's
 Direct column shows them. Verified in the lab end to end, including a refused endpoint.
 
+### 29. "Cut" is undone by an immediate reconnect  *(THINK OVER — operator report 2026-10-19)*
+The operator cut a live **direct** session from the dashboard's Connections panel. The
+controller had the password remembered and was back in at once.
+
+**What Cut does today** (server `cut_connection`, client `apply_session_revocation`): it
+stamps "terminate sessions before T" for the target; the target ends those sessions on
+its next policy poll (≤30 s). That is correct for direct sessions, which have no server
+data path to interrupt. It deliberately changes nothing else (TODO 25: it no longer
+blocks). A new session started after T is allowed. Two things then bring the controller
+back straight away:
+1. **Automatic retry.** The closed session is an ordinary "connection closed" to the
+   controller, so `check_if_retry` reconnects by itself.
+2. **Remembered password.** The redial logs in without asking anyone. A manual
+   reconnect works the same way.
+
+So Cut is effectively "hang up", and with a remembered password even that does not hold.
+
+**Options to weigh**
+- **A. Cut is final for that session.** The target closes with a distinct reason
+  ("ended by the administrator"), which the controller treats as non-retryable, like the
+  Direkt-verbinden failures (`FORCED_DIRECT_FAILED`). Stops (1), not (2). Cheap.
+- **B. Cut with a cool-down.** The revocation carries "refuse new sessions from
+  controller X until T+n" (n configurable, e.g. 5–15 min, or until the admin lifts it). The
+  *target* enforces it, so it works for direct sessions. Stops both. The policy already
+  carries the stamp; it needs the controller id(s) and an end time.
+- **C. Revoke the remembered credential.** The target rotates its permanent password,
+  or drops the controller from trusted devices. This hits every controller of that machine.
+  Too blunt as the default, maybe an extra option.
+- **D. Block** (exists) for "never again". Cut + Block is what an operator presses today.
+- **Faster delivery:** the cut waits for the target's next poll (up to 30 s).
+  hbbs can already push to a peer over its own rendezvous connection (H43). Pushing
+  the revocation would make Cut take effect in about a second.
+
+**Questions to decide first:** Does Cut mean "hang up" or "kick out for a while"? Per
+controller, or every session on the target? Should the controller's user see why
+("ended by your administrator")? How long a cool-down, and can the operator lift it
+early? The new direct reports (TODO 27) already show on the dashboard whether a
+controller came straight back after a cut. That evidence is useful for whatever is
+chosen here.
+
 ### 28. Direct vs relay throughput on the real path  *(MEASURED 2026-10-18, one run each)*
 Method: a TBFDesk TCP tunnel from the lenovo through pc2 to a Hetzner test file
 (`nbg1-speed.hetzner.com`), so pc2 fetches and the lenovo↔pc2 leg is the only part that
