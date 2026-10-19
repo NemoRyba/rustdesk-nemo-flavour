@@ -353,6 +353,41 @@ pin itself, hbb_common 69260a8.)
 ### 37. TBFDesk for Android  *(TO PLAN, operator request 2026-10-19)*
 Control a computer from the phone; possibly control an Android phone from a computer.
 
+### 38. Flutter (Android/iOS) up to parity with the desktop client  *(IN PLAN, operator request 2026-10-19)*
+The desktop client (Windows + Linux, ONE Sciter codebase, src/ui/*.tis) has all the
+TBFDesk work; the mobile app is the separate Flutter tree (flutter/, ~121 dart files) and
+is behind. Bring it to parity in features and UX: management poll + signed policy, Layer-1
+device-key gate, sealed login, control tickets (present on connect), direct endpoints +
+knock, German-first UI + language picker, the update flow (where it applies on mobile),
+company-network/outbound rules, direct-session reporting. Scope per feature: some are pure
+Rust (already shared via the flutter feature) and only need the Dart UI; others (Sciter-only
+UI like the settings dialog) need reimplementing in Dart.
+
+### 39. One UI everywhere: evaluate porting desktop to Flutter  *(LATER, operator interest 2026-10-19)*
+Windows+Linux already share one codebase (Sciter). Moving desktop to Flutter too would give
+a single UI for Windows/Linux/Android/iOS, at the cost of a large port (the whole Sciter UI
+and its handlers). Decide after 38, measuring effort vs. the benefit of one UI.
+
+### 40. Pre-production security hardening + adversarial verification  *(OPERATOR PRIORITY 2026-10-19 — before production use)*
+Threat model (operator): assume users do NOT leak their logins/keys; the attack surface is
+the NETWORK (internet and the company subnet) and the COMPUTERS (a machine an attacker
+controls or is on the same LAN as). Verify, as a white-hat against our OWN lab, that
+server<->client traffic and the trust model resist a network/endpoint attacker:
+- MITM on the management API (policy poll, login, address book, update): TLS + cert pin +
+  signed policy + sealed login. Confirm a tampered/stripped/replayed exchange is refused.
+- The rendezvous and relay planes (device-key handshake, NemoSource, forced-relay).
+- Direct sessions: the control ticket, the challenge binding, the knock (replay, spoofed
+  source), the server-anchored key for direct-IP peers.
+- The update path end to end (signed manifest + sha256 + pinned download; residual: the
+  signing key is the server's -- see TODO 35).
+- An attacker ON a client machine / same LAN: what a non-admin or a LAN peer can reach.
+Method: a code-level trust-boundary review first (done where noted below), then live tests
+in the lab (tcpdump/wireshark already here; ARP/DNS spoof, TLS-strip, replay; a Kali VM or
+individual tools as needed). Lab only, never production. Write findings + residual risks to
+a SECURITY-VERIFICATION doc.
+
+
+
 ### 29. "Cut" is undone by an immediate reconnect  *(THINK OVER — operator report 2026-10-19)*
 The operator cut a live **direct** session from the dashboard's Connections panel. The
 controller had the password remembered and was back in at once.
