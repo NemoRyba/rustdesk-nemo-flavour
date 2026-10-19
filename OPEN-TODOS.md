@@ -272,6 +272,62 @@ it already sent. The dashboard shows the session in Connections as **direct-endp
 (green) or **direct-failed** (red), the target's stats count both, and the Peers table's
 Direct column shows them. Verified in the lab end to end, including a refused endpoint.
 
+### 30. Direct sessions bypassed the per-user rules  *(BUILT 2026-10-19, lab-verified on Linux and Windows — live needs the hbbs deploy, 1.4.14 on every client, THEN enforcement on)*
+Client `1217230c1` (1.4.14), hbb_common `f188505`, server `2608fec`. Operator report: "direct
+session cannot bypass policies and control permissions". The user rules were applied only
+at the rendezvous, which a direct session never passes. Now the server signs a **control
+ticket** per poll (controller id + device key, LDAP user, admin, allowed machines, the
+user's permission bits, epoch, 4 h validity); the controller presents it with a
+device-key signature over the target and the connection's challenge; the **target**
+verifies and applies it. Details and the test matrix:
+[LAB-VERIFICATION-2026-10-19.md](LAB-VERIFICATION-2026-10-19.md).
+
+**Rollout order (important):**
+1. Deploy hbbs `2608fec`+ (tickets and epoch are pushed from then on; nothing is enforced).
+2. Install 1.4.14 everywhere. Sessions now carry the user's permissions on every path; a
+   user is refused by a machine they are not allowed to control even with enforcement off.
+3. Only then set **Require management authorization for every session**
+   (`nemo-require-control-ticket=Y`) in the Global defaults. From that moment a client
+   older than 1.4.14 is refused by every machine.
+
+**Found on the way, fixed before release:** on Windows the SYSTEM `--server` process polls
+the policy too, without the user's token, and session processes get their config from it,
+so a Windows controller would never have presented the user's ticket (with enforcement on:
+every Windows technician refused). The ticket now lives in the signed-in OS user's
+LocalConfig. Verified on the Win11 VM.
+
+**Open:** the permission change that edits a user also signs that user out everywhere
+(existing behaviour); a stale-ticket refusal ("out of date, try again") was not caught
+live because both sides re-poll within seconds — covered by unit tests.
+
+### 31. Lock after session end as a distributable policy  *(BUILT 2026-10-19, lab-verified)*
+`nemo-lock-after-session-end=Y` (dashboard: "Lock after session end"): the target locks its
+desktop when a remote-control session to it ends, closed or dropped, unless another
+remote-control session to it is still open. Enforced on the target, so the technician's own
+menu toggle cannot opt out. Lab: "Peer close" and "Reset by the peer" both lock. Not tested
+live: the "another session still open" case.
+
+### 32. Second click on a peer that is already open did nothing  *(DONE 2026-10-19)*
+Client `8c7edcc3e`. Shows "Bereits verbunden — diese Verbindung ist bereits in einem
+eigenen Fenster geöffnet", and on Windows brings that window to the front. Sessions to
+other peers still open side by side (lab: two `--connect` processes).
+
+### 33. German everywhere + language picker with flags  *(DONE 2026-10-19)*
+Client `835d014f2`. Settings → Allgemein → Sprache: Deutsch (Deutschland), Deutsch
+(Österreich, code `de-at`, same texts for now), English, with drawn flags. ~35 strings had
+no German and ~12 bypassed translation; target refusals and the "Direkt verbinden"
+failures are translated too. A unit test pins the runtime-built ones.
+
+### 34. Server-driven client update rollout  *(DESIGNED, next)*
+Upload an installer in the dashboard → the server hosts it, signs the manifest (sha256)
+and pushes `nemo-update-version`; clients with `nemo-auto-update=Y` install it outside
+sessions; per-peer `client_version` in the dashboard. **Requirement (operator,
+2026-10-19):** the server sits between two NATs, the company subnet and the WAN, and
+clients on both sides must get the update. Design for that: the client never uses the
+manifest's host, only its path, fetched from the management origin that client itself is
+configured with; integrity comes from the signed sha256, not from the URL. To be tested
+in the lab with one client per side.
+
 ### 29. "Cut" is undone by an immediate reconnect  *(THINK OVER — operator report 2026-10-19)*
 The operator cut a live **direct** session from the dashboard's Connections panel. The
 controller had the password remembered and was back in at once.
