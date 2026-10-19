@@ -411,6 +411,13 @@ Design + router commands: [TOPOLOGY-DEPLOYMENT.md](TOPOLOGY-DEPLOYMENT.md). Chec
 Needs the real topology (now in place, see 11) and a person at both ends (e2e/ harness is ready). Related: both OpenWrt 19.07.1 routers are EOL — upgrade (S10) before exposing the DMZ to the internet.
 
 ### 11c. Router: upgrade firmware, then run `fwknopd` at the edge  *(DEFERRED 2026-10-06 — needs a firmware flash)*
+**Lab result 2026-10-19 ([OPENWRT-FWKNOP-LAB.md](OPENWRT-FWKNOP-LAB.md)):** on a virtual OpenWrt
+19.07.1 (same package arch, kernel and LuCI as the WDR4300), `opkg install fwknopd` from the
+official feeds works and gates the forward end to end with the TBFDesk client's own knock
+(DNAT per knocking source, 30 s window, replay and wrong keys refused, session survives the
+window). So a **stock** 19.07.1 needs no flash; the production error points at a non-stock
+image or a missing iptables entry in opkg's database: run the diagnostics in that doc
+first. Open: only one workstation per key pair per router (see "the open design question").
 *Verified 2026-10-06:* installing `fwknopd 2.6.10-3` on the **external** router (LuCI → Software) fails with
 `Required dependency package kernel is not available in any repository`. The package pulls
 `iptables` → `kmod-ipt-core` → `kernel`, and every OpenWrt `kmod-*` is pinned to the exact kernel of
