@@ -318,15 +318,18 @@ Client `835d014f2`. Settings → Allgemein → Sprache: Deutsch (Deutschland), D
 no German and ~12 bypassed translation; target refusals and the "Direkt verbinden"
 failures are translated too. A unit test pins the runtime-built ones.
 
-### 34. Server-driven client update rollout  *(DESIGNED, next)*
+### 34. Server-driven client update rollout  *(BUILT 2026-10-19, lab-verified on both sides of a two-NAT setup — live needs the hbbs deploy and clients on 1.4.15; older clients cannot follow a hosted installer and need one manual install)*
 Upload an installer in the dashboard → the server hosts it, signs the manifest (sha256)
 and pushes `nemo-update-version`; clients with `nemo-auto-update=Y` install it outside
 sessions; per-peer `client_version` in the dashboard. **Requirement (operator,
 2026-10-19):** the server sits between two NATs, the company subnet and the WAN, and
 clients on both sides must get the update. Design for that: the client never uses the
 manifest's host, only its path, fetched from the management origin that client itself is
-configured with; integrity comes from the signed sha256, not from the URL. To be tested
-in the lab with one client per side.
+configured with; integrity comes from the signed sha256, not from the URL. Verified in the lab: the manifest named an address the client could not reach, and the
+client updated through `10.0.2.2:31120` and, separately, through a port-translated
+`192.168.2.58:41120` ([LAB-VERIFICATION-2026-10-19.md](LAB-VERIFICATION-2026-10-19.md)).
+Use: Settings → Software update → choose the installer → Upload & publish; switch on
+**Automatic client updates** (Global defaults, or a named device policy for a pilot group).
 
 ### 29. "Cut" is undone by an immediate reconnect  *(THINK OVER — operator report 2026-10-19)*
 The operator cut a live **direct** session from the dashboard's Connections panel. The
