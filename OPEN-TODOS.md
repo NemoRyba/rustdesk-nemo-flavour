@@ -353,6 +353,15 @@ pin itself, hbb_common 69260a8.)
 ### 37. TBFDesk for Android  *(TO PLAN, operator request 2026-10-19)*
 Control a computer from the phone; possibly control an Android phone from a computer.
 
+### 41. Linux client released  *(DONE 2026-10-20)*
+First TBFDesk release with Linux builds: `tbfdesk-1.4.16` on NemoRyba/rustdesk-client-nemo
+carries the Windows installer + a Debian/Ubuntu `.deb` (verified install+run on Debian trixie
+and Ubuntu 24.04) + an Arch `.pkg.tar.zst`, each with a `.sha256`. The `.deb` is built from a
+binary compiled in the ubuntu 24.04 container (an Arch-built binary is not Debian-portable);
+`dist/pkg-linux.sh` assembles the packages (no dpkg-deb/rpmbuild needed). `.rpm` not yet
+produced (would need an rpm build env); the server-driven update already supports linux-rpm
+when one is published.
+
 ### 38. Flutter (Android/iOS) up to parity with the desktop client  *(IN PLAN, operator request 2026-10-19)*
 The desktop client (Windows + Linux, ONE Sciter codebase, src/ui/*.tis) has all the
 TBFDesk work; the mobile app is the separate Flutter tree (flutter/, ~121 dart files) and
