@@ -483,7 +483,27 @@ official feeds works and gates the forward end to end with the TBFDesk client's 
 (DNAT per knocking source, 30 s window, replay and wrong keys refused, session survives the
 window). So a **stock** 19.07.1 needs no flash; the production error points at a non-stock
 image or a missing iptables entry in opkg's database: run the diagnostics in that doc
-first. Open: only one workstation per key pair per router (see "the open design question").
+first.
+
+**Multiple workstations per router — DONE 2026-10-25.** The old "one workstation per key
+pair" limit is lifted. Two layouts, both lab-validated at the SPA layer in an isolated
+`fwknopd` 2.6.11 (key→stanza match, per-key HMAC rejection, per-port `OPEN_PORTS` scoping,
+and our real client encoder accepted only by its own stanza):
+- **Option A** — one site key, port-preserving, one stanza whose `OPEN_PORTS` lists every
+  external port. No client change (the client already knocks the per-endpoint external
+  port). No per-workstation isolation.
+- **Option B** — one key + stanza per workstation, per-port isolation. New: client reads a
+  per-peer `nemo-knock-keys` map and `knock_config_for(peer_id)` picks the peer's key
+  (`src/nemo_direct.rs`, tests `knock_keys_parse_per_peer`,
+  `a_peer_absent_from_the_knock_key_map_has_no_key`); server assembles the map per
+  controller filtered by the outbound-targets ACL and distributes it in the sealed policy
+  (`nemo_management.rs` `knock_key_map`, API `POST /nemo/api/peers/:id/knock-key`, tests
+  `knock_key_map_is_filtered_like_endpoints`, `knock_key_normalisation_refuses_what_would_forge_rows`).
+  A peer with no row falls back to the fleet-wide key, so A and B coexist.
+
+See [ROUTER-KNOCK-RUNBOOK.md](ROUTER-KNOCK-RUNBOOK.md) §11 for both recipes.
+Still open on the server side: a dashboard **field** to type the per-peer key pair (the
+API and storage exist; the HTML input is not wired yet).
 *Verified 2026-10-06:* installing `fwknopd 2.6.10-3` on the **external** router (LuCI → Software) fails with
 `Required dependency package kernel is not available in any repository`. The package pulls
 `iptables` → `kmod-ipt-core` → `kernel`, and every OpenWrt `kmod-*` is pinned to the exact kernel of

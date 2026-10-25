@@ -183,6 +183,91 @@ Test from outside:
 ### 10. Reboot test
 `reboot`, wait, then repeat the step 8 tests. fwknopd starts with the WAN interface.
 
+## 11. More than one workstation behind the router
+
+Steps 5–6 gate **one** workstation: one external port, one internal target, one key pair
+(`FORCE_NAT` can point at only one host). A site with several workstations — e.g. external
+`21666 → pc2`, `21667 → pc7`, each its own external port — uses one of the two layouts
+below. Both were validated in an isolated `fwknopd` 2.6.11 (same build as the router) at
+the SPA layer: the key→stanza match, the per-key HMAC rejection, and the per-port
+`OPEN_PORTS` scoping behave exactly as described. The iptables `FORCE_NAT`/`FORWARD`
+behaviour is the same single-workstation path step 8 already proves on site; confirm it
+per port with the step 8 tests.
+
+### Option A — one key for the site (simplest, no per-workstation isolation)
+
+One access stanza whose `OPEN_PORTS` lists **every** external port. No `FORCE_NAT`: instead
+keep an ordinary static DNAT redirect per workstation (as in step 5) and let fwknopd open
+the forwarded port for the knocking source. Because there is no `FORCE_NAT`, the external
+port must equal the internal port (**port-preserving**: 21666→pc2:21666, 21667→pc7:21667);
+a different internal port needs `FORCE_NAT`, which is Option B.
+
+```
+KEY='<rijndael key base64>'          # one pair for the whole site
+HMAC='<hmac key base64>'
+uci set fwknopd.@access[0].SOURCE=ANY
+uci set fwknopd.@access[0].KEY_BASE64="$KEY"
+uci set fwknopd.@access[0].HMAC_KEY_BASE64="$HMAC"
+uci set fwknopd.@access[0].OPEN_PORTS='tcp/21666, tcp/21667'   # all external ports
+uci set fwknopd.@access[0].FW_ACCESS_TIMEOUT=30
+uci -q delete fwknopd.@access[0].FORCE_NAT
+uci set fwknopd.@config[0].ENABLE_IPT_FORWARDING=y
+uci commit fwknopd; /etc/init.d/fwknopd restart
+```
+Keep one enabled static redirect per workstation (step 5) so the DNAT still translates
+21666→pc2 and 21667→pc7; the WAN zone stays `input DROP` (step 9) so the ports are shut
+until a knock opens them. TBFDesk side: the single fleet-wide knock key
+(`nemo-knock-key` / `nemo-knock-hmac-key`), knock enabled, port 62201. The client already
+asks for the **per-endpoint** external port in its SPA (from the `,knockport`/endpoint
+port in `nemo-direct-endpoints`), so pc2's connection knocks 21666 and pc7's knocks 21667
+with no extra client config.
+
+Trade-off: any client holding the site key can open **any** listed port. A key lifted off
+one machine opens them all. Use Option B when that matters.
+
+### Option B — one key per workstation (per-port isolation, recommended)
+
+One access stanza **per workstation**, each with its own key pair, its own single
+`OPEN_PORTS`, and its own `FORCE_NAT` (so external and internal ports may differ). fwknopd
+tries each stanza and only the one whose key verifies the HMAC decrypts the packet, so a
+key leaked from pc2 is rejected by pc7's stanza (`FKO_ERROR_INVALID_DATA_HMAC_COMPAREFAIL`)
+**and**, even inside pc2's own stanza, can open only the port that stanza lists. Both were
+confirmed in the lab.
+
+```
+# pc2
+uci add fwknopd access
+uci set fwknopd.@access[-1].SOURCE=ANY
+uci set fwknopd.@access[-1].KEY_BASE64='<pc2 rijndael b64>'
+uci set fwknopd.@access[-1].HMAC_KEY_BASE64='<pc2 hmac b64>'
+uci set fwknopd.@access[-1].OPEN_PORTS='tcp/21666'
+uci set fwknopd.@access[-1].FW_ACCESS_TIMEOUT=30
+uci set fwknopd.@access[-1].FORCE_NAT='<pc2 internal ip> <pc2 internal port>'
+# pc7
+uci add fwknopd access
+uci set fwknopd.@access[-1].SOURCE=ANY
+uci set fwknopd.@access[-1].KEY_BASE64='<pc7 rijndael b64>'
+uci set fwknopd.@access[-1].HMAC_KEY_BASE64='<pc7 hmac b64>'
+uci set fwknopd.@access[-1].OPEN_PORTS='tcp/21667'
+uci set fwknopd.@access[-1].FW_ACCESS_TIMEOUT=30
+uci set fwknopd.@access[-1].FORCE_NAT='<pc7 internal ip> <pc7 internal port>'
+uci set fwknopd.@config[0].ENABLE_IPT_FORWARDING=y
+uci commit fwknopd; /etc/init.d/fwknopd restart
+```
+With `FORCE_NAT` per stanza, the static per-workstation redirects from step 5 are not
+needed (remove them as in step 8). TBFDesk side: set each workstation's key pair in the
+dashboard (**Peers → the peer → per-peer knock key**, API
+`POST /nemo/api/peers/:id/knock-key` with `{ "key": "<b64>", "hmac_key": "<b64>" }`). The
+server distributes these as the signed, sealed `nemo-knock-keys` map, filtered per
+controller by the same outbound-targets ACL as the direct endpoints — a controller
+receives a peer's knock key **only** if its policy already lets it dial that peer, so pc2's
+operator never even receives pc7's key. A peer with no per-peer key falls back to the
+fleet-wide key, so Options A and B can coexist during a migration.
+
+`fwknopd` stanzas are tried top to bottom and the first key that verifies wins, so there is
+no per-stanza source restriction needed; keep `SOURCE ANY` (or tighten to the technicians'
+fixed addresses on every stanza).
+
 ## Rollback (any step)
 
 | situation | do |
@@ -203,7 +288,7 @@ Test from outside:
 | `Replay detected` | the same packet twice; normal for a resend, harmless |
 | knock accepted, connection still fails | `FORCE_NAT` target wrong (step 5 values), or a second router behind needs its own forward to the workstation |
 | works, then fails after a firewall restart | the next knock repairs it; a session that was open keeps running |
-| only one workstation can be gated | known limit: one key pair maps to one internal target (see OPENWRT-FWKNOP-LAB.md, "more than one workstation"); a second workstation needs a second stanza with its own keys and a TBFDesk change |
+| more than one workstation behind the router | see section 11: Option A (one site key, port-preserving, `OPEN_PORTS` lists all ports) or Option B (one key + stanza per workstation, per-port isolation, distributed as the per-controller `nemo-knock-keys` map) |
 
 ## Rehearsal
 
