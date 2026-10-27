@@ -135,7 +135,8 @@ client can read that machine's own device key + in-memory knock keys. Ranked rem
 on the unauthenticated mgmt-API routes (429 before any unseal); **C3** — `require_auth` as a
 route-layer on every `/nemo/api/*` admin route (401 before body parse, no field-name leak); **C4** —
 an operator **Security panel** in `/nemo/admin` (metrics, anomaly log, per-entry Unblock/Reset/Clear
-for auto-blocked sources). 119/119 server tests pass; all runtime-verified. C2 and C5–C9 remain open.
+for auto-blocked sources — operator guide: [`SECURITY-PANEL.md`](SECURITY-PANEL.md)). 119/119 server
+tests pass; all runtime-verified. C2 and C5–C9 remain open.
 
 ## Releases & uninstaller
 

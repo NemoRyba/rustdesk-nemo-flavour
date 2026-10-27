@@ -309,3 +309,37 @@ section listed (S-B sealing, A4 pinning, M1 binding, S-C, the L-items, A1–A8) 
 - The check broke root CLI commands (`--option`, `--password`, `--set-id`, `--get-id`)
   whenever a desktop user is logged in: a user-owned listener cannot readlink a root
   peer's `/proc/<pid>/exe`. Reverted in `feaf523f9`.
+
+---
+
+## 2026-10-26 — post-pentest hardening (DONE)
+
+An authorized assumed-breach **penetration test** was run against the full server↔client system
+(**no BREAK** — see `SECURITY-VERIFICATION.md` and `pentest/FINDINGS.md`). Three items from the
+pentest backlog (`pentest/08-IMPROVEMENTS.md`) were implemented, tested (119/119 server tests) and
+runtime-verified. **Naming note:** these are the *pentest's* C1/C3/C4 IDs; they are **not** the
+`C1`/`C2`/`C3` audit-finding labels used in the AUDIT FINDINGS section above (file ACLs / DoS maps /
+auth hygiene). To avoid confusion they are written as "pentest C…" here.
+
+- **pentest C1 — pre-gate per-source rate limit (DONE).** A per-IP token bucket (40 burst,
+  ~2 req·s⁻¹) checked at the top of the unauthenticated mgmt-API routes (`/api/login`,
+  `/api/login-key`, `/api/tls-cert-info`) via a route-layer middleware, shedding floods with **429
+  before any sealedbox open**. **This closes the login-rate-limit gap left open on 2026-09-03**
+  (audit finding **C2**, "no global/per-IP login rate limit … password-spraying … unthrottled",
+  and the "STILL OPEN … the C2 login rate-limit … needs `ConnectInfo` plumbing" note): the
+  `ConnectInfo` plumbing is done, and the per-IP + fleet-wide spray tripwires and per-account
+  backoff are now surfaced and controllable. NAT-safe (budget well above human-paced sign-in). The
+  edge-proxy/WAF half remains a deployment recommendation (07-HARDENING R1 / pentest C5).
+- **pentest C3 — auth before body parse (DONE).** `require_auth` is now a route-layer on every
+  `/nemo/api/*` admin route, so the token is checked **before any extractor runs** (401, not a 422
+  that leaked the expected field name). Handlers keep their own `require_auth` as defence in depth.
+- **pentest C4 — operator Security panel + detection (DONE).** Monotonic counters and a structured
+  anomaly log (spray tripwire fired, backoff hit the 30 s cap, admin unblock) feed the dashboard
+  **Log**, and a new **Security** tab in `/nemo/admin` shows blocked IPs / rate-limited sources /
+  accounts under backoff with per-entry Unblock/Reset/Clear. Operator guide: **`SECURITY-PANEL.md`**.
+  API: `GET /nemo/api/security`, `POST /nemo/api/security/unblock`.
+
+**Still open from the pentest backlog:** C2 (bound concurrent in-flight logins — the other P0), C5
+(edge rate-limit the knock port + rendezvous/relay), C6 (reject the pinned-cert mismatch in the
+rustls verifier, no session), C7 (host-firewall the direct port to the knocked source), C8 (device
+key in OS keystore/TPM), C9 (coverage-guided fuzzing in CI). See `pentest/08-IMPROVEMENTS.md`.
