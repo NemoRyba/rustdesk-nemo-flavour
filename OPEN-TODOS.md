@@ -362,6 +362,16 @@ binary compiled in the ubuntu 24.04 container (an Arch-built binary is not Debia
 produced (would need an rpm build env); the server-driven update already supports linux-rpm
 when one is published.
 
+### 42. Debian/Ubuntu `.deb` client with hwcodec (H.264/H.265)  *(OPEN, operator request 2026-10-26)*
+The shipped `.deb` and generic-Linux client tarball are built in the `nemo-gui` Ubuntu 24.04
+container with `--features inline,linux-pkg-config` — **VP8/VP9/AV1 only, no hwcodec**, because that
+container has no vcpkg static ffmpeg. The **Windows** installer (`inline,hwcodec,vram`) and the
+**Arch** `.pkg.tar.zst` DO carry H.264/H.265. To close the gap: add a vcpkg `x64-linux` static
+`ffmpeg` (+ the hwcodec link deps) to the Ubuntu build container, then rebuild with
+`--features inline,hwcodec,linux-pkg-config` and repackage via `dist/pkg-linux.sh`, so Debian/Ubuntu
+gets H.26x too. Verify with a direct session negotiating H.264/H.265 end to end. (hwcodec runtime use
+still depends on a supported hardware encoder — QSV/NVENC/AMF — else it falls back to VP8/VP9/AV1.)
+
 ### 38. Flutter (Android/iOS) up to parity with the desktop client  *(IN PLAN, operator request 2026-10-19)*
 The desktop client (Windows + Linux, ONE Sciter codebase, src/ui/*.tis) has all the
 TBFDesk work; the mobile app is the separate Flutter tree (flutter/, ~121 dart files) and

@@ -115,6 +115,42 @@ before reading any other document:
 The ranked register of open items lives in `../OPEN-POINTS-2026-09-21.md`, outside this repository —
 moving it in is itself an open item. `OPEN-TODOS.md` and `TODO.md` are older running logs.
 
+## Security posture & penetration test
+
+An authorized, lab-only **assumed-breach penetration test** was run against the full server↔client
+system — white-box (the tester had the protocol design and a network/endpoint position) but with
+**no private keys, admin token or user password**. Full package and per-scenario results in
+[`pentest/`](pentest/) → [`pentest/FINDINGS.md`](pentest/FINDINGS.md).
+
+**Outcome: no BREAK.** Across passive capture, active MITM with a rogue cert (pin present and
+cleared), policy replay/rollback, direct-session control-ticket forgery, knock/SPA
+(replay/forge/scan), rendezvous/relay, the update path, and the management-API auth, every security
+property held. **Residual real-world exposures (not breaks):** the direct port is reachable
+intra-LAN (gated by the control-ticket layer), and a full local-root compromise of a provisioned
+client can read that machine's own device key + in-memory knock keys. Ranked remediation:
+[`pentest/07-HARDENING.md`](pentest/07-HARDENING.md); implementation backlog with status:
+[`pentest/08-IMPROVEMENTS.md`](pentest/08-IMPROVEMENTS.md).
+
+**Hardening implemented since (server, from the backlog):** **C1** — pre-gate per-source rate limit
+on the unauthenticated mgmt-API routes (429 before any unseal); **C3** — `require_auth` as a
+route-layer on every `/nemo/api/*` admin route (401 before body parse, no field-name leak); **C4** —
+an operator **Security panel** in `/nemo/admin` (metrics, anomaly log, per-entry Unblock/Reset/Clear
+for auto-blocked sources). 119/119 server tests pass; all runtime-verified. C2 and C5–C9 remain open.
+
+## Releases & uninstaller
+
+Installers for client and server ship as GitHub releases on this (private) superproject. Latest —
+**`release-2026-10-26`**: Windows `tbfdesk-1.4.16-x64-install.exe`, Debian/Ubuntu `.deb`, Arch
+`.pkg.tar.zst`, a generic Linux client tarball, and the hardened server tarball (`hbbs`+`hbbr`
+1.1.15), each with a `.sha256`. (The `.deb`/generic Linux client are VP8/VP9/AV1 only — no hwcodec
+H.264/H.265 yet; the Windows installer and Arch package do have it. See OPEN-TODOS.)
+
+A **selective uninstaller** ships with both client and server (`rustdesk-client-nemo/res/uninstall/`,
+`rustdesk-server-nemo/scripts/uninstall/`): a GUI checklist (zenity/kdialog on Linux, WinForms on
+Windows) plus a headless mode, to cleanly remove an install and optionally wipe settings, the device
+ID + keypair, the device key/secrets and — for the server — the signing keys, DB and policy state,
+so the next install comes up fresh. Verified end-to-end on the lab.
+
 ## Build Priority
 
 1. Validate server build on Linux.
