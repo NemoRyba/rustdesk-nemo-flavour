@@ -33,6 +33,21 @@ see "Not ready for production" at the end.
 - A management policy response with no `issued_ts` stamp is now refused outright — no
   backward compatibility with a server predating anti-rollback protection. Only matters
   if you somehow reintroduce such a server into the fleet, which is not supported.
+- The management API is hardened against abuse: a per-source rate limit sheds floods on the
+  unauthenticated routes before any work (C1); every `/nemo/api/*` admin route checks the token
+  before parsing the body (C3); and `/nemo/admin` has a new **Security panel** listing
+  auto-blocked source IPs, rate-limited sources and accounts under login backoff, with one-click
+  Unblock/Reset/Clear (C4). On with the API — nothing to configure. (Pentest: no break found;
+  see `SECURITY-VERIFICATION.md` / `pentest/`.)
+- A **selective uninstaller** now ships with both client and server
+  (`rustdesk-client-nemo/res/uninstall/`, `rustdesk-server-nemo/scripts/uninstall/`): a GUI
+  checklist (or headless mode) to remove an install and optionally wipe settings, the device ID +
+  keypair, the device key/secrets and — for the server — the signing keys, DB and policy state.
+  `tbfdesk-uninstall.sh server` + `hbbs -k _ --generate-key Y` = a clean teardown and a fresh
+  server with new keys (all provisioned clients must then be re-provisioned).
+- Signed, versioned **installers** are published as a GitHub release (`release-2026-10-26`):
+  Windows `.exe`, Debian/Ubuntu `.deb`, Arch `.pkg.tar.zst`, a generic Linux client tarball, and
+  the hardened server tarball — each with a `.sha256`.
 
 ---
 
@@ -183,7 +198,11 @@ Independent of today's fixes, these are still open (see
   relying on the pinning fallback.
 - Provisioning a device key is a manual, one-machine-at-a-time dashboard step — there is
   no bulk/scripted provisioning path yet.
-- The Windows packaging script has not been run end to end in this environment.
+- ~~The Windows packaging script has not been run end to end~~ — **done 2026-10-26:** the
+  Windows client **1.4.16** was built on the VM and packed into `tbfdesk-1.4.16-x64-install.exe`,
+  published to `release-2026-10-26`. Caveat: the Debian/Ubuntu `.deb` and the generic Linux
+  tarball are VP8/VP9/AV1 only — **no hwcodec H.264/H.265 yet** (Windows + Arch have it);
+  tracked as OPEN-TODOS #42.
 
 Use this for a lab or internal pilot; do not expose the management API or the rendezvous
 ports directly to the internet without also reading `TOPOLOGY-DEPLOYMENT.md`.

@@ -26,7 +26,11 @@ splits on `-` and parses the suffix with `unwrap_or(0)`, so `1.4.6-tbf1` scores
 *identically* to `1.4.6` and the updater would never offer it. Use `1.4.7`, `1.4.8`, or a
 numeric fourth part.
 
-Currently **1.4.7** (bumped from upstream's 1.4.6 as the fork's first shippable).
+Currently **1.4.16** (client); the server is **1.1.15**. Signed, ready-built installers for every
+platform are published as a GitHub release — latest `release-2026-10-26`: Windows
+`tbfdesk-1.4.16-x64-install.exe`, Debian/Ubuntu `.deb`, Arch `.pkg.tar.zst`, a generic Linux client
+tarball, and the hardened server tarball (`hbbs`+`hbbr` 1.1.15), each with a `.sha256`. (The
+`.deb`/generic Linux client are VP8/VP9/AV1 only — no hwcodec H.264/H.265 yet; see OPEN-TODOS #42.)
 
 ## 2. Windows workstations
 
@@ -150,6 +154,14 @@ systemctl enable --now rustdesk-hbbs-nemo rustdesk-hbbr-nemo
 
 The token goes in `EnvironmentFile`, never inline in `ExecStart` — argv is world-readable
 through `/proc` (SEC-11).
+
+**Clean teardown / fresh keys.** To reset a server, the uninstaller
+`rustdesk-server-nemo/scripts/uninstall/tbfdesk-uninstall.sh server` (GUI checklist, or headless
+`COMPONENTS=svc,bins,keys,db,tls,policy,updates ASSUME_YES=1 DATA_DIR=/var/lib/rustdesk-server
+tbfdesk-uninstall.sh server`) stops/removes the services and binaries and wipes the signing keys,
+DB, TLS cert and policy state. The `--generate-key Y` step above then mints a brand-new identity.
+**New signing keys mean every provisioned client must be re-provisioned** (they fail closed against
+the new rendezvous key) — verified end-to-end on the lab.
 
 ### TLS for the management API — this is where Let's Encrypt belongs
 

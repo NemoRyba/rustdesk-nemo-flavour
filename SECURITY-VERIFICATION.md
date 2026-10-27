@@ -8,6 +8,18 @@ and an attacker with a foothold on a LAN/host — but not stolen credentials.
 This doc has two parts: a code-level trust-boundary review (done), and the live adversarial
 test plan (to run in the lab).
 
+## Penetration test result (concluded 2026-10-20)
+
+The live adversarial tests were run as an authorized, lab-only **assumed-breach** engagement
+(full package + per-scenario results in [`pentest/`](pentest/FINDINGS.md)). **Outcome: no BREAK** —
+every property in Part 1 held under attack: passive capture; MITM with a rogue cert, pin present and
+cleared; policy replay/rollback; direct-session control-ticket forgery; knock/SPA replay/forge/scan;
+rendezvous/relay; the update path; and management-API auth. The exposures in "Residual risks" below
+are confirmed as **residuals, not breaks**. **Hardening added since:** **C1** (pre-gate per-source
+rate limit on the unauthenticated mgmt-API routes), **C3** (`require_auth` before body parse on every
+`/nemo/api/*` admin route), **C4** (operator **Security panel** in `/nemo/admin`: metrics, anomaly
+log, per-entry Unblock/Reset/Clear). See `pentest/08-IMPROVEMENTS.md`; **C2** and **C5–C9** remain.
+
 ## Part 1 — trust-boundary review (from the code)
 
 ### Management API (policy poll, login, address book, update) — the channel that carries secrets
