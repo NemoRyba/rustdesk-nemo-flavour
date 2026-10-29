@@ -166,14 +166,15 @@ tests pass; all runtime-verified. C2 and C5–C9 remain open.
 
 ## Releases & uninstaller
 
-Installers for client and server ship as GitHub releases on this (private) superproject. Latest
-published — **`release-2026-10-29b`**: client **1.4.18** (Windows `tbfdesk-1.4.18-x64-install.exe`,
-Debian/Ubuntu `.deb`, Arch `.pkg.tar.zst`, a generic Linux client tarball) and server **1.1.16**
-(`hbbs`+`hbbr` tarball with the upgrade-safe `install.sh`), each with a `.sha256`, plus both
-uninstallers. Release notes: `dist/RELEASE-NOTES-<version>.md`.
+Installers for client and server ship as GitHub releases on this (private) superproject. Latest:
 
-- **Not yet published:** Windows client **1.4.19** (unattended provisioning, the uninstaller fix) —
-  built and tested on the Win11 VM, `dist/RELEASE-NOTES-1.4.19.md`.
+- **`release-2026-10-29c`** — Windows client **1.4.19** (`tbfdesk-1.4.19-x64-install.exe`:
+  unattended provisioning, the uninstaller fix) plus both uninstallers.
+- **`release-2026-10-29b`** — Linux client **1.4.18** (Debian/Ubuntu `.deb`, Arch `.pkg.tar.zst`,
+  a generic Linux client tarball) and server **1.1.16** (`hbbs`+`hbbr` tarball with the
+  upgrade-safe `install.sh`).
+
+Each file has a `.sha256`. Release notes: `dist/RELEASE-NOTES-<version>.md`.
 - **H.264/H.265 (hwcodec):** the Windows installer, the Arch package and the generic tarball (an
   Arch build, Arch sonames) have it; the `.deb` is VP8/VP9/AV1 only (OPEN-TODOS #42).
 - **Not code-signed.** The installers carry no Authenticode signature (expect SmartScreen and an

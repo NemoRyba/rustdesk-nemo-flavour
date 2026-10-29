@@ -1,6 +1,19 @@
 # TBFDesk 1.4.19 (Windows client) — 2026-10-29
 
-Server unchanged: **1.1.16** (release-2026-10-29b) is the matching server.
+Server unchanged: **1.1.16** (release-2026-10-29b) is the matching server. Linux clients stay on
+**1.4.18** (release-2026-10-29b); the Linux uninstaller fix below is in the `tbfdesk-uninstall.sh`
+attached here.
+
+## Install / upgrade
+- **Windows:** `tbfdesk-1.4.19-x64-install.exe` — double-click, `--silent-install`, or the
+  one-call provisioning below. Upgrades in place over 1.4.x and keeps ID, device key and settings.
+- **Build:** the Sciter UI build (`--features inline,hwcodec,vram`: UI embedded, H.264/H.265,
+  no Flutter), from client `8c1cd06b3`. The installer carries `TBFDesk.exe`, `service.exe`,
+  `sciter.dll` (sha256 `4d97528e…80dd56`, the vendored copy in `downloads/sciter-x64/`) and
+  `dylib_virtual_display.dll`.
+- **Not code-signed:** expect SmartScreen and an "unknown publisher" UAC prompt. Check the
+  download against `tbfdesk-1.4.19-x64-install.exe.sha256`
+  (`25513782cbc303b8424751f93133e7e144d987b5ccddd077ff96c15cf90b34e8`).
 
 ## New: install AND provision a Windows machine in one silent call — no GUI
 The setup string the dashboard generates (Device keys → generate → **Download file**, a
@@ -51,7 +64,11 @@ Peers panel shows its policy *in sync* (all confirmed after the run started) →
 output → `Get-Content … | TBFDesk.exe --import-setup -` re-provisions → no key in any log. Also
 checked: `start "" /wait` from cmd returns 2 in `%ERRORLEVEL%`; `--help`; the argv warning;
 client unit tests (134 passed); the Linux uninstaller in a scratch home (both config dirs, every
-component, non-interactive, exit code).
+component, non-interactive, exit code). Before publishing, `gui-windows` on the same installer,
+clicking through the real window: installs over the previous version, the ID registers (not stuck
+on "Wird generiert"), the "…" menu and Settings open, the log carries the UI scripts' output with
+no script error, the Peers panel shows the policy in sync, and a debug run streams its log into the
+launching console.
 
 ## Known issue (not new in 1.4.19)
 **The device key ends up in the user's profile once the user opens the TBFDesk window.**

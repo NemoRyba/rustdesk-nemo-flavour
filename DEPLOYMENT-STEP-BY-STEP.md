@@ -45,10 +45,10 @@ see "Not ready for production" at the end.
   keypair, the device key/secrets and — for the server — the signing keys, DB and policy state.
   `tbfdesk-uninstall.sh server` + `hbbs -k _ --generate-key Y` = a clean teardown and a fresh
   server with new keys (all provisioned clients must then be re-provisioned).
-- Versioned **installers** are published as GitHub releases — latest `release-2026-10-29b`:
-  client 1.4.18 (Windows `.exe`, Debian/Ubuntu `.deb`, Arch `.pkg.tar.zst`, a generic Linux client
-  tarball) and server 1.1.16 — each with a `.sha256`. They are **not code-signed** (SmartScreen /
-  "unknown publisher"); check the `.sha256`.
+- Versioned **installers** are published as GitHub releases — `release-2026-10-29c`: Windows
+  client 1.4.19 `.exe`; `release-2026-10-29b`: Linux client 1.4.18 (Debian/Ubuntu `.deb`, Arch
+  `.pkg.tar.zst`, a generic Linux client tarball) and server 1.1.16 — each with a `.sha256`. They
+  are **not code-signed** (SmartScreen / "unknown publisher"); check the `.sha256`.
 
 **Since 2026-10-28:**
 
@@ -57,7 +57,7 @@ see "Not ready for production" at the end.
   overwritten. If clients use the split port 21121, `NEMO_CLIENT_API_BIND=0.0.0.0:21121` must be
   in that env file — the 1.1.15 installer dropped it (OPEN-TODOS #46).
 - **Peers panel shows the policy each client actually applied** (server 1.1.16 + client 1.4.18).
-- **Windows 1.4.19 (built, not yet published): install and provision in one silent call** —
+- **Windows 1.4.19 (`release-2026-10-29c`): install and provision in one silent call** —
   step 4 below. The uninstallers now also remove the old `RustDesk` config folders, which a
   reinstall used to import again (old ID, keypair, device key).
 - **Roaming profiles:** opening the client window copies the device key and the machine's
@@ -174,7 +174,7 @@ Firewall, lab/internal subnet only:
 4. On the workstation: client → *Import device key* → paste the setup string, or
    **Load from file…** and pick the downloaded `.tbfsetup`. One paste and the machine is
    configured and keyed; nothing else is typed in by hand. **Unattended instead (Windows,
-   1.4.19+ — built, not yet published), no GUI at all** — install and provision in one call:
+   1.4.19+), no GUI at all** — install and provision in one call:
    ```powershell
    $p = Start-Process .\tbfdesk-1.4.19-x64-install.exe -PassThru `
           -ArgumentList '--silent-install', '--import-setup', 'C:\deploy\pc1.tbfsetup'
@@ -245,7 +245,7 @@ Still open as of 2026-10-29 (the full list with status: `OPEN-TODOS.md`):
   relying on the pinning fallback.
 - Device keys are still **issued** one machine at a time (dashboard, or the admin API
   `POST /nemo/api/device-keys`). **Applying** one is scriptable on Windows since 1.4.19
-  (`--silent-install --import-setup`, step 4, not yet published); Linux still takes a
+  (`--silent-install --import-setup`, step 4); Linux still takes a
   `sudo rustdesk --import-setup` per machine (OPEN-TODOS #47).
 - **Roaming profiles receive the machine's secrets** once the client window opens
   (OPEN-TODOS #48) — exclude `AppData\Roaming\TBFDesk` from roaming by GPO until it is fixed.
@@ -253,8 +253,8 @@ Still open as of 2026-10-29 (the full list with status: `OPEN-TODOS.md`):
 - The Debian/Ubuntu `.deb` is VP8/VP9/AV1 only — **no hwcodec H.264/H.265** (Windows, the Arch
   package and the generic tarball have it); OPEN-TODOS #42.
 - ~~The Windows packaging script has not been run end to end~~ — done: Windows installers built
-  on the VM and published since 1.4.16 (`release-2026-10-26`), latest 1.4.18
-  (`release-2026-10-29b`).
+  on the VM and published since 1.4.16 (`release-2026-10-26`), latest 1.4.19
+  (`release-2026-10-29c`).
 
 Use this for a lab or internal pilot; do not expose the management API or the rendezvous
 ports directly to the internet without also reading `TOPOLOGY-DEPLOYMENT.md`.

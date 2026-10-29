@@ -1,8 +1,8 @@
 # TBFDesk — Open TODOs (ranked; the list was verified against code/live state on 2026-09-02, and each item added or changed since carries its own status and date in its heading — last refreshed 2026-10-29)
 
-**Release state 2026-10-29:** latest published `release-2026-10-29b` = client 1.4.18 (Windows,
-`.deb`, Arch, generic tarball) + server 1.1.16. Client 1.4.19 (Windows: #47) is built and VM-tested,
-not yet published. Most recent items: #42–#48 below.
+**Release state 2026-10-29:** `release-2026-10-29c` = Windows client 1.4.19 (#47);
+`release-2026-10-29b` = Linux client 1.4.18 (`.deb`, Arch, generic tarball) + server 1.1.16. Most
+recent items: #42–#48 below.
 
 **Goal:** a performance-oriented, centrally-managed, **direct** remote-control product.
 **Priority order:** Security edge ▸ Management capability ▸ Performance observability ▸ Polish.
@@ -500,7 +500,7 @@ the operator's overrides or show a warning when an api-server port is not one th
 whose last poll is older than N minutes while their rendezvous registration is fresh ("handshake
 only" already says so, but only in a tooltip).
 
-### 47. Unattended provisioning: silent install WITH the device key and server settings  *(BUILT 2026-10-29 — client 1.4.19; verified by `tests/gui/windows_provision.sh` / stage `gui-windows-provision`)*
+### 47. Unattended provisioning: silent install WITH the device key and server settings  *(DONE 2026-10-29 — client 1.4.19, published in `release-2026-10-29c`; verified by `tests/gui/windows_provision.sh` / stage `gui-windows-provision`)*
 Operator request: provision a Windows machine without ever opening the client. `<installer>.exe
 --silent-install --import-setup <file|->` validates every value first (exit 2, nothing installed),
 installs, then hands each setup text over STDIN to the installed `TBFDesk.exe --import-setup -` —

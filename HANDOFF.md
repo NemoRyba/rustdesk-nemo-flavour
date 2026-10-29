@@ -21,12 +21,11 @@ hbb_common has its own fork remote now (the old "push-blocked" note is obsolete)
 
 ## State, 2026-10-29
 
-- **Releases:** latest published `release-2026-10-29b` — client **1.4.18** (Windows installer,
-  `.deb`, Arch package, generic tarball) + server **1.1.16** (tarball with the upgrade-safe
-  `install.sh`). Client **1.4.19** (Windows: install + provision in one silent call, #47; the
-  uninstallers now also wipe the pre-rename `RustDesk` config) is built and VM-tested, **not
-  published**; its installer is on the VM at `C:\src\dist\tbfdesk-1.4.19-x64-install.exe`, notes in
-  `dist/RELEASE-NOTES-1.4.19.md`. Publish with `gh release create` on this superproject.
+- **Releases** (`gh release` on this superproject): `release-2026-10-29c` — Windows client
+  **1.4.19** (install + provision in one silent call, #47; the uninstallers now also wipe the
+  pre-rename `RustDesk` config). `release-2026-10-29b` — Linux client **1.4.18** (`.deb`, Arch
+  package, generic tarball) + server **1.1.16** (tarball with the upgrade-safe `install.sh`).
+  Notes: `dist/RELEASE-NOTES-<version>.md`.
 - **Open and important:** #48 — an installed Windows client copies the device key and the
   machine's keypair into the user's (roaming) profile; design proposed in OPEN-TODOS, not
   started. #46 (b)/(c), #42 (hwcodec in the `.deb`).

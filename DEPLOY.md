@@ -26,13 +26,15 @@ splits on `-` and parses the suffix with `unwrap_or(0)`, so `1.4.6-tbf1` scores
 *identically* to `1.4.6` and the updater would never offer it. Use `1.4.7`, `1.4.8`, or a
 numeric fourth part.
 
-The tree is at client **1.4.19** and server **1.1.16**. Ready-built installers are published as
-GitHub releases — latest **`release-2026-10-29b`**: client **1.4.18** (Windows
-`tbfdesk-1.4.18-x64-install.exe`, Debian/Ubuntu `.deb`, Arch `.pkg.tar.zst`, a generic Linux client
-tarball) and server **1.1.16** (`hbbs`+`hbbr` tarball with `install.sh`), each with a `.sha256`.
-Client **1.4.19** (Windows only: the unattended provisioning in §4, the uninstaller fix) is built and
-VM-tested but **not yet published**; until it is, the `1.4.19` file names below refer to a build
-from this tree. Notes per release: `dist/RELEASE-NOTES-<version>.md`.
+Currently client **1.4.19** (Windows) / **1.4.18** (Linux) and server **1.1.16**. Ready-built
+installers are published as GitHub releases, each file with a `.sha256`:
+
+- **`release-2026-10-29c`** — Windows `tbfdesk-1.4.19-x64-install.exe` (the unattended
+  provisioning in §4, the uninstaller fix) and both uninstallers.
+- **`release-2026-10-29b`** — Debian/Ubuntu `.deb`, Arch `.pkg.tar.zst` and a generic Linux client
+  tarball (1.4.18), and the server tarball (`hbbs`+`hbbr` 1.1.16 with `install.sh`).
+
+Notes per release: `dist/RELEASE-NOTES-<version>.md`.
 
 - The published installers are **not Authenticode-signed** — see *Signing* in §2; verify them
   against the `.sha256`.
