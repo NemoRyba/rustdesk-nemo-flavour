@@ -4,7 +4,8 @@
 #
 #   tests/run-all.sh                 unit + contract + static + Linux GUI   (default)
 #   tests/run-all.sh --quick         unit + contract + static only           (no display, no lab)
-#   tests/run-all.sh --all           everything, incl. the Win11 VM GUI test and the #43 e2e
+#   tests/run-all.sh --all           everything, incl. the Win11 VM tests (unattended provisioning,
+#                                    GUI) and the #43 e2e
 #   tests/run-all.sh --only <stage>  one stage (repeatable)
 #   tests/run-all.sh --installer 'C:\src\dist\tbfdesk-1.4.18-x64-install.exe'   (Windows stage)
 #   TBF_FULL=1                       also the slow checks (e.g. #43 'stale' after 2 min offline)
@@ -17,7 +18,7 @@ source "$HERE/lib/common.sh"
 
 QUICK=(unit-server unit-client contract static-ui server-installer)
 DEFAULT=("${QUICK[@]}" build-linux sciter-parse gui-linux)
-ALL=("${DEFAULT[@]}" gui-windows e2e-policy)
+ALL=("${DEFAULT[@]}" gui-windows-provision gui-windows e2e-policy)
 STAGES=("${DEFAULT[@]}"); ONLY=(); INSTALLER=""
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -45,6 +46,7 @@ stage_cmd() {
     build-linux)  (cd "$TBF_CLIENT" && source "$HERE/lib/client-env.sh" && cargo build --release --features "$TBF_CLIENT_FEATURES" 2>&1 | tee "$TBF_OUT/build-linux.log" | grep -E '^error|Finished' ; exit "${PIPESTATUS[0]}");;
     sciter-parse) bash "$HERE/gui/sciter_parse.sh";;
     gui-linux)    bash "$HERE/gui/linux_client.sh";;
+    gui-windows-provision) bash "$HERE/gui/windows_provision.sh" ${INSTALLER:+"$INSTALLER"};;
     gui-windows)  bash "$HERE/gui/windows_client.sh" ${INSTALLER:+"$INSTALLER"};;
     e2e-policy)   bash "$HERE/e2e/policy_applied.sh";;
     *) echo "unknown stage $1"; return 64;;

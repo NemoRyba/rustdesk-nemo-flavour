@@ -44,8 +44,10 @@ tarball, and the hardened server tarball (`hbbs`+`hbbr` 1.1.15), each with a `.s
 Produces one double-clickable `.exe` plus its `.sha256`. On a workstation:
 
 ```
-tbfdesk-1.4.7-x64-install.exe                  interactive
-tbfdesk-1.4.7-x64-install.exe --silent-install  unattended (GPO / RMM)
+tbfdesk-1.4.19-x64-install.exe                  interactive
+tbfdesk-1.4.19-x64-install.exe --silent-install  unattended (GPO / RMM)
+tbfdesk-1.4.19-x64-install.exe --silent-install --import-setup C:\deploy\pc1.tbfsetup
+                                                 unattended AND provisioned, no GUI (§4)
 ```
 
 **Why a packer and not a renamed exe.** `install_me` copies the folder by filename and
@@ -308,12 +310,50 @@ Installing is not the same as provisioning. After H5, a client also needs a **de
 before hbbs will let it register at all (when `require_device_key` is on, which is the
 default):
 
-1. Admin dashboard → Device Keys → generate one, bound to that machine's id.
-2. On the workstation: client → Import device key.
+1. Admin dashboard → Device Keys → generate one, bound to that machine's id — or unbound
+   for a machine whose id you do not know yet (first-use claim: it shows up as "key claim
+   pending", you Approve it; `DEVICE-KEY-CLAIM.md`). **Download file** gives a `.tbfsetup`:
+   the device key plus the server settings, in one value.
+2. On the workstation: client → Import device key — or unattended, below.
 
-There is no CLI path for this on purpose (`--option nemo-device-key` is refused in both
-directions, H26) and the licence name has no `devkey=` field. So an installer alone does
-not yet equal unattended fleet provisioning — that gap is real and tracked.
+### Unattended (GPO / RMM / remote PowerShell), 1.4.19+
+
+Install and provisioning in one call; nobody opens the client:
+
+```powershell
+$p = Start-Process .\tbfdesk-1.4.19-x64-install.exe -PassThru `
+       -ArgumentList '--silent-install', '--import-setup', 'C:\deploy\pc1.tbfsetup'
+$null = $p.Handle; $p.WaitForExit(); $p.ExitCode   # 0 done · 1 failed · 2 bad setup value
+Remove-Item C:\deploy\pc1.tbfsetup                   # it holds the device key
+```
+
+cmd / a batch file: `start "" /wait tbfdesk-1.4.19-x64-install.exe --silent-install
+--import-setup C:\deploy\pc1.tbfsetup` then `echo %ERRORLEVEL%`.
+
+Re-provisioning a client that is already installed (new key, moved server), from a pipe:
+
+```powershell
+Get-Content C:\deploy\pc1.tbfsetup | & 'C:\Program Files\TBFDesk\TBFDesk.exe' --import-setup - | Out-String
+$LASTEXITCODE
+```
+
+- **Validated before anything is installed.** A truncated paste or a typo exits 2 and
+  leaves the machine untouched; nothing half-provisioned.
+- **Lands in the service**, the process that takes incoming sessions — not in the console
+  user's (possibly roaming) profile. The installer waits up to 120 s for the fresh service,
+  writes, reads back and prints what it set; the key only ever as `device key: imported`.
+- **Repeatable:** a setup string without a key plus a separately handed-out bare device
+  key works too (`--import-setup srv.tbfsetup --import-setup pc1.key`).
+- **Pass a file or `-` (stdin), not the string itself.** A literal setup string on the
+  command line still works but warns: it carries the device key, and every process on the
+  machine can read another's command line (H26). The installer hands it on to the installed
+  client over stdin, never on a command line.
+- **Why `$p.Handle` and not `-Wait`:** `-Wait` also waits for every process the install
+  starts, so it never returns; without touching `.Handle`, Windows PowerShell 5.1 reports
+  an empty `ExitCode`.
+
+`--option nemo-device-key` stays refused in both directions (H26), and the licence name
+still has no `devkey=` field — `--import-setup` is the one CLI way in.
 
 Staged rollout: a fresh install has `require_device_key` **on**. Switch it off in the
 dashboard first, install and provision, then turn it back on.

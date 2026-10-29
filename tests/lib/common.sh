@@ -13,6 +13,9 @@ TBF_RESULTS="${TBF_RESULTS:-$TBF_OUT/results.tsv}"
 say()  { printf '    %s\n' "$*"; }
 ok()   { printf '    \033[32mOK\033[0m   %s\n' "$*"; }
 bad()  { printf '    \033[31mFAIL\033[0m %s\n' "$*"; TBF_STAGE_FAILED=1; }
+# A confirmed defect that is recorded in OPEN-TODOS (name the number): shown on every run,
+# not failed -- unless TBF_STRICT=1. Returns 0 normally, 1 under TBF_STRICT.
+known() { printf '    \033[33mKNOWN\033[0m %s\n' "$*"; [ "${TBF_STRICT:-0}" != 1 ]; }
 note_result() {  # <stage> <PASS|FAIL|SKIP> <detail>
   printf '%s\t%s\t%s\n' "$1" "$2" "$3" >> "$TBF_RESULTS"
 }

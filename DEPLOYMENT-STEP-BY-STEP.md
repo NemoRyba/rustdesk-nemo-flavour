@@ -139,8 +139,17 @@ Firewall, lab/internal subnet only:
    one fails like a network fault.
 4. On the workstation: client → *Import device key* → paste the setup string, or
    **Load from file…** and pick the downloaded `.tbfsetup`. One paste and the machine is
-   configured and keyed; nothing else is typed in by hand. Unattended instead:
-   `tbfdesk --import-setup <file|string>`, which prints what it changed.
+   configured and keyed; nothing else is typed in by hand. **Unattended instead (Windows,
+   1.4.19+), no GUI at all** — install and provision in one call:
+   ```powershell
+   $p = Start-Process .\tbfdesk-1.4.19-x64-install.exe -PassThru `
+          -ArgumentList '--silent-install', '--import-setup', 'C:\deploy\pc1.tbfsetup'
+   $null = $p.Handle; $p.WaitForExit(); $p.ExitCode   # 0 done · 1 failed · 2 bad setup value
+   ```
+   or, on a client that is already installed, from a pipe:
+   `Get-Content pc1.tbfsetup | & 'C:\Program Files\TBFDesk\TBFDesk.exe' --import-setup - | Out-String`.
+   Both print what they set (never the key). Delete the `.tbfsetup` afterwards — it holds the
+   device key. Details and exit codes: `DEPLOY.md` §4.
    The dialog accepts a bare device key just as it did before, so a machine that is
    already configured needs nothing new.
 5. Once every real workstation has a bound key, switch `require_device_key` back **on**

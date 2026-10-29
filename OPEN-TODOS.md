@@ -493,6 +493,46 @@ the operator's overrides or show a warning when an api-server port is not one th
 whose last poll is older than N minutes while their rendezvous registration is fresh ("handshake
 only" already says so, but only in a tooltip).
 
+### 47. Unattended provisioning: silent install WITH the device key and server settings  *(BUILT 2026-10-29 — client 1.4.19; verified by `tests/gui/windows_provision.sh` / stage `gui-windows-provision`)*
+Operator request: provision a Windows machine without ever opening the client. `<installer>.exe
+--silent-install --import-setup <file|->` validates every value first (exit 2, nothing installed),
+installs, then hands each setup text over STDIN to the installed `TBFDesk.exe --import-setup -` —
+the service's IPC accepts only its own executable, so the installer's temp copy cannot write it —
+which pushes the values into the SERVICE (fetch-merge-send, read back). Exit 0/1/2 passes through
+the packer. `--import-setup` is repeatable and reads stdin; a literal string on argv warns (H26).
+Found on the way: the uninstallers left the pre-rename `RustDesk` config, which the next install
+imported again (old ID / keypair / device key) — both now wipe it. DEPLOY.md §4 documents it.
+**Open:** Linux has no one-call installer equivalent (packages install through apt/pacman, then
+`sudo tbfdesk --import-setup <file|->` as before) and was not re-tested in this round; the
+unbound-key (first-use claim) variant was not run end to end with the silent install.
+
+### 48. Installed Windows client: the user's (roaming) profile receives the machine's secrets  *(FOUND 2026-10-29 by `gui-windows-provision` step 6; pre-existing, upstream design)*
+When the user opens the window (also tray / connection manager), the process asks the local
+`--server` for its config (`Data::SyncConfig(None)`, src/server.rs ~656) and **persists** what comes
+back with `Config::set` / `Config2::set` into `%APPDATA%\TBFDesk\config` — on this network a
+**roaming profile on the file server**. Measured on the Win11 VM after an unattended install +
+first window open: `TBFDesk2.toml` holds `nemo-device-key` (Layer 1 secret) and every other service
+option; `TBFDesk.toml` holds `key_pair` (the machine's identity private key), `password` and `salt`.
+The import dialog adds a second write (`nemo_setup::apply_setup` → `Config::set_option` in the UI
+process, then the push to the service). So anyone who can read the profile share (admins, backups,
+the profile server) can lift the device key and the identity key of every machine its users opened
+TBFDesk on — and with both, impersonate that machine to hbbs.
+**Why not a quick fix:** the user-side processes really use the device key — the provisioning gate
+and the `ui`-role policy poll in the window, and the audit signature / control tickets in the
+separate `--connect` session processes (ui_session_interface.rs, nemo_direct.rs, nemo_control.rs),
+which today read it from that very file. Simply not persisting it breaks remote sessions.
+**Proposed design:** (1) hbb_common: per-process "memory-only" options/fields, left out of every
+`store()` and scrubbed from the file on start (a 20-line hook in `Config2::store`, drafted and
+reverted 2026-10-29); enabled in every non-`--service`/`--server` process of an INSTALLED Windows
+client. (2) Those processes get the secret from the service over IPC instead of the file — the
+window already syncs; session windows need the same one-time fetch at start (async-safe: no
+`#[tokio::main]` helper inside a runtime). Better still for the device key: the service signs on
+their behalf (IPC sign request), so the key never leaves the service process at all.
+(3) Same treatment for `key_pair` / `password` / `salt` (does the UI need the private half at all?).
+(4) Fallback when the service is stopped (the window then runs the server itself): today it uses
+the stale file copy; after the fix it must say "service not running" instead of a dead gate.
+`tests/gui/windows_provision.sh` step 6 reports it as KNOWN (#48); `TBF_STRICT=1` fails it.
+
 ### 38. Flutter (Android/iOS) up to parity with the desktop client  *(IN PLAN, operator request 2026-10-19)*
 The desktop client (Windows + Linux, ONE Sciter codebase, src/ui/*.tis) has all the
 TBFDesk work; the mobile app is the separate Flutter tree (flutter/, ~121 dart files) and

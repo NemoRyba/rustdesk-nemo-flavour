@@ -31,6 +31,7 @@ from its own command line, never printed) and the Win11 test VM. Nothing touches
 | `build-linux` | builds the Linux client used by the GUI stages | Rust |
 | `sciter-parse` | loads the **exact page the release build embeds** into real libsciter: 0 script errors; negative control: the 1.4.16 page must fail with `Bad parse code` **and that error must land in the log file**; a `RUST_LOG` run mirrors the log to stderr | Xvfb, openbox, libsciter |
 | `gui-linux` | real Linux client vs the lab server (also runs a PACKAGED client: `TBF_LINUX_BIN=<extracted pkg>/usr/share/rustdesk/rustdesk`, or `TBF_LINUX_DEB=<file.deb>` installed in an Ubuntu container), driven by clicks + OCR: registers (ID shown, never "Generating"), **⋮ menu opens, Settings opens**, script output in the log with no error, #43 report in sync | + lab hbbs, tesseract, xdotool |
+| `gui-windows-provision` | **unattended provisioning**, no GUI: clean uninstall (incl. the pre-rename RustDesk config) → a bad `--import-setup` exits 2 and installs nothing → `--silent-install --import-setup <file>` exits 0, the service holds this run's device key, the machine polls with it and #43 is in sync (confirmed *after* the run started) → output never contains the key → `Get-Content f \| TBFDesk.exe --import-setup -` re-provisions; no device key in the user's config → user opens the window: no key in any log (user, service, installer); the copy into the user's profile is reported **KNOWN (OPEN-TODOS #48)** | + VM |
 | `gui-windows` | the **installer under test** on the Win11 VM: installs over the previous version, registers, **⋮ menu → Settings**, clean log, stderr mirroring, live log in the launching console, #43 in sync | + VM (`vmctl.sh start`) |
 | `e2e-policy` | #43 end to end: assign policy A → row shows it applied; switch to B → follows; force a client-side **refusal** (rollback) → row shows *refused* + reason → recovers; dashboard badge in a headless browser | + VM with ≥1.4.18 |
 
@@ -60,6 +61,7 @@ tests/static/                          build-pipeline checks (no display)
 tests/gui/sciter_parse.sh              libsciter parse + logging + mirroring
 tests/gui/linux_client.sh              Linux GUI test (clicks + OCR)
 tests/gui/windows_client.sh, win/      Windows VM GUI test + its PowerShell helpers
+tests/gui/windows_provision.sh         Windows VM unattended install + provisioning (no GUI)
 tests/e2e/policy_applied.sh            #43 end to end
 ```
 
