@@ -1,4 +1,8 @@
-# TBFDesk — Open TODOs (ranked, **each item verified against code/live state on 2026-09-02**)
+# TBFDesk — Open TODOs (ranked; the list was verified against code/live state on 2026-09-02, and each item added or changed since carries its own status and date in its heading — last refreshed 2026-10-29)
+
+**Release state 2026-10-29:** latest published `release-2026-10-29b` = client 1.4.18 (Windows,
+`.deb`, Arch, generic tarball) + server 1.1.16. Client 1.4.19 (Windows: #47) is built and VM-tested,
+not yet published. Most recent items: #42–#48 below.
 
 **Goal:** a performance-oriented, centrally-managed, **direct** remote-control product.
 **Priority order:** Security edge ▸ Management capability ▸ Performance observability ▸ Polish.
@@ -367,7 +371,10 @@ The shipped `.deb` and generic-Linux client tarball are built in the `nemo-gui` 
 container with `--features inline,linux-pkg-config` — **VP8/VP9/AV1 only, no hwcodec**, because that
 container has no vcpkg static ffmpeg. The **Windows** installer (`inline,hwcodec,vram`) carries
 H.264/H.265. *(Correction 2026-10-29: the 1.4.16 **Arch** `.pkg.tar.zst` was believed to as well, but
-it actually contains the Ubuntu binary — see #44 — so today only Windows has H.26x.)* To close the gap: add a vcpkg `x64-linux` static
+it actually contains the Ubuntu binary — see #44 — so the 1.4.16 release had H.26x on Windows only.
+Since 1.4.18 the Arch package and the generic tarball are a host Arch build with hwcodec (checked:
+the 1.4.18 Arch binary carries the h264/hevc encoder names, the `.deb` none), so the gap is the
+`.deb` alone.)* To close the gap: add a vcpkg `x64-linux` static
 `ffmpeg` (+ the hwcodec link deps) to the Ubuntu build container, then rebuild with
 `--features inline,hwcodec,linux-pkg-config` and repackage via `dist/pkg-linux.sh`, so Debian/Ubuntu
 gets H.26x too. Verify with a direct session negotiating H.264/H.265 end to end. (hwcodec runtime use
@@ -457,7 +464,7 @@ container for user policies; dashboard read via `vm/scripts/cdp.mjs` screenshots
 **Done when** T1–T10 pass on Windows and T1/T2/T6 also on the Linux VM client, with peer-panel
 screenshots of each state attached here.
 
-### 44. Linux client 1.4.17 + fix the Arch package  *(OPEN, found 2026-10-29)*
+### 44. Linux client 1.4.17 + fix the Arch package  *(DONE 2026-10-29 — shipped as 1.4.18 in `release-2026-10-29b`: `.deb` from the `nemo-gui` container, Arch package + generic tarball from a host build (`ARCH_BIN` in `dist/pkg-linux.sh`, superproject `9543ff0`); `gui-linux` passed against both packaged binaries)*
 - The 1.4.16 `.deb` and generic tarball are `inline` builds with the same **dead main-window menu /
   stuck "Generating ID"** bug fixed for Windows in 1.4.17 (one Sciter block per script file) —
   rebuild both from client `c0062cecf`+ in the `nemo-gui` container.
@@ -468,7 +475,7 @@ screenshots of each state attached here.
 - Verify each package starts, the ⋮ menu opens and the ID registers (Arch VM `lxvm` + the
   `nemo-gui` Ubuntu container), then publish as one release.
 
-### 45. Server installer: upgrade-safe `install.sh`  *(BUILT 2026-10-28, not yet committed/released)*
+### 45. Server installer: upgrade-safe `install.sh`  *(DONE 2026-10-29 — shipped in the server 1.1.16 tarball, `release-2026-10-29b`; the `server-installer` test stage (clean Ubuntu container: fresh install, upgrade over a customised unit, `RESTART=1`, idempotent, custom prefix) passed 15/15. It checks the installed binary's sha256 and each unit's `ExecStart` with `systemctl` shimmed; the live check below — the RUNNING hbbs is the new binary — has not been done on a real systemd host.)*
 The 1.1.15 tarball's `install.sh` installs to `/usr/local/bin` while the units run `/usr/bin/hbbs`,
 so an upgrade silently keeps the OLD binary running. The fix — `rustdesk-server-nemo/dist/install.sh`
 (rewrites each unit's `ExecStart` to the install prefix, edits existing units in place, creates the
@@ -477,7 +484,7 @@ builder `dist/pkg-server.sh` — exists in the working tree. To finish: commit b
 install-over-existing on the Linux VM (sha256 of `/proc/$(pgrep -x hbbs)/exe` must equal the new
 binary), then repack and release the server tarball.
 
-### 46. Split-port client API silently lost on upgrade; dashboard strings fall back to 21120  *(FOUND 2026-10-29, field report)*
+### 46. Split-port client API silently lost on upgrade; dashboard strings fall back to 21120  *(FOUND 2026-10-29, field report — (a) SHIPPED in server 1.1.16; (b) and (c) OPEN)*
 The production server runs the client-facing API on a second port (`--nemo-client-api-bind
 0.0.0.0:21121`, TOPOLOGY-DEPLOYMENT.md) so the admin dashboard on 21120 stays internal. The shipped
 `rustdesk-hbbs-nemo.service` does not carry that flag, and the 1.1.15 `install.sh` overwrote the unit
@@ -503,7 +510,7 @@ the packer. `--import-setup` is repeatable and reads stdin; a literal string on 
 Found on the way: the uninstallers left the pre-rename `RustDesk` config, which the next install
 imported again (old ID / keypair / device key) — both now wipe it. DEPLOY.md §4 documents it.
 **Open:** Linux has no one-call installer equivalent (packages install through apt/pacman, then
-`sudo tbfdesk --import-setup <file|->` as before) and was not re-tested in this round; the
+`sudo rustdesk --import-setup <file|->` as before — the Linux packages keep the `rustdesk` command) and was not re-tested in this round; the
 unbound-key (first-use claim) variant was not run end to end with the silent install.
 
 ### 48. Installed Windows client: the user's (roaming) profile receives the machine's secrets  *(FOUND 2026-10-29 by `gui-windows-provision` step 6; pre-existing, upstream design)*

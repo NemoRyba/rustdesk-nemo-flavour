@@ -1,4 +1,4 @@
-# TBFDesk — Session Handoff (2026-10-17)
+# TBFDesk — Session Handoff (2026-10-29)
 
 Read this, then [`OPEN-TODOS.md`](OPEN-TODOS.md), which is the **source of truth for open
 work**. This file is orientation and recipes only; when the two disagree, OPEN-TODOS wins.
@@ -19,7 +19,28 @@ The submodules sit in **detached HEAD**, so push with
 `git push origin HEAD:<branch>` — a bare `git push` does nothing and says so quietly.
 hbb_common has its own fork remote now (the old "push-blocked" note is obsolete).
 
-## State, 2026-10-17
+## State, 2026-10-29
+
+- **Releases:** latest published `release-2026-10-29b` — client **1.4.18** (Windows installer,
+  `.deb`, Arch package, generic tarball) + server **1.1.16** (tarball with the upgrade-safe
+  `install.sh`). Client **1.4.19** (Windows: install + provision in one silent call, #47; the
+  uninstallers now also wipe the pre-rename `RustDesk` config) is built and VM-tested, **not
+  published**; its installer is on the VM at `C:\src\dist\tbfdesk-1.4.19-x64-install.exe`, notes in
+  `dist/RELEASE-NOTES-1.4.19.md`. Publish with `gh release create` on this superproject.
+- **Open and important:** #48 — an installed Windows client copies the device key and the
+  machine's keypair into the user's (roaming) profile; design proposed in OPEN-TODOS, not
+  started. #46 (b)/(c), #42 (hwcodec in the `.deb`).
+- **Automated tests:** `tests/run-all.sh` (`--quick`, default, `--all`), including real GUI clicks
+  on Linux (Xvfb) and on the Win11 VM, the server installer in a clean container, the #43
+  applied-policy flow end to end and the #47 unattended provisioning. `tests/README.md` lists
+  the stages and the traps that made GUI checks lie. `--all` needs the VM running
+  (`vmctl.sh start win11`) and the lab hbbs on the host.
+- **Live server:** since 2026-10-26 the operator installs it from the release tarballs; this
+  workspace does not touch it. At the #46 field report it ran 1.1.15 with the 21121
+  workaround in `/etc/tbfdesk/hbbs.env`; whether 1.1.16 is deployed, ask — or read *Build* in
+  the dashboard footer.
+
+### Earlier, 2026-10-17
 
 - **The 2026-10-16 field report is closed.** All six CRITICAL items fixed, plus five more
   defects the walkthrough turned up (see the CRITICAL section of OPEN-TODOS for what each
@@ -30,8 +51,9 @@ hbb_common has its own fork remote now (the old "push-blocked" note is obsolete)
   scheme all say TBFDesk, and an existing RustDesk-named install is **migrated** rather
   than orphaned. See [`RENAMING-PLAN.md`](RENAMING-PLAN.md) — Layers 0, 1, 2, 4, 5 done;
   Layer 3 (Linux packaging / bundle ids) open and deliberately pinned so nothing breaks.
-- **Live server** runs hbbs `94c12b7` and a rebuilt hbbr, deployed 2026-10-17. Details and
-  rollback copies in [`TOPOLOGY-DEPLOYMENT.md`](TOPOLOGY-DEPLOYMENT.md).
+- **Live server** ran hbbs `94c12b7` and a rebuilt hbbr, deployed 2026-10-17 (superseded by
+  the operator's tarball installs, above). Details and rollback copies in
+  [`TOPOLOGY-DEPLOYMENT.md`](TOPOLOGY-DEPLOYMENT.md).
   **Deploy hbbr whenever you deploy hbbs** — a stale hbbr is why the Relayed-bytes panel
   had no data for eleven days, and it is the half nobody notices.
 - Windows installer `dist/tbfdesk-<version>-x64-install.exe` is produced by
@@ -51,6 +73,11 @@ Nothing in this repo should contain them. The admin API token, the live sudo pas
 the SSH key (`~/.ssh/dev_remote_access_20260928`, mode 0600) live on the dev box only. The
 server's `db_v2.sqlite3` **must never be committed** and must never be checked out over on
 the live VM — hbbs holds it open.
+
+The test suite reads the **lab** admin token from the running lab hbbs' command line at run
+time (`tests/lib/common.sh` `lab_token`) and never prints or stores it. Device keys issued by
+the tests go to the VM in files, never on a `vmctl.sh ps` command line or in grep output, and
+are deleted when the stage ends.
 
 ## Verifying your own work
 
@@ -78,15 +105,29 @@ the live VM — hbbs holds it open.
   `CC=clang` and points libsodium/OpenSSL at the system copies, because GCC 16 ICEs on the
   vendored sources. Needs a vcpkg tree with static ffmpeg for `hwcodec`; without that
   feature the client silently ships without H.264/H.265.
-- **Client, Windows:** on the test VM, `C:\src\winbuild.cmd` run **as a scheduled task**
-  (`schtasks /Run /TN tbfbuild`) — a build started over SSH dies with the session; log at
-  `C:\src\build.log`. Python is absent there, so generate `src/ui/inline.rs`
-  (`python3 res/inline-sciter.py`) and the packer's payload on Linux and copy them in.
-  `inline.rs` is gitignored and is what the `inline` feature embeds, so **a .tis/.css
-  change that is not regenerated will not appear in a Windows build.**
-- **Installer:** `scripts/package-windows-client.ps1` on the VM → `dist\*-install.exe`
-  plus its sha256. The name must end in `install.exe` or the packer runs portable instead
-  of installing.
+- **Client + installer, Windows (how 1.4.17–1.4.19 were built):** on the Win11 test VM.
+  1. Sync the VM's checkout `C:\src\rustdesk-client-nemo` with a git bundle — its remote is an
+     SSH alias the VM cannot use: `git bundle create x.bundle <vm-head>..nemo-tdd` in the
+     client repo, `vmctl.sh put x.bundle C:/src/x.bundle`, then on the VM
+     `git fetch -q C:\src\x.bundle nemo-tdd` and `git merge -q --ff-only FETCH_HEAD`.
+  2. Copy [`scripts/vm-build-windows-client.cmd`](scripts/vm-build-windows-client.cmd) to
+     `C:\src\build<ver>.cmd`, set `VER` in it, and run it **synchronously over one held-open
+     SSH session**: `vmctl.sh ssh "cmd /c C:\src\build1419.cmd"` (~4 min incremental). It
+     regenerates `src/ui/inline.rs` (Python 3.12 is on the VM now), builds
+     `--features inline,hwcodec,vram`, packs `C:\src\dist\tbfdesk-<ver>-x64-install.exe`;
+     log `C:\src\build-<ver>.log`. Take the sha256 with `Get-FileHash`.
+  `inline.rs` is gitignored and is what the `inline` feature embeds, so **a .tis/.css change
+  that is not regenerated will not appear in a Windows build** — the script always
+  regenerates it. The installer's name must end in `install.exe` or the packer runs portable
+  instead of installing. Then test that exact file: `tests/run-all.sh --only gui-windows
+  --installer 'C:\src\dist\tbfdesk-<ver>-x64-install.exe'` (and `gui-windows-provision`).
+  `scripts/package-windows-client.ps1` is the documented wrapper for a build host of your
+  own (`DEPLOY.md` §2); it has not been run end to end.
+- **Linux packages:** `dist/pkg-linux.sh <version> <out-dir>` with `PKG_BIN` = an Ubuntu 24.04
+  build from the `nemo-gui` container (for the `.deb`) and `ARCH_BIN` = a host inline build
+  with hwcodec (Arch package + generic tarball). It refuses a non-inline binary.
+- **Server tarball:** `dist/pkg-server.sh <version> <out-dir>` (packs `hbbs`, `hbbr`, the
+  systemd units, `rustdesk-server-nemo/dist/install.sh` and the uninstaller).
 - **Server deploy:** see [`TOPOLOGY-DEPLOYMENT.md`](TOPOLOGY-DEPLOYMENT.md).
 
 ## Standing instructions from the user

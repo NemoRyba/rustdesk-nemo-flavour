@@ -7,8 +7,8 @@ the Win11 test VM, reading the screen with OCR and checking the logs.
 ```bash
 tests/run-all.sh                 # unit + contract + static + Linux GUI        (default)
 tests/run-all.sh --quick         # unit + contract + static only               (no display, no lab)
-tests/run-all.sh --all           # + Windows VM GUI test + #43 end-to-end
-tests/run-all.sh --only gui-windows --installer 'C:\src\dist\tbfdesk-1.4.18-x64-install.exe'
+tests/run-all.sh --all           # + Windows VM: unattended provisioning, GUI test, #43 end-to-end
+tests/run-all.sh --only gui-windows --installer 'C:\src\dist\tbfdesk-1.4.19-x64-install.exe'
 TBF_FULL=1 tests/run-all.sh --all  # + the slow checks (#43 "stale" after 2 min offline)
 ```
 
@@ -48,7 +48,7 @@ from its own command line, never printed) and the Win11 test VM. Nothing touches
 - Rust toolchain; the client build env is in `tests/lib/client-env.sh` (clang, system libsodium, `pkgconfig/libyuv.pc`, a vcpkg for hwcodec).
 - `Xvfb`, `openbox`, `xdotool`, ImageMagick `import`, `tesseract` with `vm/tessdata` (deu+eng), Python 3 + Pillow, `node`, `brave`.
 - Lab server: `hbbs`/`hbbr` from `rustdesk-server-nemo/target/release`, data dir `vm/lab2`.
-- Windows VM: `vm/scripts/vmctl.sh start`; the installer to test on the VM (built with `C:\src\build<ver>.cmd`).
+- Windows VM: `vm/scripts/vmctl.sh start`; the installer to test on the VM (built with `C:\src\build<ver>.cmd`, a copy of `scripts/vm-build-windows-client.cmd`; recipe in `HANDOFF.md`).
 
 ## Layout
 ```

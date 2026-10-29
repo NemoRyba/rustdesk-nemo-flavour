@@ -45,9 +45,24 @@ see "Not ready for production" at the end.
   keypair, the device key/secrets and — for the server — the signing keys, DB and policy state.
   `tbfdesk-uninstall.sh server` + `hbbs -k _ --generate-key Y` = a clean teardown and a fresh
   server with new keys (all provisioned clients must then be re-provisioned).
-- Signed, versioned **installers** are published as a GitHub release (`release-2026-10-26`):
-  Windows `.exe`, Debian/Ubuntu `.deb`, Arch `.pkg.tar.zst`, a generic Linux client tarball, and
-  the hardened server tarball — each with a `.sha256`.
+- Versioned **installers** are published as GitHub releases — latest `release-2026-10-29b`:
+  client 1.4.18 (Windows `.exe`, Debian/Ubuntu `.deb`, Arch `.pkg.tar.zst`, a generic Linux client
+  tarball) and server 1.1.16 — each with a `.sha256`. They are **not code-signed** (SmartScreen /
+  "unknown publisher"); check the `.sha256`.
+
+**Since 2026-10-28:**
+
+- **Server 1.1.16 `install.sh` is upgrade-safe** (`RESTART=1 ./install.sh`): units keep pointing at
+  the binary it installs, existing units are edited in place, `/etc/tbfdesk/hbbs.env` is never
+  overwritten. If clients use the split port 21121, `NEMO_CLIENT_API_BIND=0.0.0.0:21121` must be
+  in that env file — the 1.1.15 installer dropped it (OPEN-TODOS #46).
+- **Peers panel shows the policy each client actually applied** (server 1.1.16 + client 1.4.18).
+- **Windows 1.4.19 (built, not yet published): install and provision in one silent call** —
+  step 4 below. The uninstallers now also remove the old `RustDesk` config folders, which a
+  reinstall used to import again (old ID, keypair, device key).
+- **Roaming profiles:** opening the client window copies the device key and the machine's
+  keypair into `%APPDATA%\TBFDesk\config` (OPEN-TODOS #48, every version). Exclude
+  `AppData\Roaming\TBFDesk` from roaming by GPO — `DEPLOY.md` §4.
 
 ---
 
@@ -58,19 +73,34 @@ On the build machine (Linux, this repo):
 ```bash
 cd rustdesk-server-nemo
 cargo build --release          # produces target/release/hbbs and target/release/hbbr
-cargo test                     # expect "82 passed" or more, 0 failed, on every line
+cargo test                     # expect "125 passed" or more, 0 failed, on every line
 ```
 
+Or skip the build: the release tarball `tbfdesk-server-<version>-linux-x86_64.tar.gz` carries
+`hbbs`, `hbbr` and `install.sh` (step 2).
+
 For the Windows client, follow `DEPLOY.md` section 2 (needs a Windows build host).
-For a Linux technician client:
+For a Linux technician client (Arch; `scripts/build-arch-client.sh` sets the compiler and
+library paths):
 
 ```bash
 cd rustdesk-client-nemo
-cargo build --release --features linux-pkg-config,hwcodec
-cargo test --release --features linux-pkg-config,hwcodec --lib   # expect "86 passed" or more
+cargo build --release --features inline,linux-pkg-config,hwcodec   # inline: the UI is embedded
+cargo test --release --features linux-pkg-config,hwcodec --lib     # expect "134 passed" or more
 ```
 
+The whole suite, including GUI clicks on Linux and the Windows VM: `tests/run-all.sh`
+(`tests/README.md`).
+
 ## 2. Server host: install the binaries and the signing key
+
+**From the release tarball (1.1.16+):** unpack it, then `./install.sh`. It installs `hbbs`/`hbbr`
+to `/usr/bin`, creates the `rustdesk` user and `/var/lib/rustdesk-server` +
+`/var/log/rustdesk-server` if missing, installs or updates the two systemd units, and on a first
+install writes an `/etc/tbfdesk/hbbs.env` template (an existing one is never touched). For an
+upgrade: `RESTART=1 ./install.sh`. Then continue with *The signing key* below.
+
+**By hand, from your own build:**
 
 ```bash
 useradd --system --home /var/lib/rustdesk-server --shell /usr/sbin/nologin rustdesk
@@ -109,6 +139,10 @@ Firewall, lab/internal subnet only:
 
 - allow TCP 21115, 21116, 21117 (rendezvous + relay)
 - allow TCP 21120 (management API / admin dashboard)
+- with the split client port (dashboard internal-only, clients on 21121 —
+  `TOPOLOGY-DEPLOYMENT.md`): allow TCP 21121, and put `NEMO_CLIENT_API_BIND=0.0.0.0:21121` in
+  `/etc/tbfdesk/hbbs.env` (not in the unit, so upgrades keep it). Check with
+  `ss -tlnp | grep 2112`.
 - block 21114, 21118, 21119 — nothing listens behind them for a real client
 
 ## 4. First admin login and provisioning
@@ -140,7 +174,7 @@ Firewall, lab/internal subnet only:
 4. On the workstation: client → *Import device key* → paste the setup string, or
    **Load from file…** and pick the downloaded `.tbfsetup`. One paste and the machine is
    configured and keyed; nothing else is typed in by hand. **Unattended instead (Windows,
-   1.4.19+), no GUI at all** — install and provision in one call:
+   1.4.19+ — built, not yet published), no GUI at all** — install and provision in one call:
    ```powershell
    $p = Start-Process .\tbfdesk-1.4.19-x64-install.exe -PassThru `
           -ArgumentList '--silent-install', '--import-setup', 'C:\deploy\pc1.tbfsetup'
@@ -181,37 +215,46 @@ exactly what breaks if you don't.
 **Resetting one Windows client's settings** (re-provisioning a machine, or clearing a
 botched import): `scripts/reset-windows-client-config.ps1`, elevated. It stops the
 service, backs up and deletes the `*.toml` in **both** config directories — the signed-in
-user's `%APPDATA%\RustDesk\config` and the service's own copy under
-`C:\Windows\ServiceProfiles\LocalService\…`, which is the one people miss — then starts
-the service again.
+user's `%APPDATA%\TBFDesk\config` and the service's own copy under
+`C:\Windows\ServiceProfiles\LocalService\…`, which is the one people miss, plus the pre-rename
+`RustDesk` directories of both — then starts the service again. To re-provision without
+resetting the ID, pipe a new setup file into the installed client instead
+(`DEPLOY.md` §4, 1.4.19+).
 
 Three consequences, all intended: the machine loses its **device key** and server
 settings (import a setup string again), it comes back with a **new TBFDesk ID**, so the
 old key on the server is bound to an ID that no longer exists (clear or re-point its
 *Bound to ID*, or delete it and issue a new one), and the `.bak` files the script leaves
 behind **still contain the device key** — fine for a repair, delete them for a
-decommission. The full removal, including the uninstall and every leftover path and
-registry key, is in the client repo's `docs/nemo-provisioning.md`.
+decommission. For a full removal use the uninstaller (`tbfdesk-uninstall.ps1` /
+`tbfdesk-uninstall.sh`, on every release), which can wipe the ID, keypair and device key too;
+every leftover path and registry key is listed in the client repo's
+`docs/nemo-provisioning.md`.
 
 ---
 
 ## Not ready for production yet
 
-Independent of today's fixes, these are still open (see
-`/projects/rustdesk/OPEN-POINTS-2026-09-21.md` for the full, current list):
+Still open as of 2026-10-29 (the full list with status: `OPEN-TODOS.md`):
 
 - No automatic backup or crash-safe upgrade/rollback procedure beyond "copy these
-  files first" above.
+  files first" above. (Since 1.1.16 the server `install.sh` at least upgrades in place
+  without losing the units' settings or `hbbs.env`.)
 - The management API's TLS is self-signed by default; for a real deployment, supply a
   CA-issued certificate (`--nemo-api-tls-cert` / `--nemo-api-tls-key`) rather than
   relying on the pinning fallback.
-- Provisioning a device key is a manual, one-machine-at-a-time dashboard step — there is
-  no bulk/scripted provisioning path yet.
-- ~~The Windows packaging script has not been run end to end~~ — **done 2026-10-26:** the
-  Windows client **1.4.16** was built on the VM and packed into `tbfdesk-1.4.16-x64-install.exe`,
-  published to `release-2026-10-26`. Caveat: the Debian/Ubuntu `.deb` and the generic Linux
-  tarball are VP8/VP9/AV1 only — **no hwcodec H.264/H.265 yet** (Windows + Arch have it);
-  tracked as OPEN-TODOS #42.
+- Device keys are still **issued** one machine at a time (dashboard, or the admin API
+  `POST /nemo/api/device-keys`). **Applying** one is scriptable on Windows since 1.4.19
+  (`--silent-install --import-setup`, step 4, not yet published); Linux still takes a
+  `sudo rustdesk --import-setup` per machine (OPEN-TODOS #47).
+- **Roaming profiles receive the machine's secrets** once the client window opens
+  (OPEN-TODOS #48) — exclude `AppData\Roaming\TBFDesk` from roaming by GPO until it is fixed.
+- The installers are **not code-signed** (`DEPLOY.md` §2 *Signing*).
+- The Debian/Ubuntu `.deb` is VP8/VP9/AV1 only — **no hwcodec H.264/H.265** (Windows, the Arch
+  package and the generic tarball have it); OPEN-TODOS #42.
+- ~~The Windows packaging script has not been run end to end~~ — done: Windows installers built
+  on the VM and published since 1.4.16 (`release-2026-10-26`), latest 1.4.18
+  (`release-2026-10-29b`).
 
 Use this for a lab or internal pilot; do not expose the management API or the rendezvous
 ports directly to the internet without also reading `TOPOLOGY-DEPLOYMENT.md`.

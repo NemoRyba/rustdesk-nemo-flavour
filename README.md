@@ -12,9 +12,14 @@ Company-focused RustDesk fork workspace for high-performance remote access to CA
 >
 > Deploying this yourself? [`DEPLOYMENT-STEP-BY-STEP.md`](DEPLOYMENT-STEP-BY-STEP.md) is the short, ordered version; [`DEPLOY.md`](DEPLOY.md) has the full detail.
 >
-> The open-items register is `../OPEN-POINTS-2026-09-21.md` (outside this repo; see *Known gaps* below).
-> `OPEN-TODOS.md` and `SECURITY-HARDENING-TODO.md` predate the September verification sweep and contain
-> items that have since been fixed, reverted, or found to be wrong — treat them as history, not as a list.
+> Open work is tracked in [`OPEN-TODOS.md`](OPEN-TODOS.md) — the live list since October (items #38–#48
+> are current; each heading carries its status and date). `../OPEN-POINTS-2026-09-21.md` (outside this
+> repo) is the September register and is no longer updated. `SECURITY-HARDENING-TODO.md` and `TODO.md`
+> predate the September verification sweep and contain items that have since been fixed, reverted, or
+> found to be wrong — treat them as history, not as a list.
+>
+> Tests: `tests/run-all.sh` runs the automated suite, including real GUI clicks on Linux and on the
+> Win11 test VM — see [`tests/README.md`](tests/README.md).
 >
 > The running client shows its **build id** (git hash + date) bottom-left, so you can always tell which
 > build you're looking at.
@@ -25,6 +30,12 @@ Company-focused RustDesk fork workspace for high-performance remote access to CA
 - `rustdesk-server-nemo`: RustDesk open-source server fork.
 
 ## Current Direction
+
+> **Update (October):** direct sessions now work where the operator publishes a port-forward route —
+> server-distributed direct endpoints with an optional SPA knock, implemented 2026-10-06
+> ([`DIRECT-CONNECTIONS.md`](DIRECT-CONNECTIONS.md)) and verified over the internet on 2026-10-18
+> (lenovo → pc2, established in 84 ms, no relay; OPEN-TODOS 11-0). The first bullet below is the
+> September analysis of the *default* path, which is still what a workstation without a route gets.
 
 - **Sessions are relayed, and that is not currently a choice.** The intent was direct-first with relay
   as fallback. Verified against the code, three independent things prevent a direct session for a
@@ -79,8 +90,16 @@ Server-driven management on top of RustDesk, administered from the server dashbo
   client carries one set; the public one is never derived from the dashboard's own
   address, so an operator working over the LAN cannot bake a LAN address into it. The client's *Import device
   key* dialog takes either one (or loads the downloaded file), and
-  `tbfdesk --import-setup` does the same unattended. It is the client's trust anchor, so
+  `tbfdesk --import-setup <file|->` does the same unattended. It is the client's trust anchor, so
   it is moved like a password, not like a config file.
+- **Install and provision a Windows machine in one silent call** (client 1.4.19):
+  `<installer>.exe --silent-install --import-setup <file|->` validates the setup values first (exit 2,
+  nothing installed), installs, and writes them into the client's **service**, so nobody opens the
+  client. An installed client is re-provisioned from a pipe (`… | TBFDesk.exe --import-setup -`).
+  `DEPLOY.md` §4.
+- **Applied policy in the Peers panel** (server 1.1.16 + client 1.4.18): every client reports, sealed
+  and device-key-signed on its regular check-in, which policy it actually applied — or that it refused
+  one, and why. The Policy column shows ✓ applied · … pending · ✗ refused · stale.
 - **First-use binding, with operator confirmation** (not deployed yet, see
   [DEVICE-KEY-CLAIM.md](DEVICE-KEY-CLAIM.md)). A key generated *without* an id is a one-shot
   provisioning token: the first client that proves it is **still refused** and files a claim the operator
@@ -111,9 +130,16 @@ before reading any other document:
   whose machine holds a valid device key can still connect. Layer 1 is on; Layer 2 is opt-in.
 - **The management API is off at bare defaults** (`nemo-api` defaults `N`, bound to loopback). The
   committed systemd unit is what turns it on as HTTPS on `0.0.0.0:21120`.
+- **An installed Windows client copies the machine's secrets into the signed-in user's profile**
+  (OPEN-TODOS #48, found 2026-10-29; inherited from upstream, every version). Opening the window
+  (also the tray and the connection manager) writes the service's config — device key and the
+  machine's identity keypair included — to `%APPDATA%\TBFDesk\config`. On a roaming profile that
+  copy reaches the profile server. Until it is fixed, exclude `AppData\Roaming\TBFDesk` from
+  roaming by GPO (`dist/RELEASE-NOTES-1.4.19.md`).
 
-The ranked register of open items lives in `../OPEN-POINTS-2026-09-21.md`, outside this repository —
-moving it in is itself an open item. `OPEN-TODOS.md` and `TODO.md` are older running logs.
+Open items are tracked in [`OPEN-TODOS.md`](OPEN-TODOS.md). The September register
+`../OPEN-POINTS-2026-09-21.md` (outside this repository) is no longer updated; `TODO.md` is an older
+running log.
 
 ## Security posture & penetration test
 
@@ -140,17 +166,27 @@ tests pass; all runtime-verified. C2 and C5–C9 remain open.
 
 ## Releases & uninstaller
 
-Installers for client and server ship as GitHub releases on this (private) superproject. Latest —
-**`release-2026-10-26`**: Windows `tbfdesk-1.4.16-x64-install.exe`, Debian/Ubuntu `.deb`, Arch
-`.pkg.tar.zst`, a generic Linux client tarball, and the hardened server tarball (`hbbs`+`hbbr`
-1.1.15), each with a `.sha256`. (The `.deb`/generic Linux client are VP8/VP9/AV1 only — no hwcodec
-H.264/H.265 yet; the Windows installer and Arch package do have it. See OPEN-TODOS.)
+Installers for client and server ship as GitHub releases on this (private) superproject. Latest
+published — **`release-2026-10-29b`**: client **1.4.18** (Windows `tbfdesk-1.4.18-x64-install.exe`,
+Debian/Ubuntu `.deb`, Arch `.pkg.tar.zst`, a generic Linux client tarball) and server **1.1.16**
+(`hbbs`+`hbbr` tarball with the upgrade-safe `install.sh`), each with a `.sha256`, plus both
+uninstallers. Release notes: `dist/RELEASE-NOTES-<version>.md`.
+
+- **Not yet published:** Windows client **1.4.19** (unattended provisioning, the uninstaller fix) —
+  built and tested on the Win11 VM, `dist/RELEASE-NOTES-1.4.19.md`.
+- **H.264/H.265 (hwcodec):** the Windows installer, the Arch package and the generic tarball (an
+  Arch build, Arch sonames) have it; the `.deb` is VP8/VP9/AV1 only (OPEN-TODOS #42).
+- **Not code-signed.** The installers carry no Authenticode signature (expect SmartScreen and an
+  "unknown publisher" UAC prompt); check them against the `.sha256`. Signing your own build:
+  `DEPLOY.md` §2 *Signing*.
 
 A **selective uninstaller** ships with both client and server (`rustdesk-client-nemo/res/uninstall/`,
 `rustdesk-server-nemo/scripts/uninstall/`): a GUI checklist (zenity/kdialog on Linux, WinForms on
 Windows) plus a headless mode, to cleanly remove an install and optionally wipe settings, the device
 ID + keypair, the device key/secrets and — for the server — the signing keys, DB and policy state,
-so the next install comes up fresh. Verified end-to-end on the lab.
+so the next install comes up fresh. Since 1.4.19 it also removes the pre-rename `RustDesk` config
+directories, which a reinstall used to import again (old ID, keypair, device key). Verified
+end-to-end on the lab.
 
 ## Build Priority
 
@@ -200,6 +236,11 @@ script). Rust **1.75** is required for the Sciter bindings.
 
 The Flutter CI workflows in the client fork (`Flutter Nightly/Tag/Full`) remain available
 for the upstream Flutter path, but that is not the path used here.
+
+**Release installers** are built differently: on the Win11 test VM with
+`--features inline,hwcodec,vram` and packed into `tbfdesk-<version>-x64-install.exe` by
+[`scripts/vm-build-windows-client.cmd`](scripts/vm-build-windows-client.cmd) — recipe in
+[`HANDOFF.md`](HANDOFF.md) *Build recipes*.
 
 ### Linux controlled host on the server VM (192.168.1.14)
 

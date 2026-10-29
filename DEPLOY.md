@@ -26,11 +26,18 @@ splits on `-` and parses the suffix with `unwrap_or(0)`, so `1.4.6-tbf1` scores
 *identically* to `1.4.6` and the updater would never offer it. Use `1.4.7`, `1.4.8`, or a
 numeric fourth part.
 
-Currently **1.4.16** (client); the server is **1.1.15**. Signed, ready-built installers for every
-platform are published as a GitHub release — latest `release-2026-10-26`: Windows
-`tbfdesk-1.4.16-x64-install.exe`, Debian/Ubuntu `.deb`, Arch `.pkg.tar.zst`, a generic Linux client
-tarball, and the hardened server tarball (`hbbs`+`hbbr` 1.1.15), each with a `.sha256`. (The
-`.deb`/generic Linux client are VP8/VP9/AV1 only — no hwcodec H.264/H.265 yet; see OPEN-TODOS #42.)
+The tree is at client **1.4.19** and server **1.1.16**. Ready-built installers are published as
+GitHub releases — latest **`release-2026-10-29b`**: client **1.4.18** (Windows
+`tbfdesk-1.4.18-x64-install.exe`, Debian/Ubuntu `.deb`, Arch `.pkg.tar.zst`, a generic Linux client
+tarball) and server **1.1.16** (`hbbs`+`hbbr` tarball with `install.sh`), each with a `.sha256`.
+Client **1.4.19** (Windows only: the unattended provisioning in §4, the uninstaller fix) is built and
+VM-tested but **not yet published**; until it is, the `1.4.19` file names below refer to a build
+from this tree. Notes per release: `dist/RELEASE-NOTES-<version>.md`.
+
+- The published installers are **not Authenticode-signed** — see *Signing* in §2; verify them
+  against the `.sha256`.
+- H.264/H.265 (hwcodec): Windows installer, Arch package and generic tarball yes; the `.deb` is
+  VP8/VP9/AV1 only (OPEN-TODOS #42).
 
 ## 2. Windows workstations
 
@@ -41,7 +48,10 @@ tarball, and the hardened server tarball (`hbbs`+`hbbr` 1.1.15), each with a `.s
 .\scripts\package-windows-client.ps1 -License "host=tbfdesk.example.com,key=<b64>"
 ```
 
-Produces one double-clickable `.exe` plus its `.sha256`. On a workstation:
+Produces one double-clickable `.exe` plus its `.sha256`. (The published release installers are
+built by `scripts/vm-build-windows-client.cmd` on the Win11 test VM — the same `libs/portable`
+packer, recipe in `HANDOFF.md` *Build recipes*; this `.ps1` wrapper is the documented route for a
+build host of your own.) On a workstation:
 
 ```
 tbfdesk-1.4.19-x64-install.exe                  interactive
@@ -79,6 +89,9 @@ free public CA for Authenticode. Three options:
 | OV/EV certificate | paid, annual | trusted | EV clears immediately, OV builds reputation |
 | **self-signed + Trusted Publishers GPO** | **free** | **trusted** | still warns |
 | unsigned | free | "unknown publisher" | warns |
+
+The installers on the GitHub releases are in the last row: unsigned (checked on
+`tbfdesk-1.4.18-x64-install.exe`: no Authenticode certificate table).
 
 For ~15 domain-joined workstations plus a few technician machines, the middle row is the
 right answer and it is what `scripts/make-codesign-cert.ps1` sets up:
@@ -355,13 +368,40 @@ $LASTEXITCODE
 `--option nemo-device-key` stays refused in both directions (H26), and the licence name
 still has no `devkey=` field — `--import-setup` is the one CLI way in.
 
+**Roaming profiles (OPEN-TODOS #48, every version):** once the user opens the TBFDesk window
+(also the tray / connection manager), it copies the service's config — device key and the
+machine's identity keypair included — into `%APPDATA%\TBFDesk\config`. On a roaming profile that
+copy reaches the profile server. Until it is fixed: GPO *User Configuration → Administrative
+Templates → System → User Profiles → Exclude directories in roaming profile* → add
+`AppData\Roaming\TBFDesk`, and delete copies already on the profile share. The window re-copies
+from the local service on every start, so nothing is lost.
+
+**Linux:** no one-call installer yet. Install the package (`apt install ./….deb` /
+`pacman -U …`), then `sudo rustdesk --import-setup <file|->` as before — the Linux packages keep
+the `rustdesk` command and paths (RENAMING-PLAN Layer 3). Not re-tested in the 1.4.19 round
+(OPEN-TODOS #47).
+
 Staged rollout: a fresh install has `require_device_key` **on**. Switch it off in the
 dashboard first, install and provision, then turn it back on.
 The server names every un-provisioned client in its log while it is off.
 
 ---
 
-## 5. Upgrading (2026-09-27/28 builds)
+## 5. Upgrading
+
+**Server 1.1.16 and later** (release tarball): unpack, then `RESTART=1 ./install.sh`. It keeps
+each unit's `ExecStart` pointed at the binary it just installed (the 1.1.15 script installed to
+`/usr/local/bin` while the units ran `/usr/bin/hbbs`, so an upgrade silently kept the old
+binary), edits existing units in place instead of replacing them, and never touches an existing
+`/etc/tbfdesk/hbbs.env`. Put every flag there — `NEMO_CLIENT_API_BIND=0.0.0.0:21121` for the
+split client port especially (OPEN-TODOS #46: the 1.1.15 installer's unit rewrite dropped it and
+took 21121 down). Check afterwards: `ss -tlnp | grep 2112` shows 21120 and 21121, and the
+sha256 of `/proc/$(pgrep -x hbbs)/exe` matches the new `hbbs`.
+
+**Order:** server first, then clients. The applied-policy column (1.4.18) needs server 1.1.16;
+older clients keep working and show "not reported". 1.4.19 is a Windows-client-only change.
+
+### Breaking changes of the 2026-09-27/28 builds
 
 Client and server move together. Before an upgrade, copy `/var/lib/rustdesk-server`
 (`id_ed25519`, `nemo_integration.json`, `nemo_sessions.json`, `nemo-api-cert.pem`,
@@ -386,22 +426,24 @@ on the server and on every client.
 
 ## What is not done
 
-- The Windows **packaging/installer** script (`package-windows-client.ps1`) has never
-  been run. A raw cross-build (`cargo build --release --features
-  inline,hwcodec,vram`, no packaging) *was* verified in this environment on 2026-09-28,
-  built and run inside the project's own Windows VM (`vm/scripts/vmctl.sh`) — it compiled
-  clean and the resulting `rustdesk.exe` launched and rendered correctly. What remains
-  unverified is only the packaging step itself (the installer `.exe`, its licence-name
-  baking, and `install_me`'s folder-rename behaviour), not "no Windows host exists".
-- The Windows build itself is not reproducible outside that one prepared VM:
-  `build-run-windows-client.ps1` needs `tools\vcpkg-120deac` and `tools\llvm-15.0.6`,
-  which are gitignored and undocumented. A packaging wrapper on a non-reproducible build
-  gives a reproducible *wrapper*, not a reproducible artifact.
-- No `.deb`/`PKGBUILD` for a Linux client. `res/rpm.spec` is the sound template if one is
-  ever wanted; `res/PKGBUILD` is broken for the sciter build (it only installs a binary
-  under `if [[ ${FLUTTER} ]]`, leaving `/usr/bin/rustdesk` a dangling symlink). Note
-  `src/ui.rs` hardcodes `/usr/share/rustdesk/libsciter-gtk.so`, so that path must stay
-  literally `rustdesk` whatever the package is called.
-- Branding stays split on purpose: user-visible text is TBFDesk, `APP_NAME` remains
-  `RustDesk` so the config dir, service name, registry keys and URI scheme do not move.
-  See `RENAMING-PLAN.md`. Only cosmetic winres strings are safe to change.
+*Updated 2026-10-29.*
+
+- The Windows installer **is** built and shipped: every release since 1.4.16 was packed on the
+  Win11 test VM with the `libs/portable` packer (since 1.4.17 by what is now
+  `scripts/vm-build-windows-client.cmd`) and install-tested there, including `--silent-install` and, since 1.4.19, `--import-setup`
+  (`tests/gui/windows_provision.sh`). The `package-windows-client.ps1` wrapper itself, the
+  licence-name baking and the `-SignWith` path have still not been run end to end.
+- The Windows build is still not reproducible outside that one prepared VM: the toolchain
+  (`C:\build\tools`: vcpkg at `120deac`, LLVM 15.0.6, nasm, VS 2022 Build Tools, Windows SDK,
+  Python 3.12 + brotli) is installed by hand. The steps are recorded in the build script's header
+  and in `HANDOFF.md`, but a fresh build host is a manual job.
+- No release installer is code-signed yet (§2 *Signing*).
+- Linux packages exist now — `dist/pkg-linux.sh` builds the `.deb` (from an Ubuntu 24.04 build),
+  the Arch `.pkg.tar.zst` and a generic tarball (from an Arch build). Still missing: an `.rpm`, and
+  hwcodec in the `.deb` (OPEN-TODOS #42). `src/ui.rs` hardcodes
+  `/usr/share/rustdesk/libsciter-gtk.so`, so that path stays literally `rustdesk`.
+- The rename: `APP_NAME` is `TBFDesk` since 1.4.8 (install dir, exe, service, registry,
+  `%APPDATA%`, logs, URI scheme), and a RustDesk-named install is migrated. Linux packaging
+  names and paths stay `rustdesk` on purpose (`RENAMING-PLAN.md` Layer 3).
+- Unattended provisioning is Windows-only (OPEN-TODOS #47); the machine's secrets reach a
+  roaming profile once the window opens (#48, §4).
