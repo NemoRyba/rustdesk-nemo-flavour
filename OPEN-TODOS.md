@@ -373,7 +373,7 @@ it actually contains the Ubuntu binary — see #44 — so today only Windows has
 gets H.26x too. Verify with a direct session negotiating H.264/H.265 end to end. (hwcodec runtime use
 still depends on a supported hardware encoder — QSV/NVENC/AMF — else it falls back to VP8/VP9/AV1.)
 
-### 43. Peer panel: show the policy each client has ACTUALLY applied  *(TODO, operator request 2026-10-29)*
+### 43. Peer panel: show the policy each client has ACTUALLY applied  *(BUILT 2026-10-29 — server 1.1.16 + client 1.4.18; verified by `tests/run-all.sh --all`: unit, contract, Linux + Windows GUI, e2e T1/T2/T4 + dashboard badge; T6 "stale" via TBF_FULL=1. Live needs the hbbs deploy and clients on 1.4.18.)*
 **Problem.** The peers table's **Policy** column shows only what the server *assigns* (device
 policy, a logged-in user's policy overriding it, or the default). Nothing tells the operator what
 the client really runs: whether it fetched and **applied** the current policy, **refused** it
@@ -476,6 +476,22 @@ service user/dirs and an `hbbs.env` template on first install, `RESTART=1`) and 
 builder `dist/pkg-server.sh` — exists in the working tree. To finish: commit both, test
 install-over-existing on the Linux VM (sha256 of `/proc/$(pgrep -x hbbs)/exe` must equal the new
 binary), then repack and release the server tarball.
+
+### 46. Split-port client API silently lost on upgrade; dashboard strings fall back to 21120  *(FOUND 2026-10-29, field report)*
+The production server runs the client-facing API on a second port (`--nemo-client-api-bind
+0.0.0.0:21121`, TOPOLOGY-DEPLOYMENT.md) so the admin dashboard on 21120 stays internal. The shipped
+`rustdesk-hbbs-nemo.service` does not carry that flag, and the 1.1.15 `install.sh` overwrote the unit
+-> 21121 stopped listening -> every client provisioned with `:21121` (the roaming notebook) could no
+longer poll: "device key — handshake only", no version, no direct endpoints, relay only.
+**Workaround applied:** `NEMO_CLIENT_API_BIND=0.0.0.0:21121` in `/etc/tbfdesk/hbbs.env` (hbbs reads
+every flag from the environment, so it survives unit rewrites).
+**To do:** (a) the upgrade-safe `install.sh` (#45) now edits units in place and writes that line into
+the env template — ship it; (b) the dashboard's setup-string fields are transient — "Update string"
+builds one string and persists nothing, and the next refresh refills the default — so either persist
+the operator's overrides or show a warning when an api-server port is not one this hbbs listens on
+("21121: nothing is listening — set NEMO_CLIENT_API_BIND"); (c) the Peers panel could flag clients
+whose last poll is older than N minutes while their rendezvous registration is fresh ("handshake
+only" already says so, but only in a tooltip).
 
 ### 38. Flutter (Android/iOS) up to parity with the desktop client  *(IN PLAN, operator request 2026-10-19)*
 The desktop client (Windows + Linux, ONE Sciter codebase, src/ui/*.tis) has all the
