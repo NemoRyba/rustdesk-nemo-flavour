@@ -8,22 +8,32 @@
 # Linux client in the ubuntu 24.04 container (localhost/nemo-gui) with features
 # inline,linux-pkg-config; libyuv has no .pc on Ubuntu, so provide one via a /pkgcfg dir on
 # PKG_CONFIG_PATH (see pentest/... no -- see the release build log / memory). Then run this
-# with PKG_BIN=<that binary>. The .pkg.tar.zst is built from the host (Arch) binary.
+# with PKG_BIN=<that binary>. The .pkg.tar.zst and the generic tarball are built from the
+# HOST (Arch) binary, ARCH_BIN -- an inline build: cargo build --release --features
+# inline,linux-pkg-config,hwcodec. (Until 1.4.17 both formats got PKG_BIN, so the "Arch"
+# package carried the Ubuntu binary and failed on Arch with "libvpx.so.9: not found".)
 set -euo pipefail
 VER="${1:?version}"; OUT="${2:?out dir}"
 C=/projects/rustdesk/rustdesk-nemo-flavour/rustdesk-client-nemo
 BIN="${PKG_BIN:-/projects/rustdesk/rustdesk-nemo-flavour/rustdesk-client-nemo/target/release/rustdesk}"
+ARCH_BIN="${ARCH_BIN:-$BIN}"
 SCITER=/usr/lib/libsciter-gtk.so
 mkdir -p "$OUT"
-[ -f "$BIN" ] || { echo "missing $BIN" >&2; exit 1; }
-strings "$BIN" | grep -qF "$VER" || echo "WARN: binary does not contain the string $VER"
+for b in "$BIN" "$ARCH_BIN"; do
+  [ -f "$b" ] || { echo "missing $b" >&2; exit 1; }
+  # grep the binary directly: `strings | grep -q` under pipefail reports a FAILURE on a
+  # match (grep -q exits early, strings dies of SIGPIPE).
+  grep -qaF "$VER" "$b" || echo "WARN: $b does not contain the string $VER"
+  # A release binary must embed its UI (inline); a non-inline build loads src/ui from its cwd.
+  grep -qa nemoMoreMenuPopup "$b" || { echo "$b is not an inline build (no embedded UI)" >&2; exit 1; }
+done
 
 WORK="$(mktemp -d)"; trap 'rm -rf "$WORK"' EXIT
 
 # ---- common install tree (matches build.py's sciter-deb layout) --------------
-stage() {  # $1 = root
-  local R="$1"
-  install -Dm755 "$BIN" "$R/usr/share/rustdesk/rustdesk"
+stage() {  # $1 = root, $2 = binary
+  local R="$1" B="$2"
+  install -Dm755 "$B" "$R/usr/share/rustdesk/rustdesk"
   strip "$R/usr/share/rustdesk/rustdesk" 2>/dev/null || true
   install -Dm644 "$SCITER" "$R/usr/share/rustdesk/libsciter-gtk.so"
   install -Dm644 "$C/res/rustdesk.service" "$R/usr/share/rustdesk/files/systemd/rustdesk.service"
@@ -34,7 +44,7 @@ stage() {  # $1 = root
 }
 
 # ---- .deb (ar + tar) ---------------------------------------------------------
-DEB_ROOT="$WORK/deb"; stage "$DEB_ROOT"
+DEB_ROOT="$WORK/deb"; stage "$DEB_ROOT" "$BIN"
 mkdir -p "$DEB_ROOT/DEBIAN"
 cp -a "$C/res/DEBIAN/"* "$DEB_ROOT/DEBIAN/"
 cat > "$DEB_ROOT/DEBIAN/control" <<EOF
@@ -64,7 +74,7 @@ echo "built $DEB ($(du -h "$DEB" | cut -f1))"
 
 # ---- .pkg.tar.zst (makepkg) --------------------------------------------------
 PKGDIR="$WORK/arch"; mkdir -p "$PKGDIR"
-ARCH_ROOT="$PKGDIR/pkgroot"; stage "$ARCH_ROOT"
+ARCH_ROOT="$PKGDIR/pkgroot"; stage "$ARCH_ROOT" "$ARCH_BIN"
 install -Dm644 "$ARCH_ROOT/usr/share/rustdesk/files/systemd/rustdesk.service" "$ARCH_ROOT/usr/lib/systemd/system/rustdesk.service"
 ln -sf /usr/share/rustdesk/rustdesk "$ARCH_ROOT/usr/bin/tbfdesk" 2>/dev/null || true
 mkdir -p "$ARCH_ROOT/usr/bin"; ln -sf /usr/share/rustdesk/rustdesk "$ARCH_ROOT/usr/bin/rustdesk"
@@ -83,8 +93,37 @@ options=('!strip' '!debug')
 package() { cp -a "$ARCH_ROOT/." "\$pkgdir/"; }
 EOF
 ( cd "$PKGDIR" && PKGDEST="$OUT" PKGEXT='.pkg.tar.zst' makepkg -f --nodeps --noconfirm >/tmp/makepkg.log 2>&1 ) \
-  && mv "$OUT"/tbfdesk-*.pkg.tar.zst "$OUT/tbfdesk-$VER-x86_64.pkg.tar.zst" 2>/dev/null || true
+  && mv "$OUT/tbfdesk-${VER//-/_}-1-x86_64.pkg.tar.zst" "$OUT/tbfdesk-$VER-x86_64.pkg.tar.zst" || true
+# (exact makepkg name: a tbfdesk-*.pkg.tar.zst glob also matched older packages in $OUT, so
+#  mv got several sources, failed, and the package stayed under makepkg's name, unchecksummed)
 ls "$OUT"/tbfdesk-"$VER"-x86_64.pkg.tar.zst 2>/dev/null && echo "built the Arch package" || { echo "makepkg failed:"; tail -8 /tmp/makepkg.log; }
 
+# ---- generic tarball (Arch binary + Sciter runtime + installer + uninstaller) -
+TGZ="tbfdesk-client-$VER-linux-x86_64"; TR="$WORK/$TGZ"
+install -Dm755 "$ARCH_BIN" "$TR/bin/tbfdesk"; strip "$TR/bin/tbfdesk" 2>/dev/null || true
+install -Dm644 "$SCITER" "$TR/lib/libsciter-gtk.so"
+mkdir -p "$TR/share" "$TR/uninstall"
+cp "$C"/res/uninstall/{tbfdesk-uninstall.sh,tbfdesk-uninstall.ps1,tbfdesk-uninstaller.desktop,README.md} "$TR/uninstall/"
+chmod 755 "$TR/uninstall/tbfdesk-uninstall.sh"
+cat > "$TR/install.sh" <<'EOF'
+#!/usr/bin/env bash
+# TBFDesk client installer (Linux). Installs the binary, Sciter runtime and launchers.
+set -euo pipefail
+cd "$(dirname "$0")"
+sudo install -m755 bin/tbfdesk /usr/bin/rustdesk
+[ -f lib/libsciter-gtk.so ] && sudo install -m644 lib/libsciter-gtk.so /usr/lib/
+sudo install -m644 uninstall/tbfdesk-uninstaller.desktop /usr/share/applications/ 2>/dev/null || true
+sudo install -m755 uninstall/tbfdesk-uninstall.sh /usr/bin/tbfdesk-uninstall
+echo "Installed. Launch: rustdesk    Uninstall (optionally wiping ID/keys/config): tbfdesk-uninstall client"
+EOF
+chmod 755 "$TR/install.sh"
+cat > "$TR/README.md" <<EOF
+# TBFDesk client $VER (Linux x86_64, Sciter UI, hwcodec)
+Install: ./install.sh   ·   Uninstall/clean reset: tbfdesk-uninstall client (or ./uninstall/tbfdesk-uninstall.sh)
+Note: this binary is built on Arch and links Arch sonames; for Debian/Ubuntu use the .deb.
+EOF
+( cd "$WORK" && tar --owner=0 --group=0 -czf "$OUT/$TGZ.tar.gz" "$TGZ" )
+echo "built $OUT/$TGZ.tar.gz ($(du -h "$OUT/$TGZ.tar.gz" | cut -f1))"
+
 echo "--- sha256:"
-( cd "$OUT" && for f in tbfdesk-$VER-amd64.deb tbfdesk-$VER-x86_64.pkg.tar.zst; do [ -f "$f" ] && sha256sum "$f" | tee "$f.sha256"; done )
+( cd "$OUT" && for f in tbfdesk-$VER-amd64.deb tbfdesk-$VER-x86_64.pkg.tar.zst $TGZ.tar.gz; do [ -f "$f" ] && sha256sum "$f" | tee "$f.sha256"; done )

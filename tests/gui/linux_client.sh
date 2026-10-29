@@ -5,18 +5,25 @@
 #   2. the "..." menu opens, and Settings opens from it            (1.4.16: dead menu)
 #   3. script output reaches the client log file, no script error  (logging fix)
 #   4. #43: the server receives this client's applied-policy report (row "ui" in sync)
+# Default: the source-tree build. To test a PACKAGED client instead:
+#   TBF_LINUX_BIN=<root>/usr/share/rustdesk/rustdesk        an extracted .pkg.tar.zst / tarball
+#   TBF_LINUX_DEB=<file.deb> [TBF_UBUNTU_IMAGE=...]          install + run the .deb in an Ubuntu
+#                                                            container on this X display
 # Exit: 0 pass, 1 fail, 2 skipped (no lab server / tools).
 set -uo pipefail
 source "$(dirname "$0")/../lib/common.sh"
 OCR="python3 $TBF_TESTS/lib/ocr.py"
-BIN="$TBF_CLIENT/target/release/rustdesk"
+BIN="${TBF_LINUX_BIN:-$TBF_CLIENT/target/release/rustdesk}"
+DEB="${TBF_LINUX_DEB:-}"
+IMAGE="${TBF_UBUNTU_IMAGE:-localhost/nemo-gui:latest}"
+[ -n "$DEB" ] && BIN=/usr/share/rustdesk/rustdesk     # the path inside the container (matches /proc/<pid>/exe)
 ID="${TBF_LINUX_TEST_ID:-777000111}"
 LABEL="test-suite linux"
 SRV="${TBF_LAB_HOST_IP:-10.66.0.1}"     # a ROUTABLE host address (hbbr treats loopback as its command port)
 DISP="${TBF_XDISPLAY_GUI:-:89}"
 lab_hbbs_pid >/dev/null || { say "SKIP: no lab hbbs running"; exit 2; }
 for t in Xvfb openbox xdotool import tesseract; do command -v $t >/dev/null || { say "SKIP: $t missing"; exit 2; }; done
-[ -x "$BIN" ] || { bad "no Linux client binary at $BIN (run the build stage)"; exit 1; }
+[ -n "$DEB" ] || [ -x "$BIN" ] || { bad "no Linux client binary at $BIN (run the build stage)"; exit 1; }
 T=$(mktemp -d "$TBF_OUT/linux-gui.XXXX"); fail=0; H="$T/home"
 
 pgrep -f "Xvfb $DISP " >/dev/null || { Xvfb "$DISP" -screen 0 1400x900x24 -nolisten tcp >"$T/xvfb.log" 2>&1 & disown; sleep 2; }
@@ -47,10 +54,21 @@ issue_device_key "$ID" "$LABEL" "$SRV" "$SRV:21117" "https://$SRV:31120" > "$T/k
 client_config_from_key "$T/key.json" > "$H/.config/tbfdesk/TBFDesk2.toml" 2>"$T/cfg.err" \
   || { bad "could not issue a lab device key: $(head -c 200 "$T/key.json")"; exit 1; }
 
-# the non-inline Linux build loads src/ui from its working directory
-( cd "$TBF_CLIENT" && exec env -u WAYLAND_DISPLAY HOME="$H" XDG_CONFIG_HOME="$H/.config" \
-    XDG_RUNTIME_DIR="$H/run" DISPLAY="$DISP" GDK_BACKEND=x11 XDG_SESSION_TYPE=x11 \
-    "$BIN" </dev/null >"$T/client.out" 2>&1 ) & disown
+if [ -n "$DEB" ]; then
+  # the .deb, installed into a throwaway Ubuntu container that draws on this X display
+  # (--ipc=host: GTK draws through MIT-SHM, which fails with BadAccess across IPC namespaces)
+  podman run -d --rm --name "tbf-gui-deb-$$" --network host --ipc=host -v /tmp/.X11-unix:/tmp/.X11-unix \
+    -v "$H:$H" -v "$(realpath "$DEB"):/pkg.deb:ro" -e HOME="$H" -e XDG_CONFIG_HOME="$H/.config" \
+    -e XDG_RUNTIME_DIR="$H/run" -e DISPLAY="$DISP" -e GDK_BACKEND=x11 -e XDG_SESSION_TYPE=x11 "$IMAGE" \
+    bash -c 'dpkg -i /pkg.deb >/tmp/dpkg.log 2>&1 || apt-get install -fy >>/tmp/dpkg.log 2>&1; exec /usr/share/rustdesk/rustdesk' \
+    >"$T/client.out" 2>&1
+  trap 'podman rm -f "tbf-gui-deb-$$" >/dev/null 2>&1; cleanup' EXIT
+else
+  # the non-inline source build loads src/ui from its working directory (an inline/packaged one ignores it)
+  ( cd "$TBF_CLIENT" && exec env -u WAYLAND_DISPLAY HOME="$H" XDG_CONFIG_HOME="$H/.config" \
+      XDG_RUNTIME_DIR="$H/run" DISPLAY="$DISP" GDK_BACKEND=x11 XDG_SESSION_TYPE=x11 \
+      "$BIN" </dev/null >"$T/client.out" 2>&1 ) & disown
+fi
 
 W=""
 for i in $(seq 1 40); do W=$(DISPLAY="$DISP" xdotool search --name '^TBFDesk$' 2>/dev/null | head -1); [ -n "$W" ] && break; sleep 1; done

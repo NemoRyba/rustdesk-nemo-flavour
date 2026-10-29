@@ -15,7 +15,7 @@ set -uo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 source "$HERE/lib/common.sh"
 
-QUICK=(unit-server unit-client contract static-ui)
+QUICK=(unit-server unit-client contract static-ui server-installer)
 DEFAULT=("${QUICK[@]}" build-linux sciter-parse gui-linux)
 ALL=("${DEFAULT[@]}" gui-windows e2e-policy)
 STAGES=("${DEFAULT[@]}"); ONLY=(); INSTALLER=""
@@ -41,6 +41,7 @@ stage_cmd() {
     unit-client)  (cd "$TBF_CLIENT" && source "$HERE/lib/client-env.sh" && cargo test --release --features "$TBF_CLIENT_FEATURES" --lib 2>&1 | tee "$TBF_OUT/unit-client.log" | grep -E '^test result|FAILED|panicked' ; exit "${PIPESTATUS[0]}");;
     contract)     python3 "$HERE/contracts/check_policy_report_contract.py";;
     static-ui)    bash "$HERE/static/check_inline_generator.sh";;
+    server-installer) bash "$HERE/static/check_server_installer.sh";;
     build-linux)  (cd "$TBF_CLIENT" && source "$HERE/lib/client-env.sh" && cargo build --release --features "$TBF_CLIENT_FEATURES" 2>&1 | tee "$TBF_OUT/build-linux.log" | grep -E '^error|Finished' ; exit "${PIPESTATUS[0]}");;
     sciter-parse) bash "$HERE/gui/sciter_parse.sh";;
     gui-linux)    bash "$HERE/gui/linux_client.sh";;
