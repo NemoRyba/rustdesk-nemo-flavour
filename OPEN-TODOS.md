@@ -365,12 +365,117 @@ when one is published.
 ### 42. Debian/Ubuntu `.deb` client with hwcodec (H.264/H.265)  *(OPEN, operator request 2026-10-26)*
 The shipped `.deb` and generic-Linux client tarball are built in the `nemo-gui` Ubuntu 24.04
 container with `--features inline,linux-pkg-config` — **VP8/VP9/AV1 only, no hwcodec**, because that
-container has no vcpkg static ffmpeg. The **Windows** installer (`inline,hwcodec,vram`) and the
-**Arch** `.pkg.tar.zst` DO carry H.264/H.265. To close the gap: add a vcpkg `x64-linux` static
+container has no vcpkg static ffmpeg. The **Windows** installer (`inline,hwcodec,vram`) carries
+H.264/H.265. *(Correction 2026-10-29: the 1.4.16 **Arch** `.pkg.tar.zst` was believed to as well, but
+it actually contains the Ubuntu binary — see #44 — so today only Windows has H.26x.)* To close the gap: add a vcpkg `x64-linux` static
 `ffmpeg` (+ the hwcodec link deps) to the Ubuntu build container, then rebuild with
 `--features inline,hwcodec,linux-pkg-config` and repackage via `dist/pkg-linux.sh`, so Debian/Ubuntu
 gets H.26x too. Verify with a direct session negotiating H.264/H.265 end to end. (hwcodec runtime use
 still depends on a supported hardware encoder — QSV/NVENC/AMF — else it falls back to VP8/VP9/AV1.)
+
+### 43. Peer panel: show the policy each client has ACTUALLY applied  *(TODO, operator request 2026-10-29)*
+**Problem.** The peers table's **Policy** column shows only what the server *assigns* (device
+policy, a logged-in user's policy overriding it, or the default). Nothing tells the operator what
+the client really runs: whether it fetched and **applied** the current policy, **refused** it
+(anti-rollback, stale/future `issued_ts`, signature or seal failure, device-key unseal failure),
+which **source** won on that machine right now, or which options the user **overrode** locally
+(`allow_user_override`). A refused policy is invisible today — the row looks identical to a
+healthy one.
+
+**Goal.** Per peer, in the table and the detail panel:
+*Applied policy* (name + source: device / user `<name>` / default / inline) · *version*
+(`issued_ts`) · *state* ✅ in sync / ⏳ pending (delivered, not yet confirmed) / ❌ refused
+(reason) / ⚠ stale (no confirmation for > 3 polls) / ❔ not reported (client < 1.4.18) ·
+*last confirmed* · *locally overridden keys* (names only, never values).
+
+**Design — no new channel, no new request.** Piggyback on the existing 30 s management poll,
+exactly like `client_version` already is (`record_peer_client_version`, nemo_management.rs ~625):
+1. **Server records what it delivered** (no client change needed): in the poll handler, next to
+   `record_peer_endpoints_delivered` / `record_peer_client_version` (~6770-6795), store per peer
+   `{policy_name, source, issued_ts, policy_ref}`. `policy_ref` is an opaque id
+   (`<issued_ts>:<16 hex of sha256(signed payload)>`) **added inside the signed policy payload**, so
+   the client gets an authenticated handle to echo back — no canonical-hash agreement needed.
+2. **Client reports what it applied**: on a successful `apply_policy`, persist the `policy_ref` +
+   time; at every refusal site in `sync_policy` / `verified_payload` / `check_policy_freshness`
+   record `{issued_ts, reason, at}` (reason from **fixed client-side templates**, truncated, never
+   echoing server text). The next poll's `ClientPolicyRequest` gains an optional
+   `applied_policy: {ref, applied_at, refused?: {issued_ts, reason, at}, overridden_keys: [..]}`.
+3. **Server compares** delivered vs. applied → state; in-memory map like `PEER_CLIENT_VERSIONS`
+   (repopulates within 30 s of a restart, `evict_one_if_full`). Expose as `policy_applied` on each
+   row of `GET /nemo/api/peers`; optionally log a `policy-refused` event in the anomaly log.
+
+**Encryption / trust (as everything else in TBFDesk).**
+- *Confidential*: the field lives inside `ClientPolicyRequest`, and with a management key
+  configured the **whole poll body is mandatorily sealed** to that key (Layer 1,
+  `poll_request_body`, no plaintext fallback) — on top of TLS with the pinned certificate.
+- *Authentic*: accepted only from a poll that passed device-key verification. Hardening: extend the
+  signed message from `nemo-poll:{id}:{ts}` to `nemo-poll2:{id}:{ts}:{sha256(applied_policy)}` so a
+  report cannot be transplanted into another body; the server keeps accepting v1 from old clients.
+- *No secrets*: only the ref, a reason template and key **names** — never option values
+  (`secret_policy_keys` stay out entirely).
+- *Untrusted input*: strict caps on the server (ref ≤ 64 chars, reason ≤ 200, ≤ 64 key names
+  ≤ 64 chars each, charset allow-list) and `escapeHtml` for every client-supplied string in the GUI.
+
+**Implementation plan.**
+1. Server `nemo_management.rs`: `policy_ref` in the signed payload; `record_peer_policy_delivered`;
+   parse + validate `applied_policy` (server-side request struct ~855); `record_peer_policy_applied`;
+   a **pure** `policy_state(delivered, applied, now)` fn; add `policy_applied` to the peer rows (~7408).
+2. Server `nemo_admin.html`: state badge in the Policy column; "Assigned / Delivered / Applied by the
+   client" block in the peer detail panel; tooltips; all via `escapeHtml`.
+3. Client `nemo_management_client.rs`: read `policy_ref` from the verified payload; persist on apply;
+   capture refusals; build `applied_policy`; signature v2.
+4. Unit tests: server state machine (all 5 states, incl. refused-then-recovered), validation caps
+   and charset, v1+v2 signature acceptance; client report building (no values, truncation, refusal
+   capture), `poll_request_body` still seals with the new field.
+5. Docs: `docs/nemo-management-api.md` (row field), DEPLOY note — needs **server 1.1.16 + client
+   1.4.18**; older clients show ❔ and keep working.
+
+**Test plan — lab + VMs** (host lab `hbbs`/`hbbr` from `vm/lab2`, Win11 VM client `12513041` already
+provisioned with a bound device key, the Arch Linux VM `lxvm` as a second client, the `tbf-ldap`
+container for user policies; dashboard read via `vm/scripts/cdp.mjs` screenshots):
+- **T0 build**: server `cargo build --release`, restart the lab hbbs on the same key/data dir; client
+  built on the VM (`C:\src\build1417.cmd` → 1.4.18) and installed with `C:\src\install-poll.ps1`.
+- **T1 baseline**: assign device policy *A* → within ≤ 40 s the row shows *A · device · ✅*, version
+  equal to what the server delivered.
+- **T2 change**: switch to *B* → ⏳ right after saving, ✅ *B* within one poll.
+- **T3 user policy**: log in on the client as an LDAP user with policy *U* → *U · user:<name> ✅*;
+  log out → back to the device policy.
+- **T4 refusal**: stop the service, set `nemo-policy-issued-ts` in the service `TBFDesk2.toml` a
+  year ahead, start → client refuses (rollback) → ❌ with the reason; restore → ✅.
+- **T5 overrides**: with `allow_user_override`, change an overridable option on the client → its key
+  name (no value) appears.
+- **T6 offline**: stop the TBFDesk service → ⚠ stale with "last confirmed"; start → ✅.
+- **T7 old client**: install 1.4.17 → ❔, no server errors; reinstall 1.4.18.
+- **T8 confidentiality**: server debug log shows the poll as a `sealed_request` envelope only; unit
+  test asserts sealing with the new field; optional host pcap shows only TLS.
+- **T9 hostile input**: a crafted poll (Rust test client, like `examples/relayprobe.rs`) with an
+  oversized / HTML-laden reason → capped server-side and rendered as text (cdp.mjs checks
+  `textContent`, no injected element).
+- **T10 regression**: `client_version`, endpoints-delivered and policy application unchanged;
+  `cargo test` green on server and client.
+
+**Done when** T1–T10 pass on Windows and T1/T2/T6 also on the Linux VM client, with peer-panel
+screenshots of each state attached here.
+
+### 44. Linux client 1.4.17 + fix the Arch package  *(OPEN, found 2026-10-29)*
+- The 1.4.16 `.deb` and generic tarball are `inline` builds with the same **dead main-window menu /
+  stuck "Generating ID"** bug fixed for Windows in 1.4.17 (one Sciter block per script file) —
+  rebuild both from client `c0062cecf`+ in the `nemo-gui` container.
+- The published 1.4.16 **Arch `.pkg.tar.zst` contains the Ubuntu binary** (needs `libvpx.so.9`) and
+  does not start on Arch: `dist/pkg-linux.sh` stages the same `PKG_BIN` into both formats, although
+  its own comment says Arch uses the host binary. Give it a separate `ARCH_BIN`, build that one on the
+  host with `--features inline,linux-pkg-config,hwcodec`.
+- Verify each package starts, the ⋮ menu opens and the ID registers (Arch VM `lxvm` + the
+  `nemo-gui` Ubuntu container), then publish as one release.
+
+### 45. Server installer: upgrade-safe `install.sh`  *(BUILT 2026-10-28, not yet committed/released)*
+The 1.1.15 tarball's `install.sh` installs to `/usr/local/bin` while the units run `/usr/bin/hbbs`,
+so an upgrade silently keeps the OLD binary running. The fix — `rustdesk-server-nemo/dist/install.sh`
+(rewrites each unit's `ExecStart` to the install prefix, edits existing units in place, creates the
+service user/dirs and an `hbbs.env` template on first install, `RESTART=1`) and the reproducible
+builder `dist/pkg-server.sh` — exists in the working tree. To finish: commit both, test
+install-over-existing on the Linux VM (sha256 of `/proc/$(pgrep -x hbbs)/exe` must equal the new
+binary), then repack and release the server tarball.
 
 ### 38. Flutter (Android/iOS) up to parity with the desktop client  *(IN PLAN, operator request 2026-10-19)*
 The desktop client (Windows + Linux, ONE Sciter codebase, src/ui/*.tis) has all the
