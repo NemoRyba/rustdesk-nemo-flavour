@@ -548,12 +548,15 @@ Two client branches off `nemo-tdd`, both Sciter (the shipped desktop UI):
   (upstream `f69bedea`, 2022, declared `is_mouse_event_triggered` instead). TIScript throws on the
   undefined name, so `cur_img` is never set and `updateCursor` never scheduled -> system arrow
   forever. Fix: use the declared name (2 lines). Inherited from upstream, not fork-introduced.
-- **`nemo-tdd-open-recording-folder`** (`e402caca2`) — "Öffnen" next to the Incoming and
+- **`nemo-tdd-open-recording-folder`** (`e402caca2`, + default folder change below) — "Öffnen" next to the Incoming and
   Outgoing/Directory paths in Settings -> Recording. Opens what the dialog currently shows (also a
   folder just picked with "Ändern", not saved yet), creates it if missing; new
   `handler.open_folder` in `src/ui.rs` (explorer with a backslash path on Windows, so UNC /
   roaming-profile `\\dc\profiles$\<user>\Videos\TBFDesk` works; `xdg-open` on Linux). The
   branch also carries the same button for Flutter (`desktop_setting_page.dart`), unused today.
+  Same branch: the Windows default recording folder (no folder set) is now
+  `C:\ProgramData\TBFDesk\recording` for outgoing sessions too, not `%USERPROFILE%\Videos\TBFDesk`;
+  the user folders stay as fallback. Old recordings in `Videos\TBFDesk` are not moved.
 
 **Steps**
 1. Merge both branches into `nemo-tdd`, bump the client gitlink here, build the Windows client
@@ -578,7 +581,10 @@ Two client branches off `nemo-tdd`, both Sciter (the shipped desktop UI):
    - [ ] regression: "show remote cursor" on — the drawn remote cursor also changes shape
    - [ ] client window zoomed / adaptive scale: the shape is not mis-sized and the hotspot fits
 4. **Open-folder checklist** (Windows and Linux):
-   - [ ] default folder (`%USERPROFILE%\Videos\TBFDesk` / `~/Videos/TBFDesk`) opens
+   - [ ] default folder opens: Windows `C:\ProgramData\TBFDesk\recording` (default since
+         `nemo-tdd-open-recording-folder`, was `%USERPROFILE%\Videos\TBFDesk`), Linux `~/Videos/TBFDesk`
+   - [ ] Windows: an outgoing recording made by a NON-admin user lands in ProgramData (write access
+         when the service created the folder first); note other local users can read it there
    - [ ] "Ändern" to another folder, then "Öffnen" BEFORE OK -> the new folder opens
    - [ ] folder deleted beforehand -> it is created and opens
    - [ ] lab domain user with a redirected Videos folder on `\\dc\profiles$\<user>` opens the share path
