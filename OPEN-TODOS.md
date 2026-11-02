@@ -631,7 +631,7 @@ Flutter build (doubles as the FLUTTER-PORT parity check). Implementation notes: 
 on top of tests/gui, ffmpeg x11grab (Linux Xvfb) / host-side capture of the Win11 VM,
 captions from steps.json, `tests/run-all.sh --video`.
 
-### 51. Android Flutter client: TBFDesk features  *(DOCUMENTED ONLY 2026-11-02 — do not implement yet; plan in [FLUTTER-PORT.md §9b](FLUTTER-PORT.md))*
+### 51. Android Flutter client: TBFDesk features  *(CODE WRITTEN 2026-11-02 on `nemo-tdd-flutter`, not built; plan + progress in [FLUTTER-PORT.md](FLUTTER-PORT.md) §9b/§10. Android 17 minimum; iOS SHELVED; needs the TBFDesk icon)*
 Operator decision: desktop Flutter port first (#50), Android later. Plan covers backend
 activation (management client compiled + started on Android: `lib.rs:41-45`,
 `server.rs:599-603`, session revocation `nemo_management_client.rs:255`), provisioning on

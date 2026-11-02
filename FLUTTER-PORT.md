@@ -45,9 +45,8 @@ Linux GDK_SCALE ≠ 1, macOS Retina units, Windows invisible resize borders (few
 monitor hot-plug / user moving the window while spanning (layout recomputed only on enter or
 subset change), relative mouse mode in span, OS-close while spanning saving "fullscreen".
 
-**Mobile, still needed from the operator:** TBFDesk icon (1024² PNG), Apple team id
-(project still has upstream's), delete upstream's unused `ios/Runner/GoogleService-Info.plist`?,
-Android 17 as minimum or only as reference device?
+**Mobile, still needed from the operator:** TBFDesk icon (1024² PNG). (Apple team id: future,
+iOS shelved; Firebase plist removed; Android 17 = minimum — decided 2026-11-02.)
 
 **Verification so far: syntax only** (`dart format -o none`, `rustfmt --check`). Not done:
 flutter_rust_bridge codegen, `flutter analyze`, `cargo check --features flutter`, a Windows
@@ -514,17 +513,20 @@ Android-hosted session cut from the dashboard ends it; settings save keeps the d
 7. Provisioning input: paste, file (SAF picker), QR scan of the setup string.
 8. Sign-in: same sealed username/password flow as desktop; Azure AD = TODO (#54).
 9. Management client: polls only while the app runs (no background service for it).
-10. **Android version: reference device Pixel 7a (Android 17, its last major update; end of
-    support Oct 2026).** OPEN QUESTION to the operator: is Android 17 the MINIMUM
-    (excludes most users' phones — older Samsung/Xiaomi etc. are on 14-16) or the test
-    reference with a lower minimum? Until answered: upstream minSdk kept, targetSdk = 37.
+10. **Android 17 (API 37) is the minimum AND the test device (Pixel 7a)** — operator,
+    2026-11-02. Client `28ffdb6dc`: minSdk/targetSdk/compileSdk 37 in
+    `flutter/android/gradle.properties`. Phones below Android 17 cannot install the app.
+    Build risk: AGP 7.3.1 / Gradle 7.6.4 predate API 37 — the first Android build must
+    confirm; otherwise upgrade AGP (8.x+) and Gradle.
 11. Logs: "Share log" through the Android/iOS share sheet → mail, Teams, Webex, Telegram,
     WhatsApp, Signal or any installed app (Flutter `share_plus`).
 12. Settings: hide only desktop-only items (RDP sharing, block input, audio input device,
     remove wallpaper, enable-service toggle); keep everything useful on a phone.
 13. Display: only modes that make sense with one local screen — single display + picker of
     the remote displays; no span / one-window-per-display.
-14. iOS: in scope (controller only, see 2).
+14. **iOS: SHELVED** (operator, 2026-11-02 — deployment too complicated for now). Code stays
+    iOS-safe (bundle id at.tbf.tbfdesk, controller-only, mgmt client from init), upstream's
+    unused Firebase plist removed (`28ffdb6dc`). Apple Developer account + team id: future.
 15. Start: Android/iOS work starts now (desktop P0-P4 done); lab videos on another machine.
 
 **Distribution and signing (answers)**
