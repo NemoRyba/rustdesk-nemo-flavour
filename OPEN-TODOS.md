@@ -623,7 +623,7 @@ client side re-enable the upstream OIDC button path (`login.dart`, currently web
 the sealed login, token handling via the Rust HTTP client. Not implemented.
 
 ### 52. Recorded video GUI tests in the VM lab, every feature and button  *(TODO side quest, operator request 2026-11-02 — plan in [LAB-VIDEO-TEST-PLAN.md](LAB-VIDEO-TEST-PLAN.md))*
-15 videos (V01 provisioning gates … V15 Linux) with a burned-in caption per step
+16 videos (V01 provisioning gates … V15 Linux, plus V10b: every element of the display modes and the display picker) with a burned-in caption per step
 (ACTION / EXPECTED / RESULT), title card, side-by-side when the proof is on the peer or the
 dashboard, and negative cases that must visibly break (e.g. API server set to a non-existent
 host: sign-in, AB and policy poll fail, then restored). Recorded for the Sciter AND the

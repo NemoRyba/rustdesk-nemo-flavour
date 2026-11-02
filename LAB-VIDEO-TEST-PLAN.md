@@ -198,9 +198,7 @@ For each permission: toggle off → controlling peer shows the function unavaila
 ### V10 — Remote session window (two VMs side by side)
 1. Toolbar badge "Direkt" (green) on a direct session, "Relay" (orange) on a relayed one.
 2. Cursor shapes (OPEN-TODOS #49 list): window edges, corners, splitter, drag-and-drop with Ctrl/Alt badges and "not allowed", title-bar drag, I-beam, hand, busy, crosshair (Paint), Alt+Space→Move four-way arrows; after reconnect and display switch.
-3. Display modes (≥2 remote displays): single → all (tiled) → span (controller with 2 monitors: display i on monitor i) → windows (one fullscreen window per monitor; close one → falls back to all); single-monitor controller → multi-monitor modes greyed with tooltip.
-4. ≥3 remote displays: picker "n/N", untick until one left (last cannot be unticked), "alle".
-5. Reconnect → saved mode and subset restored (~1 s after connect).
+3. Display modes + picker: see the dedicated video **V10b** (every element).
 6. Quality: custom slider reaches 1 %; unset quality shows "niedrig" ticked; image visibly changes.
 7. Ctrl+Alt+Del and Ctrl+Alt+End → Windows secure attention screen on the target.
 8. Keyboard modes, chat, file transfer, session recording button (file appears, V09).
@@ -210,6 +208,63 @@ For each permission: toggle off → controlling peer shows the function unavaila
 12. Clipboard sync between sessions: two sessions open, option on → copy in session A arrives in session B; option off → does not.
 13. Audit note (end of session) → appears signed in the dashboard audit log.
 14. Default view style "shrink" until chosen; choose "original" → kept for that peer on reconnect.
+
+### V10b — Display modes and display picker, every element (dedicated video)
+Setup recorded in the title card: controller with 1 / 2 / 3 local monitors (three runs),
+remote host with 1, 2, 3 and 4 displays of different sizes and one portrait display. Every
+step shows the controller's monitors (all of them in frame, or one capture per monitor
+stacked) and the host's display arrangement.
+
+Control (toolbar → display-mode menu)
+1. Remote has 1 display → mode control and picker hidden or inert (caption: nothing to choose).
+2. 2 remote displays, 1 local monitor → four entries visible: Einzeln / Alle | Spannen /
+   Fenster; Spannen and Fenster **greyed**, hover → tooltip "– benötigt einen zweiten Monitor".
+3. Click each greyed entry → nothing happens (no window change, no error).
+4. Plug in a second local monitor (VM: add display) → re-open menu → Spannen / Fenster enabled.
+5. Radio state: the current mode is ticked; exactly one tick at any time.
+
+Mode: Einzeln (single)
+6. Select → one display shown; toolbar display chips: the shown one lit.
+7. Click each display chip → switches display; image matches the host's display (caption names it).
+8. `\` hotkey (Sciter) / chip cycling → cycles displays in single mode only.
+
+Mode: Alle (all, tiled in one window)
+9. Select → all shown displays tiled, proportions match the host arrangement (caption shows host layout diagram).
+10. Mouse over each tile → remote pointer moves on THAT display (host side shows the pointer); click a desktop icon on each display.
+11. Display chip click while in Alle → returns to Einzeln on that display.
+12. Resize the controller window → tiles re-layout, input still maps correctly (repeat step 10 quickly).
+
+Mode: Spannen (span, one window over all local monitors)
+13. 2 remote + 2 local → window covers both monitors; remote display 1 on the left monitor, 2 on the right, each letterboxed to fit.
+14. Pointer at the four corners of each monitor → remote pointer at the four corners of the matching remote display; letterbox gap → no input (host pointer does not move).
+15. Toolbar centred on the first (left) monitor.
+16. Window manager moves the window → it snaps back to the span position (Windows + Linux).
+17. Counts differ (3 remote, 2 local) → fallback: proportional "all" layout across the span window (caption states the rule).
+18. Leave Spannen → previous window position and size restored.
+
+Mode: Fenster (one window per remote display)
+19. 2 remote + 2 local → two fullscreen windows, one per monitor, left-to-right order matches the remote displays.
+20. Input in each window goes to its display (step 10 per window).
+21. Close one window by hand → remaining window falls back to Alle automatically.
+22. Switch to another mode → all extra windows close; original window placement restored.
+
+Picker (≥3 remote displays)
+23. Picker button shows "n/N" (e.g. 3/3); opens a list with one checkbox per display + "Alle anzeigen".
+24. Untick one → "2/3", that display disappears from Alle / Spannen / Fenster immediately.
+25. Untick until one is left → the last checkbox cannot be unticked (stays ticked, no change).
+26. "Alle anzeigen" → back to N/N.
+27. Picked subset with a gap in the middle (1 and 3 of 3) → layout as designed (Flutter: real positions with gap; Sciter: packed — caption states which build).
+
+Persistence
+28. Choose Spannen + subset 1,3 → disconnect → reconnect → after ~1 s the same mode and subset return (caption: per peer).
+29. Another peer → its own saved mode (default Einzeln), not the first peer's.
+30. "Reset preferences" on the peer (address book) → next connect starts in default mode with all displays.
+31. Upstream setting "use all my displays for the remote session" = on → the saved TBF mode is not applied on top (caption: upstream setting wins).
+
+Robustness
+32. Host changes resolution / unplugs a display mid-session → layout updates, no crash, picker count updates.
+33. Portrait remote display in Alle / Spannen → correctly rotated aspect, input mapping correct.
+34. Mixed DPI controller (100 % + 150 % monitors, Windows) → span and windows place correctly; pointer mapping exact at corners.
 
 ### V11 — Update flow (lab update server with a signed manifest)
 1. Manifest offers a newer version, auto policy → banner "TBFDesk <v> ist bereit…" + "Jetzt installieren".
