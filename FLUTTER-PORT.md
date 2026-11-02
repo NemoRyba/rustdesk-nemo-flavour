@@ -31,23 +31,41 @@ Client branch `nemo-tdd-flutter`, commits after the merge `9bb5ba2f6`:
 | `dccc31db4` | remote window: display modes + picker + persistence, Direct/Relay badge, privacy hidden, quality min 1 %, tooltips, in-process clipboard sync, shrink view style | R1-R11, R14 |
 | `12c246c49` | explicit adaptive default view style honoured; 1 % slider steps | R14, R9 |
 
+| `5a35fba62` | custom quality 1-9 % saved (hbb_common `nemo-quality-min1` fe74601 — merge into `nemo`) and honoured by the host (video_qos floor) | R9, follow-up 1 |
+| `a998aba68` | AB tags pane on the right | B2, follow-up 4 |
+| `0c4f82ec7` | "(locked)" only while no setup string overrides the exe-name server (both UIs) | follow-up 6 |
+| `f592940e6` | exact span: remote display i on local monitor i, per-tile pointer + cursor mapping | follow-up 2 |
+| `bd08f329c` | mobile: management client + log collect on Android/iOS, optional fleet gate | §9b A1 |
+| `527d1d62a` | Android/iOS packaging renamed (at.tbf.tbfdesk, labels, tbfdesk://, SIGNING.md) | §9b A6 |
+| `af659907b` | mobile UI: fleet gate, QR/paste/file import, settings, share log, badges | §9b A2-A5 |
+| `2f6ae1211` | key_confirmed in Flutter status (Registered badge), mobile cert/file handling, strings | A15 |
+
+**Span mode limits to check in the lab (V10b):** Wayland (window cannot be positioned),
+Linux GDK_SCALE ≠ 1, macOS Retina units, Windows invisible resize borders (few-px offset),
+monitor hot-plug / user moving the window while spanning (layout recomputed only on enter or
+subset change), relative mouse mode in span, OS-close while spanning saving "fullscreen".
+
+**Mobile, still needed from the operator:** TBFDesk icon (1024² PNG), Apple team id
+(project still has upstream's), delete upstream's unused `ios/Runner/GoogleService-Info.plist`?,
+Android 17 as minimum or only as reference device?
+
 **Verification so far: syntax only** (`dart format -o none`, `rustfmt --check`). Not done:
 flutter_rust_bridge codegen, `flutter analyze`, `cargo check --features flutter`, a Windows
 and Linux build, the lab parity sweep (LAB-VIDEO-TEST-PLAN.md, OPEN-TODOS #52).
 
 **Open follow-ups / deviations**
-1. hbb_common: custom image quality below 10 % is not persisted —
+~~1. hbb_common: custom image quality below 10 % is not persisted —
    `PeerConfig::deserialize_custom_image_quality` accepts only `v[0] >= 10` and
    `UserDefaultConfig` clamps `custom-image-quality` to ≥ 10.0. Lower both to 1 (affects Sciter
    too), bump the client gitlink.
-2. Span mode: window covers all monitors with the "all" layout; the exact "remote display i
+~~2. Span mode: window covers all monitors with the "all" layout; the exact "remote display i
    on local monitor i" mapping is TODO (needs per-display pointer mapping in InputModel).
 3. "All" with a display subset keeps real positions (gap for an unpicked middle display);
    Sciter packs tiles side by side.
-4. AB tags pane stays left (Sciter: right) — operator decision.
+~~4. AB tags pane stays left (Sciter: right) — operator decision.
 5. Settings: Management + Import rows sit behind Flutter's "Unlock Network Settings" on an
    installed client; Direct IP access stays in the Security tab (next to the whitelist).
-6. Exe-name lock: Flutter treats a non-empty licence as locked; a setup string that overrides
+~~6. Exe-name lock: Flutter treats a non-empty licence as locked; a setup string that overrides
    the exe-name server (`nemo_exe_custom_server_configured`) is not mirrored → "(locked)" may
    show although the import overrode it.
 7. Web bridge (`flutter/lib/web/bridge.dart`) has no stubs for the new FFI — web is not a
