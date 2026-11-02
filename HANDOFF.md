@@ -1,5 +1,7 @@
 # TBFDesk — Session Handoff (2026-10-29)
 
+**Flutter port lab handoff (2026-11-02): [`HANDOFF-FLUTTER-LAB.md`](HANDOFF-FLUTTER-LAB.md).**
+
 Read this, then [`OPEN-TODOS.md`](OPEN-TODOS.md), which is the **source of truth for open
 work**. This file is orientation and recipes only; when the two disagree, OPEN-TODOS wins.
 
