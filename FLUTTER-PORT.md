@@ -54,18 +54,18 @@ flutter_rust_bridge codegen, `flutter analyze`, `cargo check --features flutter`
 and Linux build, the lab parity sweep (LAB-VIDEO-TEST-PLAN.md, OPEN-TODOS #52).
 
 **Open follow-ups / deviations**
-~~1. hbb_common: custom image quality below 10 % is not persisted —
+1. **(FIXED, see progress table)** hbb_common: custom image quality below 10 % is not persisted —
    `PeerConfig::deserialize_custom_image_quality` accepts only `v[0] >= 10` and
    `UserDefaultConfig` clamps `custom-image-quality` to ≥ 10.0. Lower both to 1 (affects Sciter
    too), bump the client gitlink.
-~~2. Span mode: window covers all monitors with the "all" layout; the exact "remote display i
+2. **(FIXED, see progress table)** Span mode: window covers all monitors with the "all" layout; the exact "remote display i
    on local monitor i" mapping is TODO (needs per-display pointer mapping in InputModel).
 3. "All" with a display subset keeps real positions (gap for an unpicked middle display);
    Sciter packs tiles side by side.
-~~4. AB tags pane stays left (Sciter: right) — operator decision.
+4. **(FIXED, see progress table)** AB tags pane stays left (Sciter: right) — operator decision.
 5. Settings: Management + Import rows sit behind Flutter's "Unlock Network Settings" on an
    installed client; Direct IP access stays in the Security tab (next to the whitelist).
-~~6. Exe-name lock: Flutter treats a non-empty licence as locked; a setup string that overrides
+6. **(FIXED, see progress table)** Exe-name lock: Flutter treats a non-empty licence as locked; a setup string that overrides
    the exe-name server (`nemo_exe_custom_server_configured`) is not mirrored → "(locked)" may
    show although the import overrode it.
 7. Web bridge (`flutter/lib/web/bridge.dart`) has no stubs for the new FFI — web is not a
