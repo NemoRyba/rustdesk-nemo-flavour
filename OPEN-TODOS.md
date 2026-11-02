@@ -540,6 +540,54 @@ their behalf (IPC sign request), so the key never leaves the service process at 
 the stale file copy; after the fix it must say "service not running" instead of a dead gate.
 `tests/gui/windows_provision.sh` step 6 reports it as KNOWN (#48); `TBF_STRICT=1` fails it.
 
+### 49. Remote cursor shape + "Open" recording folder: integrate and lab-verify  *(TODO 2026-11-02 — code on client branches, not built, not merged)*
+Two client branches off `nemo-tdd`, both Sciter (the shipped desktop UI):
+- **`nemo-tdd-remote-cursor-shape`** (`4b3d91476`) — field report: Windows -> Windows, the
+  remote cursor never changes shape (no resize arrows, nothing). Cause: `src/ui/remote.tis`
+  `setCursorData` / `setCursorId` read `first_mouse_event_triggered`, which is declared nowhere
+  (upstream `f69bedea`, 2022, declared `is_mouse_event_triggered` instead). TIScript throws on the
+  undefined name, so `cur_img` is never set and `updateCursor` never scheduled -> system arrow
+  forever. Fix: use the declared name (2 lines). Inherited from upstream, not fork-introduced.
+- **`nemo-tdd-open-recording-folder`** (`e402caca2`) — "Öffnen" next to the Incoming and
+  Outgoing/Directory paths in Settings -> Recording. Opens what the dialog currently shows (also a
+  folder just picked with "Ändern", not saved yet), creates it if missing; new
+  `handler.open_folder` in `src/ui.rs` (explorer with a backslash path on Windows, so UNC /
+  roaming-profile `\\dc\profiles$\<user>\Videos\TBFDesk` works; `xdg-open` on Linux). The
+  branch also carries the same button for Flutter (`desktop_setting_page.dart`), unused today.
+
+**Steps**
+1. Merge both branches into `nemo-tdd`, bump the client gitlink here, build the Windows client
+   (`build-run-windows-client.ps1`) and the Linux client.
+2. Lab: Windows controller -> Windows controlled VM (the field case), then Windows -> Linux X11
+   and Linux -> Windows. Keyboard/mouse permission on, "show remote cursor" off (default).
+3. **Visual cursor checklist** — hover/act on the REMOTE desktop, the LOCAL pointer must take the
+   remote shape within a moment, and return to the arrow afterwards:
+   - [ ] window edge left/right -> horizontal resize arrows; top/bottom -> vertical
+   - [ ] window corners -> both diagonal resize arrows
+   - [ ] Explorer: splitter between navigation pane and file list -> column-resize arrows
+   - [ ] Explorer: drag a file/folder onto another folder -> drag pointer; with Ctrl -> "+" copy
+         badge; with Alt -> link badge; over the taskbar / a target that refuses it -> "not allowed"
+   - [ ] drag a window by its title bar (pointer must stay correct during the drag)
+   - [ ] text field (Notepad, Explorer address bar) -> I-beam
+   - [ ] hyperlink (browser, Settings app link) -> hand
+   - [ ] start an app (e.g. Notepad from the Start menu) -> arrow+busy / spinner
+   - [ ] Paint -> crosshair / pen
+   - [ ] Alt+Space -> "Move" (Verschieben) -> four-way move arrows
+   - [ ] reconnect, and switch displays on a multi-monitor host: the shape is still right
+   - [ ] regression: view-only (keyboard permission off) still shows the "not allowed" pointer
+   - [ ] regression: "show remote cursor" on — the drawn remote cursor also changes shape
+   - [ ] client window zoomed / adaptive scale: the shape is not mis-sized and the hotspot fits
+4. **Open-folder checklist** (Windows and Linux):
+   - [ ] default folder (`%USERPROFILE%\Videos\TBFDesk` / `~/Videos/TBFDesk`) opens
+   - [ ] "Ändern" to another folder, then "Öffnen" BEFORE OK -> the new folder opens
+   - [ ] folder deleted beforehand -> it is created and opens
+   - [ ] lab domain user with a redirected Videos folder on `\\dc\profiles$\<user>` opens the share path
+   - [ ] installed Windows client: "Öffnen" next to Incoming opens `C:\ProgramData\TBFDesk\recording`
+   - [ ] path with a space / umlaut in the user name
+   - [ ] option fixed by policy: "Ändern" hidden, "Öffnen" still works
+5. Add both to `tests/gui` where it can be asserted (cursor: compare the controller's cursor
+   handle/shape after hovering a remote window edge), then record the result here.
+
 ### 38. Flutter (Android/iOS) up to parity with the desktop client  *(IN PLAN, operator request 2026-10-19)*
 The desktop client (Windows + Linux, ONE Sciter codebase, src/ui/*.tis) has all the
 TBFDesk work; the mobile app is the separate Flutter tree (flutter/, ~121 dart files) and
