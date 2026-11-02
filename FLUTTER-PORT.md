@@ -13,6 +13,50 @@ Fork point with upstream RustDesk: `b81ae6c8`.
 
 ---
 
+## Progress (2026-11-02) — desktop port written, NOT yet built
+
+Client branch `nemo-tdd-flutter`, commits after the merge `9bb5ba2f6`:
+
+| Commit | Content | FLUTTER-PORT rows |
+|---|---|---|
+| `83073d0f4` | device key never handed to Dart; kept + managed state restored on save (shared ui_interface helpers) | §2.1 |
+| `df335d525` | TBFDesk FFI layer (all `main_nemo_*`), helpers moved from ui.rs to ui_interface; update prompt window | §2.2, §4 |
+| `eed67a463` | upstream unverified download/run refused; TBF update banner | §2.3, A16 |
+| `b22a5b8d9` | gates (device key / claim / sign-in), import dialog, account bar, ⋮ menu, build id, policy checks, registration badge, direct hint, refusal translation, no install nag / pencil | A1-A3, A6, A7, A13-A15, A17, A19, A26 |
+| `0c2e88573` | install page EULA without rustdesk.com | D1 |
+| `cd9e125b7` | sealed AB (/api/ab/get, envelope, unseal, own id hidden), ab-version reload, AB sign-in tip, empty text, reload icon, search hint, Direct chip, peer menu (direct / relay / reset) | B1, B3-B8, A21 |
+| `a1fbb7078` | sealed sign-in page + certificate box; login via sealed flow; logout clears user ticket | A4, A5, §2.4 |
+| `55a99cf3d` | every API request through the Rust HTTP client (TLS fallback, cert pin, proxy) | — |
+| `53fde4442` | settings parity: tooltips, fixed rows, Alias, Management, Import row, server dialog locks + company-only, language DE/AT/EN flags, clipboard-sync toggle, inert auto-update row, About TBFDesk, no privacy mode / login in settings | A8-A12, A18, A20, R8 (settings) |
+| `dccc31db4` | remote window: display modes + picker + persistence, Direct/Relay badge, privacy hidden, quality min 1 %, tooltips, in-process clipboard sync, shrink view style | R1-R11, R14 |
+| `12c246c49` | explicit adaptive default view style honoured; 1 % slider steps | R14, R9 |
+
+**Verification so far: syntax only** (`dart format -o none`, `rustfmt --check`). Not done:
+flutter_rust_bridge codegen, `flutter analyze`, `cargo check --features flutter`, a Windows
+and Linux build, the lab parity sweep (LAB-VIDEO-TEST-PLAN.md, OPEN-TODOS #52).
+
+**Open follow-ups / deviations**
+1. hbb_common: custom image quality below 10 % is not persisted —
+   `PeerConfig::deserialize_custom_image_quality` accepts only `v[0] >= 10` and
+   `UserDefaultConfig` clamps `custom-image-quality` to ≥ 10.0. Lower both to 1 (affects Sciter
+   too), bump the client gitlink.
+2. Span mode: window covers all monitors with the "all" layout; the exact "remote display i
+   on local monitor i" mapping is TODO (needs per-display pointer mapping in InputModel).
+3. "All" with a display subset keeps real positions (gap for an unpicked middle display);
+   Sciter packs tiles side by side.
+4. AB tags pane stays left (Sciter: right) — operator decision.
+5. Settings: Management + Import rows sit behind Flutter's "Unlock Network Settings" on an
+   installed client; Direct IP access stays in the Security tab (next to the whitelist).
+6. Exe-name lock: Flutter treats a non-empty licence as locked; a setup string that overrides
+   the exe-name server (`nemo_exe_custom_server_configured`) is not mirrored → "(locked)" may
+   show although the import overrode it.
+7. Web bridge (`flutter/lib/web/bridge.dart`) has no stubs for the new FFI — web is not a
+   target; add stubs only if a web build is ever needed.
+8. Direct/Relay badge on the mobile toolbar → Android (§9b).
+9. Install nag removed for all Windows non-installed runs (portable use shows no prompt).
+
+---
+
 ## 0. Summary
 
 1. **Flutter is untouched upstream code.** Since `b81ae6c8` only two Dart files changed:
