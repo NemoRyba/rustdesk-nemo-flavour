@@ -609,6 +609,14 @@ runs the installer without the SHA-256 check (`flutter_ffi.rs:2910-2957`); Flutt
 the password in clear. **Android:** the management client is not compiled (`lib.rs:41-45`) and
 there is no setup/device-key import, so every policy-driven feature is inert on the phone.
 
+### 51. Android Flutter client: TBFDesk features  *(DOCUMENTED ONLY 2026-11-02 — do not implement yet; plan in [FLUTTER-PORT.md §9b](FLUTTER-PORT.md))*
+Operator decision: desktop Flutter port first (#50), Android later. Plan covers backend
+activation (management client compiled + started on Android: `lib.rs:41-45`,
+`server.rs:599-603`, session revocation `nemo_management_client.rs:255`), provisioning on
+the phone (gates, import with QR scan), sealed login + AB, settings/About/branding, session
+UI, packaging (package id, icon, input-service label) and the verification list.
+Needs operator decisions FLUTTER-PORT §10.1-10.3 first.
+
 ### 38. Flutter (Android/iOS) up to parity with the desktop client  *(IN PLAN, operator request 2026-10-19)*
 **→ Planned in #50 / [FLUTTER-PORT.md](FLUTTER-PORT.md).**
 The desktop client (Windows + Linux, ONE Sciter codebase, src/ui/*.tis) has all the

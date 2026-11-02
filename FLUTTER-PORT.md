@@ -1,6 +1,6 @@
 # TBFDesk — Port from Sciter to Flutter (desktop + Android)
 
-**Status: PLANNED (2026-11-02). Inventory complete, no port code written yet.**
+**Status: IN PROGRESS (2026-11-02) — desktop (Windows + Linux) first; Android documented only (§9b, OPEN-TODOS #51).**
 Client branch: **`nemo-tdd-flutter`** (from `nemo-tdd` `fe95013cd`, with
 `nemo-tdd-remote-cursor-shape` and `nemo-tdd-open-recording-folder` merged in: `9bb5ba2f6`).
 Supersedes the planning notes in OPEN-TODOS #38 (mobile parity) and #39 (one UI everywhere).
@@ -336,6 +336,91 @@ Every phase: no merge to `nemo-tdd` until its rows here are ☑ and its lab chec
   screenshot both, tick the row.
 
 ---
+
+## 9b. Android — plan only (NOT being implemented now; operator decision 2026-11-02)
+
+Desktop (Windows + Linux) is ported first. Android is documented here so nothing is lost;
+tracked as OPEN-TODOS #51. All file:line refs are `nemo-tdd-flutter`.
+
+**What already works on Android once built** (shared Rust, no work): rendezvous hardening
+and fail-closed secure TCP; outbound/company-network checks at connect time; Ctrl+Alt+Del /
+Ctrl+Alt+End → SAS from a hardware keyboard; audio channel guard; German default language;
+the new `main_nemo_*` FFI functions (they compile for Android; desktop-only ones return
+"not supported").
+
+**A1. Backend activation (Rust)**
+1. `src/lib.rs:41-45` — compile `nemo_management_client` on Android too (drop
+   `not(any(android, ios))`, keep the feature gate).
+2. `src/server.rs:599-603` (mobile `start_server`, reached from
+   `Java_ffi_FFI_startServer`, `flutter_ffi.rs` ~3043) — call
+   `nemo_management_client::start()`. iOS (client only): start it from
+   `flutter_ffi.rs` `initialize()` instead.
+3. `nemo_management_client.rs:255` — ungate the `terminate_all_authed_sessions` call
+   (the function at `connection.rs:5864` is ungated) so a server cut ends Android-hosted
+   sessions.
+4. Check the poll's other dependencies on Android: `set_permanent_password_with_result`
+   has an android branch (`ui_interface.rs:737-741`), `refresh_options` is a no-op,
+   `nudge_updater` is win/linux-only (`:799`) — expected to compile; verify with
+   `cargo ndk … --features flutter`.
+5. Config location: the service and the UI are ONE process on Android
+   (`platformFFI.syncAndroidServiceAppDirConfigPath`), so `apply_setup` can write
+   directly; `ui_interface.rs:497` (android `nemo_set_provisioned_options`) is the hook.
+6. `nemo_logs` (`lib.rs:57`): ungate, add an Android branch to `open_folder`
+   (`nemo_logs.rs:142-147`) or skip it and expose only `collect` → "Share log" intent.
+7. Updater (`lib.rs:80`): stays off. Distribution via MDM / store / APK push; hide every
+   update banner on Android (`mobile/pages/connection_page.dart:88,121-127`
+   `_buildUpdateUI` links rustdesk.com/download — remove).
+8. Lock after session end on an Android HOST (`connection.rs:4800-4810`,
+   `lock_screen` gated not(android)): needs DevicePolicyManager.lockNow via JNI
+   (device-admin permission) — decision 10.3.
+
+**A2. Provisioning on the phone (Dart, `flutter/lib/mobile/`)**
+- Device-key gate + claim gate (A1/A2) wrapping `mobile/pages/home_page.dart`, if phones
+  are fleet devices (decision 10.1).
+- Import dialog (A3) with three inputs: paste, file (SAF picker, ≤64 KB), and **QR scan**
+  of the setup string — reuse `mobile/pages/scan_page.dart` (it already scans server
+  config); detect `tbfdesk-setup-v1:` with `mainNemoIsSetupString`.
+- After a successful import: start/restart the management poll (A1.2), reload AB.
+
+**A3. Login + address book (shared Dart, mobile layouts)**
+- Sealed login page (A4) incl. certificate box (A5; "Download certificate" → share
+  intent) replacing `common/widgets/login.dart` on mobile too.
+- Sealed AB fetch (B8), empty-state text (B5), reload (B3), search hint (B4), peer
+  long-press sheet with Connect directly / Connect via relay / Reset preferences (B7),
+  ⚡ Direct chip on peer cards (B6), AB auto-reload on `nemo-ab-version` (A21).
+- Account header (A6) in `mobile/pages/settings_page.dart:828` area; logout clears
+  `nemo-user-control-ticket`.
+
+**A4. Settings on the phone (`mobile/pages/settings_page.dart`)**
+- Add: Alias (A12), Management (A11, after A1), Import setup string, ID/Relay server
+  company-network-only + lock messages (A10, `mobile/widgets/dialog.dart:56`), language
+  picker restricted to DE/AT/EN with flags (A9; `settings_page.dart:805,1021`), build id
+  (A19), About TBFDesk with AGPL line (A18; `settings_page.dart:38,213,955-1098`).
+- Remove: privacy mode, rustdesk.com links, the upstream update check toggle
+  (`settings_page.dart:73,183-187,598-605`).
+- Not applicable: RDP sharing, block input, audio input device, remove wallpaper,
+  enable-service toggle (Android has its own start-service flow).
+
+**A5. Session UI on the phone (`mobile/pages/remote_page.dart`, `common/widgets/toolbar.dart`)**
+- Direct/Relay badge (R6), privacy mode removed (R8 — `toolbar.dart:765-816` is shared
+  with desktop, so the desktop removal covers it), quality minimum 1 % (R9), refusal
+  "Not authorized: <reason>" translated (A26), display subset picker only (R4; no span /
+  windows modes).
+- Connection status on `mobile/pages/connection_page.dart`: registration badge (A15),
+  direct hint (A14), outbound policy checks (A13).
+
+**A6. Packaging**
+- Package id / app name / icon (RENAMING-PLAN Layer 3 for mobile — decision 10.2):
+  `flutter/android/app/build.gradle` `applicationId`, `AndroidManifest.xml` label,
+  `res/mipmap*`, the accessibility-service label (`[RustDesk Input]` string, OPEN-TODOS
+  #18 note).
+- Signing key and distribution channel.
+
+**A7. Verification (when implemented)**
+Emulator + one real phone: QR import → gate gone, ID server set; sealed login; AB lists
+shared peers and not itself; outgoing session to a ticket-requiring host accepted;
+direct endpoint used when published (knock seen on the host); refusal text translated;
+Android-hosted session cut from the dashboard ends it; settings save keeps the device key.
 
 ## 10. Open decisions (operator)
 
