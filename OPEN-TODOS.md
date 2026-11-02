@@ -609,6 +609,19 @@ runs the installer without the SHA-256 check (`flutter_ffi.rs:2910-2957`); Flutt
 the password in clear. **Android:** the management client is not compiled (`lib.rs:41-45`) and
 there is no setup/device-key import, so every policy-driven feature is inert on the phone.
 
+### 53. Server: device allow-list for phones when "require device key" is on  *(TODO 2026-11-02, server repo)*
+Mobile is non-fleet by default (no device key). With the server's require-device-key switch on,
+such phones could not register. Add a dashboard-managed allow-list of device IDs (with label,
+owner, added-by, expiry) that may register / be controlled WITHOUT a device-key proof; audit
+every allow-listed registration; the policy poll and control tickets stay fleet-only. Client
+counterpart: FLUTTER-PORT §10 mobile 1.
+
+### 54. Azure AD / Entra ID sign-in (future requirement)  *(TODO, documented only, 2026-11-02)*
+OIDC sign-in with Entra ID for desktop (Windows, Linux) and mobile (Android, iOS): server
+side `/api/login-options` + OIDC callback mapping Entra users/groups to TBF users and ACLs;
+client side re-enable the upstream OIDC button path (`login.dart`, currently web-only) next to
+the sealed login, token handling via the Rust HTTP client. Not implemented.
+
 ### 52. Recorded video GUI tests in the VM lab, every feature and button  *(TODO side quest, operator request 2026-11-02 — plan in [LAB-VIDEO-TEST-PLAN.md](LAB-VIDEO-TEST-PLAN.md))*
 15 videos (V01 provisioning gates … V15 Linux) with a burned-in caption per step
 (ACTION / EXPECTED / RESULT), title card, side-by-side when the proof is on the peer or the

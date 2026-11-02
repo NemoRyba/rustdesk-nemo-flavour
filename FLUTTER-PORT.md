@@ -466,13 +466,62 @@ shared peers and not itself; outgoing session to a ticket-requiring host accepte
 direct endpoint used when published (knock seen on the host); refusal text translated;
 Android-hosted session cut from the dashboard ends it; settings save keeps the device key.
 
-## 10. Open decisions (operator)
+## 10. Decisions (operator, 2026-11-02)
 
-1. Device-key + claim gate on Android: are phones fleet members (gate on) or consumer-style
-   controllers (gate off)?
-2. Android package id / app name / icon (RENAMING-PLAN Layer 3 for mobile).
-3. Lock after session end on Android hosts: implement (DevicePolicyManager, needs device-admin)
-   or drop.
-4. Keep Flutter's tabbed settings (recommended) or reproduce the Sciter modal dialog.
-5. OIDC login in Flutter: hide entirely for TBF servers, or keep if the server advertises it.
-6. When the Flutter desktop build replaces Sciter: after P0-P4 + lab parity sweep, or later.
+**Desktop**
+- Settings: Flutter's tabbed settings page kept (not the Sciter modal dialog).
+- OIDC: off on desktop/mobile (web only). **Azure AD / Entra ID sign-in = future TODO**
+  (OPEN-TODOS #54) for desktop, Linux, Android and iOS.
+- Cut-over from Sciter to Flutter desktop: after the lab video run (#52), done on a separate machine.
+
+**Mobile (Android + iOS)**
+1. **Fleet is optional.** Default = standard (no device key, no gate) so any phone can be
+   helped. Optional fleet mode = device key imported (paste / file / QR) → same gates and
+   policy features as desktop. Server side: when "require device key" is on, a **device
+   allow-list** lets listed IDs (the phones) register and be controlled without a key
+   (OPEN-TODOS #53, server repo). Client rule: the device-key gate is shown on mobile only
+   when the client is in fleet mode (a key or a setup string was imported, or the server
+   reports it requires a key for this ID).
+2. **Controller AND controlled.** Goal: fix a user's phone remotely. Android: screen capture
+   (MediaProjection) + input via the Accessibility service, as upstream — no device-admin
+   needed. iOS: **controller only** — Apple allows no third-party remote input, and RustDesk's
+   iOS app cannot share its screen; an iPhone can be viewed at most via a ReplayKit broadcast
+   extension (not in upstream; separate TODO if wanted).
+3. Lock after session end on Android: not implemented. Revisit only if device-admin turns out
+   to be required for control (it is not for capture + input).
+4. **Everything renamed to TBFDesk**: app name, package id, icons, accessibility-service
+   label, notification texts, URI scheme `tbfdesk://`, iOS bundle id + display name.
+5. Distribution: private APK (own signing key); store costs documented below.
+6. Signing: own Android signing key, held offline by TBF (see below).
+7. Provisioning input: paste, file (SAF picker), QR scan of the setup string.
+8. Sign-in: same sealed username/password flow as desktop; Azure AD = TODO (#54).
+9. Management client: polls only while the app runs (no background service for it).
+10. **Android version: reference device Pixel 7a (Android 17, its last major update; end of
+    support Oct 2026).** OPEN QUESTION to the operator: is Android 17 the MINIMUM
+    (excludes most users' phones — older Samsung/Xiaomi etc. are on 14-16) or the test
+    reference with a lower minimum? Until answered: upstream minSdk kept, targetSdk = 37.
+11. Logs: "Share log" through the Android/iOS share sheet → mail, Teams, Webex, Telegram,
+    WhatsApp, Signal or any installed app (Flutter `share_plus`).
+12. Settings: hide only desktop-only items (RDP sharing, block input, audio input device,
+    remove wallpaper, enable-service toggle); keep everything useful on a phone.
+13. Display: only modes that make sense with one local screen — single display + picker of
+    the remote displays; no span / one-window-per-display.
+14. iOS: in scope (controller only, see 2).
+15. Start: Android/iOS work starts now (desktop P0-P4 done); lab videos on another machine.
+
+**Distribution and signing (answers)**
+- *Signing key*: every APK is signed with a private key in a keystore file (`.jks`, RSA 4096,
+  created once with `keytool`). Android installs an update only if it is signed with the SAME
+  key as the installed app — lose it and every phone must uninstall/reinstall; leak it and
+  anyone can ship a "TBFDesk update". Keep it offline (encrypted, two copies), never in git or
+  on the build server; sign release builds on a trusted machine. With Google Play, "Play App
+  Signing" lets Google hold the app key and TBF only an upload key (recoverable if lost).
+- *Costs*: Google Play — one-time US$25 developer registration, no yearly fee; private
+  distribution to your own organisation via Managed Google Play costs nothing extra.
+  Apple — Apple Developer Program US$99/year, **required for iOS in any case** (also for
+  TestFlight / private "custom apps" via Apple Business Manager). Private APK: no store fee.
+- *MDM* (Mobile Device Management, e.g. Microsoft Intune, VMware Workspace ONE, Google
+  endpoint management): the company manages its phones centrally — installs and updates apps,
+  pushes app configuration (e.g. the setup string) and policies. Optional for TBFDesk; only
+  useful if the phones are company-managed.
+
