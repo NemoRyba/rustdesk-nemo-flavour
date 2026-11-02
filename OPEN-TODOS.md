@@ -598,7 +598,19 @@ Two client branches off `nemo-tdd`, both Sciter (the shipped desktop UI):
 5. Add both to `tests/gui` where it can be asserted (cursor: compare the controller's cursor
    handle/shape after hovering a remote window edge), then record the result here.
 
+### 50. Port the whole TBFDesk UI from Sciter to Flutter (desktop + Android)  *(PLANNED 2026-11-02 — see [FLUTTER-PORT.md](FLUTTER-PORT.md); client branch `nemo-tdd-flutter`)*
+Merges #38 and #39 into one plan. Full inventory (main window, address book, update prompt,
+remote window, backend activation per platform), the FFI bindings to add, phases P0-P6 and the
+lab verification are in FLUTTER-PORT.md. **Blocking before any Flutter build ships (P0):**
+Flutter's option API returns `nemo-device-key` in clear and a settings save can wipe it or roll
+back policy state (`flutter_ffi.rs:954/1034/1042`); the `--nemo-update-prompt` window does not
+exist under Flutter (update installs after 65 s with no prompt); the stock Flutter manual update
+runs the installer without the SHA-256 check (`flutter_ffi.rs:2910-2957`); Flutter login posts
+the password in clear. **Android:** the management client is not compiled (`lib.rs:41-45`) and
+there is no setup/device-key import, so every policy-driven feature is inert on the phone.
+
 ### 38. Flutter (Android/iOS) up to parity with the desktop client  *(IN PLAN, operator request 2026-10-19)*
+**→ Planned in #50 / [FLUTTER-PORT.md](FLUTTER-PORT.md).**
 The desktop client (Windows + Linux, ONE Sciter codebase, src/ui/*.tis) has all the
 TBFDesk work; the mobile app is the separate Flutter tree (flutter/, ~121 dart files) and
 is behind. Bring it to parity in features and UX: management poll + signed policy, Layer-1
@@ -609,6 +621,7 @@ Rust (already shared via the flutter feature) and only need the Dart UI; others 
 UI like the settings dialog) need reimplementing in Dart.
 
 ### 39. One UI everywhere: evaluate porting desktop to Flutter  *(LATER, operator interest 2026-10-19)*
+**→ Decided 2026-11-02: port; planned in #50 / [FLUTTER-PORT.md](FLUTTER-PORT.md).**
 Windows+Linux already share one codebase (Sciter). Moving desktop to Flutter too would give
 a single UI for Windows/Linux/Android/iOS, at the cost of a large port (the whole Sciter UI
 and its handlers). Decide after 38, measuring effort vs. the benefit of one UI.
