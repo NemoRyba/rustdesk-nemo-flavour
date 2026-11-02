@@ -609,6 +609,15 @@ runs the installer without the SHA-256 check (`flutter_ffi.rs:2910-2957`); Flutt
 the password in clear. **Android:** the management client is not compiled (`lib.rs:41-45`) and
 there is no setup/device-key import, so every policy-driven feature is inert on the phone.
 
+### 52. Recorded video GUI tests in the VM lab, every feature and button  *(TODO side quest, operator request 2026-11-02 — plan in [LAB-VIDEO-TEST-PLAN.md](LAB-VIDEO-TEST-PLAN.md))*
+15 videos (V01 provisioning gates … V15 Linux) with a burned-in caption per step
+(ACTION / EXPECTED / RESULT), title card, side-by-side when the proof is on the peer or the
+dashboard, and negative cases that must visibly break (e.g. API server set to a non-existent
+host: sign-in, AB and policy poll fail, then restored). Recorded for the Sciter AND the
+Flutter build (doubles as the FLUTTER-PORT parity check). Implementation notes: step driver
+on top of tests/gui, ffmpeg x11grab (Linux Xvfb) / host-side capture of the Win11 VM,
+captions from steps.json, `tests/run-all.sh --video`.
+
 ### 51. Android Flutter client: TBFDesk features  *(DOCUMENTED ONLY 2026-11-02 — do not implement yet; plan in [FLUTTER-PORT.md §9b](FLUTTER-PORT.md))*
 Operator decision: desktop Flutter port first (#50), Android later. Plan covers backend
 activation (management client compiled + started on Android: `lib.rs:41-45`,
