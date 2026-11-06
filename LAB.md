@@ -103,6 +103,30 @@ showed only its local arrow (installed Windows 1.4.19: all 4/6, span 29/32, wind
 points wrong) — fixed by client 124921284 on `nemo-tdd-multidisplay-cursor` (0 on Linux
 and on a Windows inline build).
 
+## Flutter builds (Linux, Windows VM, Android emulator) — set up 2026-11-06
+
+Toolchain under `/projects/rustdesk/tools/` (not in git): Flutter 3.24.5 (+ CI's
+dropdown patch), JDK 17 (Gradle only), Android SDK (platform 37.0 + 34/36, build-tools 37,
+NDK r28c, emulator), `flutter_rust_bridge_codegen` 1.80.1 + `cargo-expand`, a vcpkg git clone
+at CI commit 120deac (Android deps), and a user-local rustup (Android targets, `cargo-ndk`
+3.1.2). `source tools/env.sh` for everything; add `source tools/env-android.sh` for Android
+builds only (its rustup must not shadow the system rust used for Sciter).
+
+| Build | Recipe (client repo, branch `nemo-tdd-flutter`) |
+|---|---|
+| bridge | `CPATH=/usr/lib/clang/23/include flutter_rust_bridge_codegen --rust-input ./src/flutter_ffi.rs --dart-output ./flutter/lib/generated_bridge.dart --c-output ./flutter/macos/Runner/bridge_generated.h` — **without CPATH** libclang misses `stdbool.h`, logs SEVERE and still says "Success" with wrong FFI types |
+| Linux | build env as Sciter (CC=clang …) + `cargo build --features flutter,hwcodec,unix-file-copy-paste --lib --release`, then `cd flutter && flutter build linux --release` → `flutter/build/linux/x64/release/bundle/rustdesk` |
+| Windows | VM: `C:\src\buildflutter.cmd` (vcvars + `cargo build --features flutter,hwcodec,vram --lib` + `flutter build windows`) → `flutter\build\windows\x64\runner\Release\rustdesk.exe`. Sync sources with a git bundle + `tar` of the 4 generated bridge files (gitignored). Flutter needs the VS components *C++ CMake tools* and *Windows 11 SDK* **registered with the VS installer** (`setup.exe modify … --add …` via `start /wait`; `--wait` is not an option of setup.exe) |
+| Android deps | `VCPKG_ROOT=tools/vcpkg CC=clang CXX=clang++ flutter/build_android_deps.sh x86_64` (the yay vcpkg is a tarball → manifest baseline fails; system gcc ICEs on aom) |
+| Android | `cargo ndk --platform 21 --target x86_64-linux-android build --release --features flutter,hwcodec`; copy `liblibrustdesk.so` → `flutter/android/app/src/main/jniLibs/x86_64/librustdesk.so` **and** the NDK's `libc++_shared.so` next to it; `flutter build apk --debug --target-platform android-x64` |
+| Emulator | AVD `tbf-pixel7a` (Pixel 7a profile, Android 17 / API 37.0, google_apis x86_64): `emulator -avd tbf-pixel7a -no-window -gpu swiftshader_indirect -no-audio -no-snapshot-save`; app `at.tbf.tbfdesk/com.carriez.flutter_hbb.MainActivity` (`adb shell am start -n …`; `monkey` does not start it) |
+
+Traps: `.github` CI pins are the reference (`flutter-build.yml`, `bridge.yml`). The Flutter
+`rustdesk` bundle and the Sciter binary share one IPC socket per user
+(`/tmp/TBFDesk-<uid>/ipc`): a second TBFDesk on the host attaches to the first and **copies
+its config** ("config synced" in the log) — stop every other TBFDesk before starting a lab
+client (`multidisplay-cursor-test.sh` refuses to run otherwise).
+
 ## Builds the lab runs — the inline trap
 
 The lab scripts run `rustdesk-client-nemo/target/release/rustdesk` from **whatever branch is
