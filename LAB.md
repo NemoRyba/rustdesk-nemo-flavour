@@ -148,6 +148,29 @@ checked out** in the client repo, built whenever someone last built it.
 - Config dir of current builds: `~/.config/tbfdesk/TBFDesk*.toml`, logs
   `~/.local/share/logs/TBFDesk/` (a session's own log is under `…/connect/`).
 
+## Session tests: both UIs, two monitors each side (2026-11-06)
+
+One command: `tests/run-all.sh --only session-linux` (≈45 min; part of `--all`). It runs, for
+the Sciter viewer (lab worktree `vm/build/client-nemo-tdd`) and the Flutter bundle
+(`rustdesk-client-nemo/flutter/build/linux/x64/release/bundle`):
+
+| Script (`vm/scripts/…`) | Proves |
+|---|---|
+| `cursor-lab/multidisplay-cursor-test.sh` | single / all / span / windows on 2 local monitors against a 2-display target: the remote cursor (9 shapes, 32 px) on every point; per mode screen / cursor / input delay, fps at a 30 Hz full-screen flip, CPU, RSS (`perf.txt`) |
+| `cursor-lab/input-test.sh` (`LAYOUT=us\|de`) | text, special keys, 12 shortcuts (incl. Ctrl+Alt+Del, Super, Alt+Tab), German layout with **AltGr** (@ € [ \\ ~) and umlauts, left/middle/right/double click, 4 wheel directions, drag — checked on the target by `inputlog.py` |
+| `cursor-lab/hold-test-linux.sh` | the cursor while a button is held (drag/resize) and after release |
+| `console-lab/console-test.sh` | console session: a real remote shell answers; refused with a message when the target has "Enable terminal" off |
+
+Windows viewer: `cursor-lab/win-multidisplay-cursor-test.sh <exe>` (RDP two monitors,
+`rdp-multimon.sh`, probe `ct-probe2.ps1`, VM pointed at the host target by
+`ct-endpoint.ps1` — copy the target's `TBFDesk.toml.pub` to `C:\src\ct-target.pub` first).
+Windows as console *target*: install the build into the VM service (skill
+`rustdesk-vm-control` RECIPES/TODO), `ct-setup.ps1`, `vmctl.sh monitor 'hostfwd_add
+tcp::21128-:21118'`, then `console-lab/console-pty.py <bin> 12513041 <pw> run 'ver' 'Microsoft Windows'`.
+
+Accepted, known: Sciter on **Linux** reports a horizontal wheel as vertical (the
+libsciter-gtk engine does), so its two horizontal-wheel steps fail; Flutter passes them.
+
 ## Making the lab fresh again
 
 | Symptom (`lab-status.sh`) | Cause | Fix |
@@ -164,6 +187,28 @@ Windows and Linux VMs are stopped. Recipe A works regardless. The `win10` disk w
 installed (197 KB); Win11 is the only Windows VM — the real Win10 box is the lenovo.
 
 ## Traps that produce false results (each cost real time)
+
+- **An unwatched Xvnc throttles GL clients**: TigerVNC paces Present/vblank through its VNC
+  update loop, which only runs while a viewer is connected. Flutter (GL) then gets ~1 frame
+  per 1.5 s and lags input as much (looked like "Flutter is 100x slower"); Sciter does not
+  notice. `vm/scripts/xvnc-viewer-stub.py <rfb-port>` keeps a display watched — the cursor
+  and input scripts start it for :47.
+- **Peer files without `[info] platform` are deleted** by the Flutter home page (upstream
+  `PeerConfig::batch_peers`) — a hand-written `peers/<id>.toml` with only `[options]` loses
+  e.g. `nemo-display-mode` the moment the main window starts. Always write `[info]` too.
+- **`scripts/build-arch-client.sh` always builds the MAIN checkout** (it cd's there) and
+  overwrites `target/release/liblibrustdesk.so` — which `flutter build linux` then copies
+  into the bundle → "rustdesk_core_main not found". Main checkout = Flutter
+  (`cargo build --features flutter,… --lib`), Sciter lab builds in `vm/build/*` with cargo.
+- **AltGr in xdotool is not a keyboard's AltGr**: on the lab Xvnc, xdotool types AltGr
+  characters through keycode 92 (evdev LVL3), a key no PC keyboard has; RustDesk maps the
+  real AltGr = right Alt = keycode 108. Press 108 (`input-test.sh LAYOUT=de` does) — with
+  92 every AltGr character "arrives without AltGr" in both UIs.
+- **`vmctl.sh input FOCUS a b`** takes only the first word: focus by a unique single word.
+- **Session processes (`--connect`, `--terminal`) read the user's config file**, which only
+  the running main window keeps in sync with the service: with no main window open (after a
+  VM reboot) they use stale options (old peer keys → "direct peer signature invalid").
+  Start the main window first (`C:\src\rungui.cmd`).
 
 - **`$!` after `setsid …` is not the client's PID**: setsid forks when it is already a
   process-group leader, so killing the saved PID does nothing and old sessions (with their

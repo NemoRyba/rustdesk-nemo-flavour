@@ -18,7 +18,7 @@ source "$HERE/lib/common.sh"
 
 QUICK=(unit-server unit-client contract static-ui server-installer)
 DEFAULT=("${QUICK[@]}" build-linux sciter-parse gui-linux)
-ALL=("${DEFAULT[@]}" gui-windows-provision gui-windows e2e-policy)
+ALL=("${DEFAULT[@]}" session-linux gui-windows-provision gui-windows e2e-policy)
 STAGES=("${DEFAULT[@]}"); ONLY=(); INSTALLER=""
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -46,6 +46,7 @@ stage_cmd() {
     build-linux)  (cd "$TBF_CLIENT" && source "$HERE/lib/client-env.sh" && cargo build --release --features "$TBF_CLIENT_FEATURES" 2>&1 | tee "$TBF_OUT/build-linux.log" | grep -E '^error|Finished' ; exit "${PIPESTATUS[0]}");;
     sciter-parse) bash "$HERE/gui/sciter_parse.sh";;
     gui-linux)    bash "$HERE/gui/linux_client.sh";;
+    session-linux) bash "$HERE/gui/session_linux.sh";;   # both UIs, 2x2 monitors, ~45 min
     gui-windows-provision) bash "$HERE/gui/windows_provision.sh" ${INSTALLER:+"$INSTALLER"};;
     gui-windows)  bash "$HERE/gui/windows_client.sh" ${INSTALLER:+"$INSTALLER"};;
     e2e-policy)   bash "$HERE/e2e/policy_applied.sh";;
