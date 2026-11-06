@@ -127,6 +127,62 @@ def sciter_elements(client):
     return out
 
 
+CALL = re.compile(r"\b([a-z_][a-z0-9_]*)\s*(?:::<[^>]*>)?\(")
+GENERIC = set('''if while for match return fn some ok err into to_owned to_string clone map
+unwrap unwrap_or unwrap_or_default unwrap_or_else and_then iter collect len is_empty push
+format from new get set as_str as_ref lock read write vec value with contains starts_with
+ends_with parse trim split join insert remove push_str eq ne default borrow borrow_mut
+call call_method spawn sleep make_args println log info error warn debug allow_err
+from_iter drain json encode64 decode64 serde_json to_lowercase replace chars any all
+sync_return syncreturn into_iter filter find max min'''.split())
+
+
+def fn_bodies(path, pattern):
+    """name -> set of called function names, for every fn matching `pattern` in `path`."""
+    src = open(path, encoding='utf-8').read()
+    out = {}
+    for m in re.finditer(pattern, src, re.M):
+        name, start = m.group(1), src.find('{', m.end())
+        if start < 0:
+            continue
+        depth, i = 0, start
+        while i < len(src):
+            if src[i] == '{':
+                depth += 1
+            elif src[i] == '}':
+                depth -= 1
+                if depth == 0:
+                    break
+            i += 1
+        calls = {c for c in CALL.findall(src[start:i]) if c not in GENERIC and c != name}
+        out.setdefault(name, set()).update(calls)
+    return out
+
+
+def binding_matches(client):
+    """Sciter binding -> Flutter FFI fn(s), paired by the Rust function both wrap."""
+    sci = fn_bodies(os.path.join(client, 'src', 'ui.rs'), r"^\s{4}fn ([a-z0-9_]+)\s*\(")
+    sci.update({('session:' + k): v for k, v in fn_bodies(
+        os.path.join(client, 'src', 'ui', 'remote.rs'), r"^\s{4}fn ([a-z0-9_]+)\s*\(").items()})
+    ffi = fn_bodies(os.path.join(client, 'src', 'flutter_ffi.rs'), r"^pub fn ([a-z0-9_]+)\s*\(")
+    res = {}
+    for sname, scalls in sci.items():
+        bare = sname.split(':', 1)[-1]
+        best, score = [], 0
+        for fname, fcalls in ffi.items():
+            s = len(scalls & (fcalls | {fname}))
+            # the Sciter binding often calls the very function the FFI is named after
+            if bare in fcalls or fname.endswith('_' + bare):
+                s += 2
+            if s > score:
+                best, score = [fname], s
+            elif s == score and s > 0:
+                best.append(fname)
+        if score > 0 and len(best) <= 3:
+            res[sname] = best
+    return res
+
+
 def flutter_index(client):
     lib = os.path.join(client, 'flutter', 'lib')
     literals = {}     # string literal -> [file:line]
@@ -163,12 +219,15 @@ def flutter_index(client):
     return literals, uses, ffi
 
 
-def match(e, literals, uses, ffi):
+def match(e, literals, uses, ffi, bmatch):
     k, key = e['kind'], e['key']
     if k in ('binding', 'session-binding'):
         for cand in ((f"main_{key}", f"{key}") if k == 'binding' else (f"session_{key}", key)):
             if cand in ffi:
                 return f"flutter_ffi.rs: {cand}"
+        via = bmatch.get(key if k == 'binding' else 'session:' + key)
+        if via:
+            return 'flutter_ffi.rs (same Rust call): ' + ', '.join(via)
         return ''
     if not key.startswith('label='):
         if key in literals:
@@ -200,10 +259,11 @@ def main():
 
     els = sciter_elements(a.client)
     literals, uses, ffi = flutter_index(a.client)
+    bmatch = binding_matches(a.client)
     ov = load_overrides(a.overrides)
     rows, missing = [], []
     for e in els.values():
-        auto = match(e, literals, uses, ffi)
+        auto = match(e, literals, uses, ffi, bmatch)
         o = ov.get(e['id'], {})
         flutter = o.get('flutter') or auto
         row = {
