@@ -6,7 +6,7 @@ record what was true on one day; **this file is kept current**. If you change th
 change this file in the same sitting.
 
 Everything lives on the workstation under `/projects/rustdesk/vm/` (NOT in git — this file
-is its only versioned description). Last verified: **2026-11-05**.
+is its only versioned description). Last verified: **2026-11-06**.
 
 ## Step 0 — is the lab stale?
 
@@ -82,10 +82,26 @@ the service config, `ct-restore.ps1` undoes it) + `vmctl.sh monitor 'hostfwd_add
 tcp::21128-:21118'`; containers reach it at `169.254.1.2:21128`. Linux target with a
 known cursor per region (and a cursor change while a button is held): `cursorgrid.py`.
 Two real monitors for a controller: Xvnc + `xvnc-two-heads.py` (see `rdp-multimon.sh`).
-Findings 2026-11-05: every single-display combination (Linux/Windows either side, button
-held or not) follows the remote cursor; the multi-display modes ("all", "span",
-"windows") showed only the local arrow — fixed on client branch
-`nemo-tdd-multidisplay-cursor`.
+
+**Multi-monitor is the normal case** (the users have several monitors on both ends): any
+session/UI change is tested in all four display modes, not just single.
+
+- `multidisplay-cursor-test.sh [worktree] [modes]` — host only: target on Xvnc `:61` with
+  two outputs + `cursorgrid.py`, controller on Xvnc `:47` with two outputs; per mode it
+  presets the per-peer `nemo-display-mode`, connects, and samples a grid on both monitors
+  (`UI=<dir>` runs another `src/ui` with the same binary; `TAG=` names the result dir).
+- `win-multidisplay-cursor-test.sh [exe] [modes]` — the Windows controller: VM switched
+  with `ct-setup.ps1` + `ct-endpoint.ps1`, two monitors via `rdp-multimon.sh start :45`,
+  `ct-probe2.ps1` running in the session; same host target. Undo: `ct-restore.ps1`,
+  `rdp-multimon.sh stop :45`, **then put the session back on the console** over SSH
+  (`query session`, `tscon <id> /dest:console`) — otherwise it stays a disconnected RDP
+  session: `vmctl.sh shot` shows a lock screen and `vmctl.sh gui` launches go nowhere.
+
+Findings 2026-11-06: every single-display combination (Linux/Windows either side, button
+held or not) follows the remote cursor; in "all" / "span" / "windows" the controller
+showed only its local arrow (installed Windows 1.4.19: all 4/6, span 29/32, windows 29/32
+points wrong) — fixed by client 124921284 on `nemo-tdd-multidisplay-cursor` (0 on Linux
+and on a Windows inline build).
 
 ## Builds the lab runs — the inline trap
 
@@ -125,6 +141,15 @@ installed (197 KB); Win11 is the only Windows VM — the real Win10 box is the l
 
 ## Traps that produce false results (each cost real time)
 
+- **`$!` after `setsid …` is not the client's PID**: setsid forks when it is already a
+  process-group leader, so killing the saved PID does nothing and old sessions (with their
+  display windows) stay open and answer the next test. Launch with plain `nohup`, and kill
+  by `HOME` in `/proc/<pid>/environ` (`kill_clients` in `multidisplay-cursor-test.sh`).
+- **Xvfb + `xrandr --setmonitor` is unreliable**: it returns 0 and then lists only
+  "screen" (one display — the multi-display modes are never offered). Use Xvnc with real
+  outputs (`xvnc-two-heads.py`) for targets as well as controllers.
+- **`pkill -f` / `pgrep -f` kill or match their own shell** — on the host too, not only
+  inside `podman exec`. Match `pgrep -x <name>` and check `/proc/<pid>/cmdline`.
 - **`pkill -f` inside `podman exec … bash -c '…'` kills its own shell** whenever the pattern
   text — even `[x]yz` — or the matched path occurs anywhere in that same command string.
   Use `pkill -x <name>` or a pidfile. The script then dies silently mid-run.
