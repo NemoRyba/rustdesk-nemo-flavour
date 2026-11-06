@@ -24,7 +24,7 @@ from its own command line, never printed) and the Win11 test VM. Nothing touches
 | Stage | What it proves | Needs |
 |---|---|---|
 | `unit-server` | `cargo test` of hbbs/hbbr (125+ tests), incl. #43: policy ref stability, report bounds, report signature (tamper / wrong peer / stale), every state transition, per-role storage, source labels | Rust |
-| `unit-client` | `cargo test --lib` of the client (130+ tests), incl. #43 report building and the server signature contract, and the **1.4.16 regression guards** (below) | Rust + `tests/lib/client-env.sh` |
+| `unit-client` | `cargo test --lib` of the client (130+ tests), incl. #43 report building and the server signature contract, and the **1.4.16 regression guards** (below). Run by `tests/unit/client.sh`: `test_get_cursor_pos` gets a throwaway Xvfb when the session has no display; `test_desktop_env` is skipped (printed `SKIP … reason`) when seat0 belongs to another user, e.g. the login screen while you work remotely | Rust + `tests/lib/client-env.sh`, Xvfb |
 | `contract` | client and server agree on the #43 report: every refusal code the client can send is one the server accepts; same signature domain; same fields | Python |
 | `static-ui` | runs the real `res/inline-sciter.py` with a **non-UTF-8 platform default** and checks the embedded pages: correct UTF-8 and one script block per file; negative control: the 1.4.16 generator must fail | Python |
 | `server-installer` | the server tarball's `install.sh` in a clean Ubuntu 24.04 container: fresh install, upgrade over a customised unit that pointed elsewhere (re-pointed, customisation kept, old binary replaced, `hbbs.env` untouched), `RESTART=1`, idempotency, custom prefix | podman + `localhost/nemo-gui` |

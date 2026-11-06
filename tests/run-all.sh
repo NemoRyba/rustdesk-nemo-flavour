@@ -39,7 +39,7 @@ export TBF_RESULTS="$TBF_OUT/results.tsv"; : > "$TBF_RESULTS"
 stage_cmd() {
   case "$1" in
     unit-server)  (cd "$TBF_SERVER" && cargo test --release 2>&1 | tee "$TBF_OUT/unit-server.log" | grep -E '^test result|FAILED|panicked' ; exit "${PIPESTATUS[0]}");;
-    unit-client)  (cd "$TBF_CLIENT" && source "$HERE/lib/client-env.sh" && cargo test --release --features "$TBF_CLIENT_FEATURES" --lib 2>&1 | tee "$TBF_OUT/unit-client.log" | grep -E '^test result|FAILED|panicked' ; exit "${PIPESTATUS[0]}");;
+    unit-client)  bash "$HERE/unit/client.sh";;   # handles the 2 session-dependent upstream tests
     contract)     python3 "$HERE/contracts/check_policy_report_contract.py";;
     static-ui)    bash "$HERE/static/check_inline_generator.sh";;
     server-installer) bash "$HERE/static/check_server_installer.sh";;
