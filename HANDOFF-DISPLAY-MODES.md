@@ -91,3 +91,15 @@ bridge codegen first for Flutter). Fix compile errors in the touched files only.
 ## 4. Report back (short)
 Per task: PASS/FAIL with the cursor-lab numbers (wrong points per mode, both UIs, both
 controller OSes), what was fixed (commit ids), what remains.
+
+
+## 5. Result (2026-11-09, lab)
+
+| Task | Result |
+|---|---|
+| T1 build | PASS — Sciter + Flutter, Linux + Windows, from `nemo-tdd-flutter` (merge 729989bd5 + fixes) |
+| T2 "windows" maximized | PASS both UIs: Linux (fake taskbar 40 px) and Windows (taskbar 752-800): every window maximized on its monitor, taskbar visible; restore/resize/re-maximize stays (no jump back); closing the extra window → "all". Fixed on the way: Flutter re-opened window not maximized (3fa3c2e9c) |
+| T3 span cursor | PASS — wrong points per mode (single/all/span/windows): Linux Sciter 0/0/0/0, Linux Flutter 0/0/0/0, Windows Sciter 0/0/0/0, Windows Flutter 0/0/0/0. Report 1 = a build before 124921284 (Sciter) / the Flutter gaps fixed since (ce4c55ae5, ab888a307) |
+| Extra | monitor hot-plug (operator): R19; Flutter black display: R20; keyboard + mouse: input tests 40/40 on Windows for both UIs |
+| T4 docs | FLUTTER-PORT R3 ☑, R19-R21 |
+| T5 merge | `nemo-display-windows-workarea` merged into `nemo-tdd-flutter`; Sciter part on `nemo-tdd` 5fccbf342; re-merged (f257c131f). **Not pushed** (operator's go) |

@@ -168,6 +168,15 @@ Windows as console *target*: install the build into the VM service (skill
 `rustdesk-vm-control` RECIPES/TODO), `ct-setup.ps1`, `vmctl.sh monitor 'hostfwd_add
 tcp::21128-:21118'`, then `console-lab/console-pty.py <bin> 12513041 <pw> run 'ver' 'Microsoft Windows'`.
 
+Windows viewer, more (2026-11-09): `cursor-lab/input-test-win.sh <exe>` (real key / mouse
+events through the agent's new `CHORD` / `MOUSE`), `cursor-lab/win-hotplug-test.sh <exe>`
+(the RDP client reconnects with 1 then 2 monitors = unplug / replug under the running
+viewer), `cursor-lab/win-sync-target.sh` (refreshes the VM's endpoint key — every Windows
+script runs it), `winrects.ps1` (window rect + maximized + monitor work areas, in-session).
+Linux "windows" placement: `cursor-lab/fakepanel.py` (a taskbar strut),
+`windows-lifecycle-test.sh`, `hotplug-test.sh`; `wmstate.py` (EWMH maximize/restore —
+`xdotool windowstate` does not reach openbox).
+
 Accepted, known: Sciter on **Linux** reports a horizontal wheel as vertical (the
 libsciter-gtk engine does), so its two horizontal-wheel steps fail; Flutter passes them.
 
