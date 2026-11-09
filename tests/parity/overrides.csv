@@ -1,1 +1,84 @@
 id,flutter,works_desktop,works_android,verified_by,note
+option:selected-tags,"lib/common/widgets/peer_tab_page.dart:514 (AB tag filter, upstream model)",,,source check 2026-11-09,
+menu:connect-direct,"lib/common/widgets/peer_card.dart:677 (B7, label + endpoint)",,,source check 2026-11-09,
+option:show-sessions-type,lib/consts.dart:161 kOptionPeerTabIndex (peer-tab-index),,,source check 2026-11-09,
+input:port,"lib/common/widgets/peer_card.dart:1528 (RDP port, peer option rdp_port)",,,source check 2026-11-09,
+menu:stretch,MISSING,,,triage 2026-11-09,GAP: no Stretch view style in Flutter (Original/Adaptive/Custom only) - operator decision: implement or drop
+menu:ctrl-alt-del,"lib/desktop/widgets/remote_toolbar.dart:213 ""Insert Ctrl + Alt + Del""",,,source check 2026-11-09,
+menu:block-input,"lib/common/widgets/toolbar.dart:270 ""Block/Unblock user input""",,,source check 2026-11-09,
+menu:label=Audio Input,"lib/desktop/pages/desktop_setting_page.dart:718 ""Audio Input Device""",,,source check 2026-11-09,
+button:open_record_root_dir,lib/desktop/pages/desktop_setting_page.dart:737 _openRecordingFolder,,,source check 2026-11-09,
+input:devkey,lib/common/widgets/nemo_import_dialog.dart:111 (lab 2026-11-09: file import works),,,source check 2026-11-09,
+input:ival,lib/desktop/pages/desktop_setting_page.dart:3461 auto-update-check-interval,,,source check 2026-11-09,
+input:gate-server,lib/common/widgets/nemo_login.dart (Server field; lab 2026-11-09 S4),,,source check 2026-11-09,
+input:gate-username,lib/common/widgets/nemo_login.dart (Username field; lab 2026-11-09 S4),,,source check 2026-11-09,
+menu:temporary-password-length-6,lib/desktop/pages/desktop_setting_page.dart:1377 One-time password length,,,source check 2026-11-09,
+menu:temporary-password-length-8,lib/desktop/pages/desktop_setting_page.dart:1377 One-time password length,,,source check 2026-11-09,
+menu:temporary-password-length-10,lib/desktop/pages/desktop_setting_page.dart:1377 One-time password length,,,source check 2026-11-09,
+input:verification_code,lib/common/widgets/login.dart:727 / dialog.dart:567 Verification code,,,source check 2026-11-09,
+input:path_input,lib/desktop/pages/install_page.dart:142 Installation Path,,,source check 2026-11-09,
+button:run-without-install,lib/desktop/pages/install_page.dart:222 Run without install,,,source check 2026-11-09,
+input:osusername,lib/common/widgets/dialog.dart:838 OS account dialog,,,source check 2026-11-09,
+button:screenshotSaveAs,lib/models/model.dart:536 Save as,,,source check 2026-11-09,
+input:remote-host,lib/desktop/pages/port_forward_page.dart:171 Remote Host,,,source check 2026-11-09,
+input:remote-port,lib/desktop/pages/port_forward_page.dart (Remote Port),,,source check 2026-11-09,
+button:later,lib/desktop/pages/nemo_update_prompt.dart (Postpone; lab 2026-11-09 S2),,,source check 2026-11-09,
+binding:is_xfce,n/a,n/a,n/a,triage 2026-11-09,internal Sciter<->Rust binding; Flutter reaches the same Rust through flutter_ffi.rs / its Dart models
+binding:set_remote_id,n/a,n/a,n/a,triage 2026-11-09,internal Sciter<->Rust binding; Flutter reaches the same Rust through flutter_ffi.rs / its Dart models
+binding:closing,n/a,n/a,n/a,triage 2026-11-09,internal Sciter<->Rust binding; Flutter reaches the same Rust through flutter_ffi.rs / its Dart models
+binding:get_size,n/a,n/a,n/a,triage 2026-11-09,internal Sciter<->Rust binding; Flutter reaches the same Rust through flutter_ffi.rs / its Dart models
+binding:new_remote,n/a,n/a,n/a,triage 2026-11-09,internal Sciter<->Rust binding; Flutter reaches the same Rust through flutter_ffi.rs / its Dart models
+binding:nemo_open_console,n/a,n/a,n/a,triage 2026-11-09,internal Sciter<->Rust binding; Flutter reaches the same Rust through flutter_ffi.rs / its Dart models
+binding:recent_sessions_updated,n/a,n/a,n/a,triage 2026-11-09,internal Sciter<->Rust binding; Flutter reaches the same Rust through flutter_ffi.rs / its Dart models
+binding:get_icon,n/a,n/a,n/a,triage 2026-11-09,internal Sciter<->Rust binding; Flutter reaches the same Rust through flutter_ffi.rs / its Dart models
+binding:is_release,n/a,n/a,n/a,triage 2026-11-09,internal Sciter<->Rust binding; Flutter reaches the same Rust through flutter_ffi.rs / its Dart models
+binding:nemo_update_prompt_args,n/a,n/a,n/a,triage 2026-11-09,internal Sciter<->Rust binding; Flutter reaches the same Rust through flutter_ffi.rs / its Dart models
+binding:get_software_store_path,n/a,n/a,n/a,triage 2026-11-09,internal Sciter<->Rust binding; Flutter reaches the same Rust through flutter_ffi.rs / its Dart models
+binding:get_software_ext,n/a,n/a,n/a,triage 2026-11-09,internal Sciter<->Rust binding; Flutter reaches the same Rust through flutter_ffi.rs / its Dart models
+binding:open_url,n/a,n/a,n/a,triage 2026-11-09,internal Sciter<->Rust binding; Flutter reaches the same Rust through flutter_ffi.rs / its Dart models
+binding:post_request,n/a,n/a,n/a,triage 2026-11-09,internal Sciter<->Rust binding; Flutter reaches the same Rust through flutter_ffi.rs / its Dart models
+binding:is_ok_change_id,n/a,n/a,n/a,triage 2026-11-09,internal Sciter<->Rust binding; Flutter reaches the same Rust through flutter_ffi.rs / its Dart models
+binding:generate_2fa_img_src,n/a,n/a,n/a,triage 2026-11-09,internal Sciter<->Rust binding; Flutter reaches the same Rust through flutter_ffi.rs / its Dart models
+binding:verify_login,n/a,n/a,n/a,triage 2026-11-09,internal Sciter<->Rust binding; Flutter reaches the same Rust through flutter_ffi.rs / its Dart models
+binding:nemo_read_text_file,n/a,n/a,n/a,triage 2026-11-09,internal Sciter<->Rust binding; Flutter reaches the same Rust through flutter_ffi.rs / its Dart models
+binding:nemo_save_text_file,n/a,n/a,n/a,triage 2026-11-09,internal Sciter<->Rust binding; Flutter reaches the same Rust through flutter_ffi.rs / its Dart models
+session-binding:enter,n/a,n/a,n/a,triage 2026-11-09,internal Sciter<->Rust binding; Flutter reaches the same Rust through flutter_ffi.rs / its Dart models
+session-binding:get_audit_server,n/a,n/a,n/a,triage 2026-11-09,internal Sciter<->Rust binding; Flutter reaches the same Rust through flutter_ffi.rs / its Dart models
+session-binding:is_xfce,n/a,n/a,n/a,triage 2026-11-09,internal Sciter<->Rust binding; Flutter reaches the same Rust through flutter_ffi.rs / its Dart models
+session-binding:get_id,n/a,n/a,n/a,triage 2026-11-09,internal Sciter<->Rust binding; Flutter reaches the same Rust through flutter_ffi.rs / its Dart models
+session-binding:get_default_pi,n/a,n/a,n/a,triage 2026-11-09,internal Sciter<->Rust binding; Flutter reaches the same Rust through flutter_ffi.rs / its Dart models
+session-binding:t,n/a,n/a,n/a,triage 2026-11-09,internal Sciter<->Rust binding; Flutter reaches the same Rust through flutter_ffi.rs / its Dart models
+session-binding:set_option,n/a,n/a,n/a,triage 2026-11-09,internal Sciter<->Rust binding; Flutter reaches the same Rust through flutter_ffi.rs / its Dart models
+session-binding:save_close_state,n/a,n/a,n/a,triage 2026-11-09,internal Sciter<->Rust binding; Flutter reaches the same Rust through flutter_ffi.rs / its Dart models
+session-binding:is_file_transfer,n/a,n/a,n/a,triage 2026-11-09,internal Sciter<->Rust binding; Flutter reaches the same Rust through flutter_ffi.rs / its Dart models
+session-binding:is_port_forward,n/a,n/a,n/a,triage 2026-11-09,internal Sciter<->Rust binding; Flutter reaches the same Rust through flutter_ffi.rs / its Dart models
+session-binding:is_rdp,n/a,n/a,n/a,triage 2026-11-09,internal Sciter<->Rust binding; Flutter reaches the same Rust through flutter_ffi.rs / its Dart models
+session-binding:get_chatbox,n/a,n/a,n/a,triage 2026-11-09,internal Sciter<->Rust binding; Flutter reaches the same Rust through flutter_ffi.rs / its Dart models
+session-binding:get_icon,n/a,n/a,n/a,triage 2026-11-09,internal Sciter<->Rust binding; Flutter reaches the same Rust through flutter_ffi.rs / its Dart models
+session-binding:get_home_dir,n/a,n/a,n/a,triage 2026-11-09,internal Sciter<->Rust binding; Flutter reaches the same Rust through flutter_ffi.rs / its Dart models
+session-binding:get_next_job_id,n/a,n/a,n/a,triage 2026-11-09,internal Sciter<->Rust binding; Flutter reaches the same Rust through flutter_ffi.rs / its Dart models
+session-binding:update_next_job_id,n/a,n/a,n/a,triage 2026-11-09,internal Sciter<->Rust binding; Flutter reaches the same Rust through flutter_ffi.rs / its Dart models
+session-binding:read_dir,n/a,n/a,n/a,triage 2026-11-09,internal Sciter<->Rust binding; Flutter reaches the same Rust through flutter_ffi.rs / its Dart models
+session-binding:remove_dir,n/a,n/a,n/a,triage 2026-11-09,internal Sciter<->Rust binding; Flutter reaches the same Rust through flutter_ffi.rs / its Dart models
+session-binding:close_display_windows,n/a,n/a,n/a,triage 2026-11-09,internal Sciter<->Rust binding; Flutter reaches the same Rust through flutter_ffi.rs / its Dart models
+session-binding:remove_dir_all,n/a,n/a,n/a,triage 2026-11-09,internal Sciter<->Rust binding; Flutter reaches the same Rust through flutter_ffi.rs / its Dart models
+session-binding:confirm_delete_files,n/a,n/a,n/a,triage 2026-11-09,internal Sciter<->Rust binding; Flutter reaches the same Rust through flutter_ffi.rs / its Dart models
+session-binding:set_no_confirm,n/a,n/a,n/a,triage 2026-11-09,internal Sciter<->Rust binding; Flutter reaches the same Rust through flutter_ffi.rs / its Dart models
+session-binding:get_path_sep,n/a,n/a,n/a,triage 2026-11-09,internal Sciter<->Rust binding; Flutter reaches the same Rust through flutter_ffi.rs / its Dart models
+session-binding:get_icon_path,n/a,n/a,n/a,triage 2026-11-09,internal Sciter<->Rust binding; Flutter reaches the same Rust through flutter_ffi.rs / its Dart models
+session-binding:get_char,n/a,n/a,n/a,triage 2026-11-09,internal Sciter<->Rust binding; Flutter reaches the same Rust through flutter_ffi.rs / its Dart models
+session-binding:get_size,n/a,n/a,n/a,triage 2026-11-09,internal Sciter<->Rust binding; Flutter reaches the same Rust through flutter_ffi.rs / its Dart models
+session-binding:get_port_forwards,n/a,n/a,n/a,triage 2026-11-09,internal Sciter<->Rust binding; Flutter reaches the same Rust through flutter_ffi.rs / its Dart models
+session-binding:get_args,n/a,n/a,n/a,triage 2026-11-09,internal Sciter<->Rust binding; Flutter reaches the same Rust through flutter_ffi.rs / its Dart models
+session-binding:save_size,n/a,n/a,n/a,triage 2026-11-09,internal Sciter<->Rust binding; Flutter reaches the same Rust through flutter_ffi.rs / its Dart models
+session-binding:save_view_style,n/a,n/a,n/a,triage 2026-11-09,internal Sciter<->Rust binding; Flutter reaches the same Rust through flutter_ffi.rs / its Dart models
+session-binding:save_image_quality,n/a,n/a,n/a,triage 2026-11-09,internal Sciter<->Rust binding; Flutter reaches the same Rust through flutter_ffi.rs / its Dart models
+session-binding:save_custom_image_quality,n/a,n/a,n/a,triage 2026-11-09,internal Sciter<->Rust binding; Flutter reaches the same Rust through flutter_ffi.rs / its Dart models
+session-binding:refresh_video,n/a,n/a,n/a,triage 2026-11-09,internal Sciter<->Rust binding; Flutter reaches the same Rust through flutter_ffi.rs / its Dart models
+session-binding:is_screenshot_supported,n/a,n/a,n/a,triage 2026-11-09,internal Sciter<->Rust binding; Flutter reaches the same Rust through flutter_ffi.rs / its Dart models
+session-binding:is_privacy_mode_supported,n/a,n/a,n/a,triage 2026-11-09,internal Sciter<->Rust binding; Flutter reaches the same Rust through flutter_ffi.rs / its Dart models
+session-binding:peer_platform,n/a,n/a,n/a,triage 2026-11-09,internal Sciter<->Rust binding; Flutter reaches the same Rust through flutter_ffi.rs / its Dart models
+session-binding:set_write_override,n/a,n/a,n/a,triage 2026-11-09,internal Sciter<->Rust binding; Flutter reaches the same Rust through flutter_ffi.rs / its Dart models
+session-binding:save_keyboard_mode,n/a,n/a,n/a,triage 2026-11-09,internal Sciter<->Rust binding; Flutter reaches the same Rust through flutter_ffi.rs / its Dart models
+session-binding:update_supported_decodings,n/a,n/a,n/a,triage 2026-11-09,internal Sciter<->Rust binding; Flutter reaches the same Rust through flutter_ffi.rs / its Dart models
+session-binding:is_recording,n/a,n/a,n/a,triage 2026-11-09,internal Sciter<->Rust binding; Flutter reaches the same Rust through flutter_ffi.rs / its Dart models

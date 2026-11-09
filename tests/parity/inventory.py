@@ -274,7 +274,8 @@ def main():
             'verified_by': o.get('verified_by', ''), 'note': o.get('note', ''),
         }
         rows.append(row)
-        if not flutter:
+        # an override can also RECORD a gap ("MISSING ..."): still missing, with the reason
+        if not flutter or flutter.strip().upper().startswith('MISSING'):
             missing.append(row)
 
     csv_path = os.path.join(a.out, 'flutter-parity-elements.csv')
