@@ -243,7 +243,9 @@ Mode: Spannen (span, one window over all local monitors)
 18. Leave Spannen → previous window position and size restored.
 
 Mode: Fenster (one window per remote display)
-19. 2 remote + 2 local → two fullscreen windows, one per monitor, left-to-right order matches the remote displays.
+19. 2 remote + 2 local → two **maximized** windows (not full screen), one per monitor, left-to-right order matches the remote displays; each has a title bar.
+19a. Local taskbar stays visible on every monitor — repeat with the taskbar at the bottom, on the left/right side and at the top (Windows), and with a top/side panel (Linux): no window covers it.
+19b. Each window (also the second/extra one): double-click the title bar → restores; drag the border → resizes; maximize again → back to the work area; the picture rescales and input still maps (step 20).
 20. Input in each window goes to its display (step 10 per window).
 21. Close one window by hand → remaining window falls back to Alle automatically.
 22. Switch to another mode → all extra windows close; original window placement restored.
