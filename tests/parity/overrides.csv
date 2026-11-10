@@ -3,7 +3,7 @@ option:selected-tags,"lib/common/widgets/peer_tab_page.dart:514 (AB tag filter, 
 menu:connect-direct,"lib/common/widgets/peer_card.dart:677 (B7, label + endpoint)",,,source check 2026-11-09,
 option:show-sessions-type,lib/consts.dart:161 kOptionPeerTabIndex (peer-tab-index),,,source check 2026-11-09,
 input:port,"lib/common/widgets/peer_card.dart:1528 (RDP port, peer option rdp_port)",,,source check 2026-11-09,
-menu:stretch,MISSING,,,triage 2026-11-09,GAP: no Stretch view style in Flutter (Original/Adaptive/Custom only) - operator decision: implement or drop
+menu:stretch,flutter/lib/common/widgets/toolbar.dart toolbarViewStyle (Stretch),yes,,viewstyle-test.sh 2026-11-10,implemented 2026-11-10 (operator): fill the window never reduce; scale 1.00 small / 1.81 large window; also in the default view style setting
 menu:ctrl-alt-del,"lib/desktop/widgets/remote_toolbar.dart:213 ""Insert Ctrl + Alt + Del""",,,source check 2026-11-09,
 menu:block-input,"lib/common/widgets/toolbar.dart:270 ""Block/Unblock user input""",,,source check 2026-11-09,
 menu:label=Audio Input,"lib/desktop/pages/desktop_setting_page.dart:718 ""Audio Input Device""",,,source check 2026-11-09,
