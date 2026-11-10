@@ -30,6 +30,9 @@ done
 
 WORK="$(mktemp -d)"; trap 'rm -rf "$WORK"' EXIT
 . "$(dirname "$(readlink -f "$0")")/deb-bundle-libs.sh"
+. "$(dirname "$(readlink -f "$0")")/arch-depends.sh"
+# ARCH_PKGREL: bump for a packaging-only fix of an already released version (pacman upgrades it)
+ARCH_PKGREL="${ARCH_PKGREL:-1}"
 
 # ---- common install tree (matches build.py's sciter-deb layout) --------------
 stage() {  # $1 = root, $2 = binary
@@ -84,12 +87,14 @@ echo "built $DEB ($(du -h "$DEB" | cut -f1))"
 PKGDIR="$WORK/arch"; mkdir -p "$PKGDIR"
 ARCH_ROOT="$PKGDIR/pkgroot"; stage "$ARCH_ROOT" "$ARCH_BIN"
 install -Dm644 "$ARCH_ROOT/usr/share/rustdesk/files/systemd/rustdesk.service" "$ARCH_ROOT/usr/lib/systemd/system/rustdesk.service"
-ln -sf /usr/share/rustdesk/rustdesk "$ARCH_ROOT/usr/bin/tbfdesk" 2>/dev/null || true
-mkdir -p "$ARCH_ROOT/usr/bin"; ln -sf /usr/share/rustdesk/rustdesk "$ARCH_ROOT/usr/bin/rustdesk"
+# (until 1.4.20-1 the tbfdesk link came before the mkdir and silently failed: no `tbfdesk` command)
+mkdir -p "$ARCH_ROOT/usr/bin"; ln -sf /usr/share/rustdesk/rustdesk "$ARCH_ROOT/usr/bin/rustdesk"; ln -sf /usr/share/rustdesk/rustdesk "$ARCH_ROOT/usr/bin/tbfdesk"
+ARCH_DEPS="$(arch_depends sciter "$ARCH_ROOT/usr/share/rustdesk/rustdesk")" || exit 1
+arch_write_install "$PKGDIR/tbfdesk.install"
 cat > "$PKGDIR/PKGBUILD" <<EOF
 pkgname=tbfdesk
 pkgver=${VER//-/_}
-pkgrel=1
+pkgrel=$ARCH_PKGREL
 pkgdesc="TBFDesk remote control (RustDesk-based, centrally managed)"
 arch=('x86_64')
 url="https://github.com/NemoRyba/rustdesk-client-nemo"
@@ -97,12 +102,13 @@ license=('AGPL3')
 provides=('rustdesk')
 conflicts=('rustdesk' 'tbfdesk-flutter')
 replaces=('tbfdesk-flutter')
-depends=('gtk3' 'libxcb' 'xdotool' 'libxfixes' 'alsa-lib' 'systemd-libs' 'curl' 'libva' 'pipewire' 'pam')
+depends=($ARCH_DEPS)
+install=tbfdesk.install
 options=('!strip' '!debug')
 package() { cp -a "$ARCH_ROOT/." "\$pkgdir/"; }
 EOF
 ( cd "$PKGDIR" && PKGDEST="$OUT" PKGEXT='.pkg.tar.zst' makepkg -f --nodeps --noconfirm >/tmp/makepkg.log 2>&1 ) \
-  && mv "$OUT/tbfdesk-${VER//-/_}-1-x86_64.pkg.tar.zst" "$OUT/tbfdesk-$VER-x86_64.pkg.tar.zst" || true
+  && mv "$OUT/tbfdesk-${VER//-/_}-$ARCH_PKGREL-x86_64.pkg.tar.zst" "$OUT/tbfdesk-$VER-x86_64.pkg.tar.zst" || true
 # (exact makepkg name: a tbfdesk-*.pkg.tar.zst glob also matched older packages in $OUT, so
 #  mv got several sources, failed, and the package stayed under makepkg's name, unchecksummed)
 ls "$OUT"/tbfdesk-"$VER"-x86_64.pkg.tar.zst 2>/dev/null && echo "built the Arch package" || { echo "makepkg failed:"; tail -8 /tmp/makepkg.log; }

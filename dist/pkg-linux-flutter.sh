@@ -26,6 +26,9 @@ for b in "$DEB_BUNDLE" "$ARCH_BUNDLE"; do
 done
 WORK="$(mktemp -d)"; trap 'rm -rf "$WORK"' EXIT
 . "$(dirname "$(readlink -f "$0")")/deb-bundle-libs.sh"
+. "$(dirname "$(readlink -f "$0")")/arch-depends.sh"
+# ARCH_PKGREL: bump for a packaging-only fix of an already released version (pacman upgrades it)
+ARCH_PKGREL="${ARCH_PKGREL:-1}"
 
 stage() {  # $1 = root, $2 = bundle
   local R="$1" B="$2"
@@ -80,10 +83,12 @@ PKGDIR="$WORK/arch"; mkdir -p "$PKGDIR"
 ARCH_ROOT="$PKGDIR/pkgroot"; stage "$ARCH_ROOT" "$ARCH_BUNDLE"
 install -Dm644 "$ARCH_ROOT/usr/share/rustdesk/files/systemd/rustdesk.service" "$ARCH_ROOT/usr/lib/systemd/system/rustdesk.service"
 mkdir -p "$ARCH_ROOT/usr/bin"; ln -sf /usr/share/rustdesk/rustdesk "$ARCH_ROOT/usr/bin/rustdesk"; ln -sf /usr/share/rustdesk/rustdesk "$ARCH_ROOT/usr/bin/tbfdesk"
+ARCH_DEPS="$(arch_depends flutter "$ARCH_ROOT/usr/share/rustdesk/rustdesk" "$ARCH_ROOT"/usr/share/rustdesk/lib/*.so)" || exit 1
+arch_write_install "$PKGDIR/tbfdesk.install"
 cat > "$PKGDIR/PKGBUILD" <<EOF
 pkgname=tbfdesk-flutter
 pkgver=${VER//-/_}
-pkgrel=1
+pkgrel=$ARCH_PKGREL
 pkgdesc="TBFDesk remote control, Flutter UI (RustDesk-based, centrally managed)"
 arch=('x86_64')
 url="https://github.com/NemoRyba/rustdesk-client-nemo"
@@ -91,12 +96,13 @@ license=('AGPL3')
 provides=('rustdesk')
 conflicts=('rustdesk' 'tbfdesk')
 replaces=('tbfdesk')
-depends=('gtk3' 'libxcb' 'xdotool' 'libxfixes' 'alsa-lib' 'systemd-libs' 'curl' 'libva' 'pipewire' 'pam' 'libepoxy')
+depends=($ARCH_DEPS)
+install=tbfdesk.install
 options=('!strip' '!debug')
 package() { cp -a "$ARCH_ROOT/." "\$pkgdir/"; }
 EOF
 ( cd "$PKGDIR" && PKGDEST="$OUT" PKGEXT='.pkg.tar.zst' makepkg -f --nodeps --noconfirm > "$WORK/makepkg.log" 2>&1 ) \
-  && mv "$OUT/tbfdesk-flutter-${VER//-/_}-1-x86_64.pkg.tar.zst" "$OUT/tbfdesk-flutter-$VER-x86_64.pkg.tar.zst" \
+  && mv "$OUT/tbfdesk-flutter-${VER//-/_}-$ARCH_PKGREL-x86_64.pkg.tar.zst" "$OUT/tbfdesk-flutter-$VER-x86_64.pkg.tar.zst" \
   || { echo "makepkg failed:"; tail -8 "$WORK/makepkg.log"; }
 [ -f "$OUT/tbfdesk-flutter-$VER-x86_64.pkg.tar.zst" ] && echo "built the Arch package"
 
