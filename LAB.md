@@ -159,6 +159,13 @@ the Sciter viewer (lab worktree `vm/build/client-nemo-tdd`) and the Flutter bund
 | `cursor-lab/multidisplay-cursor-test.sh` | single / all / span / windows on 2 local monitors against a 2-display target: the remote cursor (9 shapes, 32 px) on every point; per mode screen / cursor / input delay, fps at a 30 Hz full-screen flip, CPU, RSS (`perf.txt`) |
 | `cursor-lab/input-test.sh` (`LAYOUT=us\|de`) | text, special keys, 12 shortcuts (incl. Ctrl+Alt+Del, Super, Alt+Tab), German layout with **AltGr** (@ € [ \\ ~) and umlauts, left/middle/right/double click, 4 wheel directions, drag — checked on the target by `inputlog.py` |
 | `cursor-lab/hold-test-linux.sh` | the cursor while a button is held (drag/resize) and after release |
+| `cursor-lab/multidisplay-cursor-test.sh` with `FULLSCREEN=1` (and `win-multidisplay-cursor-test.sh`) | the same cursor grid with every session window put in full screen by the APP's own button (`cursor-lab/fs-click.py`; neither UI has a shortcut) — the multi-monitor full-screen case (2026-11-10) |
+| `cursor-lab/viewstyle-test.sh`, `win-viewstyle-test.sh` | Original / Adaptive / Shrink / Stretch measured (green grid cell height / 267) in a window smaller and larger than the remote screen |
+| `cursor-lab/workarea-test.sh`, `win-workarea-test.sh` | "windows" mode with the controller's taskbar at the top / left / right / bottom (fake panel on Linux, StuckRects3 on Windows): every window maximized inside its own monitor's work area |
+| `cursor-lab/win-fsexit-test.sh` | leaving full screen: the window fits its monitor again (not larger, not off-screen) |
+| `cursor-lab/lone-move-test.sh` | a single pointer move over an idle session window arrives at once (R21) |
+| `policy-lab/policy-sticky-test.sh` | a managed policy holds while the server is unreachable, until the server changes it |
+| `install-lab/update-channel-test.sh` | Windows auto-update per UI: an older Sciter / Flutter install updates itself to the 1.4.x of its own UI with both published |
 | `console-lab/console-test.sh` | console session: a real remote shell answers; refused with a message when the target has "Enable terminal" off |
 
 Windows viewer: `cursor-lab/win-multidisplay-cursor-test.sh <exe>` (RDP two monitors,
@@ -197,6 +204,17 @@ installed (197 KB); Win11 is the only Windows VM — the real Win10 box is the l
 
 ## Traps that produce false results (each cost real time)
 
+- **The fake taskbar on :47 sits at the TOP** (`fakepanel.py bottom 40`, left running by the
+  windows-mode work-area tests; openbox docks it at the top) and covers the top 40 px of every
+  session window. Sciter reveals its auto-hidden header only from the window's top edge, so
+  with the panel up the header (and its fullscreen button) cannot be reached. Kill it before
+  any test that needs the header (`cursor-lab/fs-click.py`, FULLSCREEN=1).
+- **Changing a display's monitors dropped the viewer stub** (it announced raw encoding only;
+  Xvnc disconnects a client that cannot take a resize): every hot-plug step after the first
+  ran unwatched, and Flutter's monitor switches looked ~20 s slow, all on 2-s timer ticks.
+  `xvnc-viewer-stub.py` now announces DesktopSize and reconnects by itself (2026-11-10).
+- **The same Xvnc frame pacing also delays a lone pointer move** (~480 ms unwatched, ~12 ms
+  watched) — FLUTTER-PORT R21; `cursor-lab/lone-move-test.sh`.
 - **An unwatched Xvnc throttles GL clients**: TigerVNC paces Present/vblank through its VNC
   update loop, which only runs while a viewer is connected. Flutter (GL) then gets ~1 frame
   per 1.5 s and lags input as much (looked like "Flutter is 100x slower"); Sciter does not
