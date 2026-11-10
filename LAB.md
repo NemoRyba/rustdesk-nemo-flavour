@@ -163,6 +163,7 @@ the Sciter viewer (lab worktree `vm/build/client-nemo-tdd`) and the Flutter bund
 | `cursor-lab/viewstyle-test.sh`, `win-viewstyle-test.sh` | Original / Adaptive / Shrink / Stretch measured (green grid cell height / 267) in a window smaller and larger than the remote screen |
 | `cursor-lab/workarea-test.sh`, `win-workarea-test.sh` | "windows" mode with the controller's taskbar at the top / left / right / bottom (fake panel on Linux, StuckRects3 on Windows): every window maximized inside its own monitor's work area |
 | `cursor-lab/win-fsexit-test.sh` | leaving full screen: the window fits its monitor again (not larger, not off-screen) |
+| `cursor-lab/dispbar-test.sh`, `win-dispbar-test.sh` | Sciter "windows" mode: the extra display window's own bar — full screen on / off (picture shown), all displays back in one window |
 | `cursor-lab/lone-move-test.sh` | a single pointer move over an idle session window arrives at once (R21) |
 | `policy-lab/policy-sticky-test.sh` | a managed policy holds while the server is unreachable, until the server changes it |
 | `install-lab/update-channel-test.sh` | Windows auto-update per UI: an older Sciter / Flutter install updates itself to the 1.4.x of its own UI with both published |
