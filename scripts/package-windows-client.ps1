@@ -15,6 +15,10 @@
   (.github/workflows/flutter-build.yml), adapted from its x86 matrix to x64.
 
   Output:  dist\tbfdesk-<version>-x64-install.exe   plus a .sha256 next to it.
+           -Flutter: dist\tbfdesk-flutter-<version>-x64-install.exe (the Flutter UI). Both
+           install as the same TBFDesk (service, config, ID, device key); installing one
+           over the other switches the machine's UI. Each has its own update channel on
+           the management server: "Windows (x64) Sciter" / "Windows (x64) Flutter".
 
   Install on a workstation:
       tbfdesk-<version>-x64-install.exe                 (interactive)
@@ -51,7 +55,9 @@ param(
     [string]$SignWith = "",
     [string]$SignPassword = "",
     # Skip the cargo build and package whatever is already in target\release.
-    [switch]$NoBuild
+    [switch]$NoBuild,
+    # Build and pack the Flutter UI instead of Sciter.
+    [switch]$Flutter
 )
 
 $ErrorActionPreference = "Stop"
@@ -75,8 +81,33 @@ if ($version -notmatch '^\d+(\.\d+)*$') {
 }
 Write-Host "TBFDesk $version" -ForegroundColor Cyan
 
+# --- Flutter: build, stage, pack (the Sciter path follows below) --------------------
+if ($Flutter) {
+    $flRel = Join-Path $client "flutter\build\windows\x64\runner\Release"
+    if (-not $NoBuild) {
+        Push-Location $client
+        cargo build --release --lib --features flutter,hwcodec,vram
+        if ($LASTEXITCODE -ne 0) { Pop-Location; throw "client library build failed" }
+        cargo build --release -p dylib_virtual_display
+        if ($LASTEXITCODE -ne 0) { Pop-Location; throw "dylib_virtual_display build failed" }
+        Push-Location flutter
+        flutter build windows --release
+        if ($LASTEXITCODE -ne 0) { Pop-Location; Pop-Location; throw "flutter build failed" }
+        Pop-Location; Pop-Location
+    }
+    Need (Join-Path $flRel "rustdesk.exe") "the Flutter rustdesk.exe"
+    Need (Join-Path $flRel "data\flutter_assets") "the Flutter assets"
+    Copy-Item (Join-Path $client "target\release\dylib_virtual_display.dll") $flRel -Force
+    # generate.py sees data\flutter_assets and writes tbfdesk_ui = "flutter" into the
+    # installer: the server publishes it only on the Flutter update channel.
+    Push-Location (Join-Path $client "libs\portable")
+    python generate.py -f $flRel -o . -e (Join-Path $flRel "rustdesk.exe")
+    if ($LASTEXITCODE -ne 0) { Pop-Location; throw "generate.py failed (Flutter)" }
+    Pop-Location
+}
+
 # --- build -------------------------------------------------------------------
-if (-not $NoBuild) {
+if (-not $NoBuild -and -not $Flutter) {
     # Deliberately WITHOUT -Fast: that profile sets lto=false / codegen-units=256 /
     # incremental=1 and must never be what ships.
     & (Join-Path $PSScriptRoot "build-run-windows-client.ps1") -NoRun
@@ -92,6 +123,7 @@ if (-not $NoBuild) {
 
 # --- stage -------------------------------------------------------------------
 $rel = Join-Path $client "target\release"
+if (-not $Flutter) {
 Need (Join-Path $rel "rustdesk.exe") "rustdesk.exe"
 Need (Join-Path $rel "service.exe") "service.exe"
 Need (Join-Path $rel "dylib_virtual_display.dll") "dylib_virtual_display.dll"
@@ -127,6 +159,7 @@ Push-Location (Join-Path $client "libs\portable")
 python generate.py -f ..\..\Release -o . -e ..\..\Release\rustdesk.exe
 if ($LASTEXITCODE -ne 0) { Pop-Location; throw "generate.py failed" }
 Pop-Location
+}   # Sciter staging
 
 Push-Location $client
 cargo build --release -p rustdesk-portable-packer
@@ -140,7 +173,8 @@ Need $packed "the packed installer"
 # The name matters: libs/portable turns any name ending in "install.exe" into
 # click_setup, which is what makes a double-click install rather than run portable.
 $suffix = if ($License) { "$License," } else { "" }
-$outName = "tbfdesk-$version-x64-$($suffix)install.exe"
+$ui = if ($Flutter) { "flutter-" } else { "" }
+$outName = "tbfdesk-$ui$version-x64-$($suffix)install.exe"
 if (-not (Test-Path $dist)) { New-Item -ItemType Directory -Path $dist | Out-Null }
 $out = Join-Path $dist $outName
 Copy-Item $packed $out -Force
@@ -162,4 +196,6 @@ Write-Host "  sha256 $hash"
 Write-Host ""
 Write-Host "  install:   $outName"
 Write-Host "  unattended: $outName --silent-install"
-Write-Host "  publish:   POST it with that sha256 to /nemo/api/update"
+$channel = if ($Flutter) { "windows-x64-flutter" } else { "windows-x64" }
+Write-Host "  publish:   dashboard -> Update -> upload it as $(if ($Flutter) {'Windows (x64) Flutter'} else {'Windows (x64) Sciter'})"
+Write-Host "             (or POST /nemo/api/update/upload?version=$version&platform=$channel)"

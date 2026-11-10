@@ -12,7 +12,8 @@ Nothing here has been fielded yet. Where something is untested, it says so.
 
 | | artifact | produced by | tested |
 |---|---|---|---|
-| Workstations (Windows) | `dist\tbfdesk-<version>-x64-install.exe` | `scripts/package-windows-client.ps1` on the Windows build host | **no** — needs a Windows host |
+| Workstations (Windows), Sciter UI | `dist\tbfdesk-<version>-x64-install.exe` | `scripts/package-windows-client.ps1` on the Windows build host | **no** — needs a Windows host |
+| Workstations (Windows), Flutter UI | `dist\tbfdesk-flutter-<version>-x64-install.exe` | `scripts/package-windows-client.ps1 -Flutter` | **no** — needs a Windows host |
 | Server (hbbs + hbbr) | `localhost/nemo-hbbs:<version>` container, or a native build + the systemd units | `scripts/build-server-container.sh` / `scripts/build-ubuntu-server-release.sh` | container build: yes |
 | Technician clients | same Windows installer, or a native Linux build | as above | — |
 
@@ -42,6 +43,32 @@ Notes per release: `dist/RELEASE-NOTES-<version>.md`.
   VP8/VP9/AV1 only (OPEN-TODOS #42).
 
 ## 2. Windows workstations
+
+### Two installers: Sciter and Flutter (2026-11-10)
+
+Both UIs ship from the same source and install as the **same TBFDesk**: app name, install
+folder, service, config, ID, device key and cached policy. Installing one over the other
+switches the machine's UI and keeps everything else (the install empties the program folder
+first, so nothing of the other UI is left). Tested in the Win11 VM both ways.
+
+How to tell them apart:
+
+| where | Sciter | Flutter |
+|---|---|---|
+| installer file | `tbfdesk-<v>-x64-install.exe` | `tbfdesk-flutter-<v>-x64-install.exe` |
+| install page | "TBFDesk <v> · Build <id> **Sciter**" | "… **Flutter**" |
+| main window, bottom left | "Build <id> Sciter" | "Build <id> Flutter" |
+| Apps & Features | version "<v> Sciter" | "<v> Flutter" (registry `TBFDeskUI` = sciter / flutter) |
+| dashboard, Peers, version column | badge **Sciter** | badge **Flutter** (clients before 1.4.19: Sciter) |
+
+**Automatic updates: one channel per UI.** In the dashboard (Update), upload the Sciter
+installer as *Windows (x64) Sciter* and the Flutter installer as *Windows (x64) Flutter*, with
+the same version. A Sciter machine installs only the Sciter package, a Flutter machine only
+the Flutter one — an update never switches the UI. The server checks which UI an uploaded
+installer contains (the packer embeds `tbfdesk_ui = "flutter"`) and refuses it on the wrong
+channel. A Flutter machine with no Flutter package published gets no update offer. Clients
+before 1.4.19 are all Sciter and keep reading the Sciter channel.
+To move a machine to the other UI, install the other installer (by hand, GPO or RMM).
 
 ```powershell
 # on the Windows build host
@@ -400,7 +427,9 @@ split client port especially (OPEN-TODOS #46: the 1.1.15 installer's unit rewrit
 took 21121 down). Check afterwards: `ss -tlnp | grep 2112` shows 21120 and 21121, and the
 sha256 of `/proc/$(pgrep -x hbbs)/exe` matches the new `hbbs`.
 
-**Order:** server first, then clients. The applied-policy column (1.4.18) needs server 1.1.16;
+**Order:** server first, then clients. The Flutter update channel and the UI badge need the
+server built from 2026-11-10 or later; an older server has no Flutter channel (Flutter clients
+then get no update) and refuses nothing. The applied-policy column (1.4.18) needs server 1.1.16;
 older clients keep working and show "not reported". 1.4.19 is a Windows-client-only change.
 
 ### Breaking changes of the 2026-09-27/28 builds

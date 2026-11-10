@@ -312,14 +312,14 @@ Legend — **Flutter today**: what exists in `flutter/lib`. **Target**: where it
 | R11 | Toolbar tooltips; "Auto" codec translated | header.tis 177, 186-190, 283 | — | Flutter has tooltips | verify German | yes | ☐ |
 | R12 | **Remote cursor shape in every display mode** (single / all / span / windows). The 4b3d91476 "fix" (undeclared `first_mouse_event_triggered`) had a false premise — TIScript reads it as undefined, updateCursor always ran — and is reverted (ee4115220). The real bug: in all/span/windows the cursor was set on the session `<video>` only, tiles and display windows showed the local arrow — fixed in Sciter by 124921284 (`applyTileCursors`, `set_display_windows_cursor`); lab 0 failures in all modes (Linux + Windows inline) | remote.tis `updateCursor`, `applyTileCursors`, `applyDisplayWindowsCursor`; remote.rs `set_display_windows_cursor` | — | `model.dart` CursorModel, `remote_page.dart` MouseRegion; span draws the cursor per tile (f592940e6) | **Linux lab 2026-11-06: Flutter and Sciter 0 failures in all 4 modes** (88 points each, 9 cursor shapes, both monitors), held-button cursor ok in both; Windows run: see LAB.md | yes | ◐ (Windows pending) |
 | R13 | Keyboard grab hold, CUR_SESSION | remote.tis 642-650; remote.rs 858-864 | — | n/a | — | — | — |
-| R14 | Default view style "shrink" until chosen per peer | — | `ui_session_interface.rs:238-254` | automatic | verify Flutter default-view-style setting behaviour | n/a | ☐ |
+| R14 | Default view style "shrink" until chosen per peer; styles Original / Adaptive / Shrink / Stretch in both UIs (Flutter also Custom), any of them as the per-user default | view menu (+ Adaptive, a31740970) | `ui_session_interface.rs` get_view_style, hbb_common default "shrink" | Stretch added (a31740970); auto-scroll clamp (aa15a7f85) | `cursor-lab/viewstyle-test.sh`: both UIs original 1.00/1.00, adaptive 0.74/1.81, shrink 0.74/1.00, stretch 1.00/1.81 (Linux) | n/a | ☑ |
 | R15 | **Remote mouse dead after connect on a static remote screen** (Flutter): first frame drawn before peer info was handled → `waitForFirstImage` re-armed → full-window `emptyOverlay` swallowed every pointer event until the next frame | — | `flutter.rs` VideoRenderer `rendered_size`, `set_size` re-announces an already shown frame (ce4c55ae5) | was broken | lab input 11 ms in all modes | yes | ☑ (Linux) |
 | R16 | **"windows" mode / main-window calls behind the device-key gate** (Flutter): the gate replaced the home page, which registers the main window's multi-window handler → no window for display 2 (MissingPluginException) | — | — | `nemo_gate.dart`: home page mounted behind the gate (offstage, IgnorePointer, ExcludeFocus) (ce4c55ae5) | lab windows mode 0/32, 2 windows | n/a | ☑ (Linux) |
 | R17 | **No keyboard when the session window opens under the mouse** (both UIs, Linux): grab requested before the grab loop existed, owner recorded, never re-sent | — | `keyboard.rs` start_grab_loop re-applies the owner's grab (03cc80dd6; Sciter branch 5e691beb8) | same code | lab input test: 41/41 (Flutter), Sciter 39/41 (R18) | n/a | ☑ (Linux) |
 | R18 | Horizontal wheel (tilt wheel / sideways touchpad) | libsciter-gtk reports it as vertical (Linux) — engine limitation, accepted | — | works | lab input test | n/a | — (Sciter Linux limitation) |
 | R19 | **Monitors plugged in / out during a session** (operator 2026-11-09), either side: chosen mode re-applied for what exists now (span/windows on 1 monitor → all; 1 remote display → single), back when it returns | remote.tis `startTopologyWatch` | — | `NemoDisplayMode._checkTopology`; Windows: window un-minimized + re-maximized (8f4651f77, 3fa3c2e9c) | Windows viewer: both UIs pass `win-hotplug-test.sh`; Linux: Sciter passes, Flutter racy on REMOTE display re-plug (open) | n/a | ◐ |
 | R20 | **Flutter display black / "waiting for image" on a static remote screen**: first frame dropped before the display's texture existed ("all" display 2; Windows GPU-texture single mode) | — | `flutter.rs` new texture → `refresh_video(display)` (ab888a307) | fixed | lab: all-mode display 2 drawn, Windows single mode with hwcodec | yes | ☑ |
-| R21 | **Flutter on Linux holds back a lone pointer move** until the next input event (~¼ of single synthetic moves in the lab; continuous movement and clicks fine; Sciter unaffected) — open, likely GTK motion handling in the Flutter embedder; verify on a real KDE desktop | — | — | open finding | `hotplug-test.sh` / LAB.md | n/a | ☐ |
+| R21 | **Flutter on Linux holds back a lone pointer move** — LAB ARTEFACT (2026-11-10): `cursor-lab/lone-move-test.sh` with the display watched: 0 of 20 late (~12 ms each); unwatched Xvnc (no frame pacing): 20 of 20 late (~480 ms) — with and without GDK motion compression, so it is Flutter waiting for a frame, the same trap as the 0.2 fps one (LAB.md). Real displays pace frames. | — | — | none needed | lone-move-test.sh | n/a | ☑ |
 
 ---
 
@@ -383,6 +383,13 @@ Legend — **Flutter today**: what exists in `flutter/lib`. **Target**: where it
    `update_to` path and `install_me` must handle the Flutter bundle layout: `data/`,
    `flutter_windows.dll`, `librustdesk.dll`), Linux `.deb`/Arch, Android APK id/icon.
    Cut-over decision: Sciter build stays the shipped one until P0-P4 pass the lab checklist.
+   **Windows done 2026-11-10:** `tbfdesk-flutter-<v>-x64-install.exe` (same packer; the
+   install empties the program folder first, so Flutter over Sciter and back leaves nothing
+   of the other UI; ID / key pair / device key kept — VM-tested both ways), its own update
+   channel `windows-x64-flutter` (server refuses a Flutter installer on the Sciter channel
+   and vice versa; VM-tested: Sciter 1.4.18 -> 1.4.19 Sciter and Flutter 1.4.18 -> 1.4.19
+   Flutter with both published), UI shown in the build line, install page, Apps & Features
+   and the dashboard. See DEPLOY.md §2. Linux packages and Android: open.
 
 Every phase: no merge to `nemo-tdd` until its rows here are ☑ and its lab checks pass.
 
