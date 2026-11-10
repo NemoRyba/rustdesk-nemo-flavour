@@ -127,6 +127,20 @@ Traps: `.github` CI pins are the reference (`flutter-build.yml`, `bridge.yml`). 
 its config** ("config synced" in the log) — stop every other TBFDesk before starting a lab
 client (`multidisplay-cursor-test.sh` refuses to run otherwise).
 
+Android session on the emulator (2026-11-11): build with `vm/scripts/android-build.sh`
+(stops on a failed cargo step; a piped `cargo | tail` once hid one and packed a stale lib).
+Emulator to host target = recipe A with `nemo-direct-endpoints = '<id>,10.0.2.2:<port>'`
+(10.0.2.2 = host loopback) appended to `app_flutter/TBFDesk2.toml` via
+`adb shell run-as at.tbf.tbfdesk` while the app is stopped. Traps:
+- **Android 17 local-network permission:** without `ACCESS_LOCAL_NETWORK` granted, every
+  connect from the APP to a private address times out, while `adb shell nc` to the same port
+  works (the shell is exempt). The app asks at first start since client 5e05bdfce; on a
+  reinstall tap Allow, or `adb shell pm grant at.tbf.tbfdesk android.permission.ACCESS_LOCAL_NETWORK`.
+- **App log:** `app_flutter/Logs/rs_rCURRENT.log` (since hbb_common 1a1eb73; before that,
+  `/sdcard/TBFDesk/Logs`, which needed all-files access, so usually no log at all). Read it with
+  `adb shell run-as at.tbf.tbfdesk cat app_flutter/Logs/rs_rCURRENT.log`.
+- uiautomator: Flutter labels are `content-desc`, not `text`.
+
 ## Builds the lab runs — the inline trap
 
 The lab scripts run `rustdesk-client-nemo/target/release/rustdesk` from **whatever branch is
