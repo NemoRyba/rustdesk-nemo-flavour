@@ -15,7 +15,7 @@ Nothing here has been fielded yet. Where something is untested, it says so.
 | Workstations (Windows), Sciter UI | `dist\tbfdesk-<version>-x64-install.exe` | `scripts/package-windows-client.ps1` on the Windows build host | **no** — needs a Windows host |
 | Workstations (Windows), Flutter UI | `dist\tbfdesk-flutter-<version>-x64-install.exe` | `scripts/package-windows-client.ps1 -Flutter` | **no** — needs a Windows host |
 | Server (hbbs + hbbr) | **`tbfdesk-server-<v>-install.run`** (one file: install / update with a dialog, keep-config default), or the tarball, or the `localhost/nemo-hbbs:<version>` container | `dist/pkg-server.sh <v> <out>` | `.run`: Ubuntu 24.04 + systemd container (update, rollback) |
-| Linux clients | `tbfdesk-<v>-amd64.deb` / `.pkg.tar.zst` / tarball (Sciter); `tbfdesk-flutter-<v>-amd64.deb` / `.pkg.tar.zst` / tarball (Flutter) | `dist/pkg-linux.sh`, `dist/pkg-linux-flutter.sh` | `.deb`: Ubuntu 24.04 install + switch both ways |
+| Linux clients | Ubuntu 24.04 offline: `tbfdesk[-flutter]-<v>-ubuntu24.04-install.run`; `tbfdesk-<v>-amd64.deb` / `.pkg.tar.zst` / tarball (Sciter); `tbfdesk-flutter-<v>-amd64.deb` / `.pkg.tar.zst` / tarball (Flutter) | `dist/pkg-linux.sh`, `dist/pkg-linux-flutter.sh`, `dist/pkg-ubuntu-offline.sh` | `vm/scripts/install-lab/ubuntu-offline-test.sh`: offline install + switch on 24.04, start, upgrade to 26.04, `.deb` on 26.04 |
 | Technician clients | same Windows installer, or a native Linux build | as above | — |
 
 ---
@@ -457,6 +457,31 @@ replace each other: `sudo apt install ./tbfdesk-flutter-<v>-amd64.deb` on a Scit
 switches it to Flutter and keeps its configuration (and the other way round; tested on Ubuntu
 24.04). Automatic updates stay within the UI: upload Flutter packages as "... Flutter" in the
 dashboard (`linux-deb-flutter`, `linux-arch-flutter`, `linux-rpm-flutter`; server 1.1.17+).
+
+### Ubuntu 24.04: offline installer, and the upgrade to 26.04
+
+**One file, no internet needed:** `tbfdesk-<v>-ubuntu24.04-install.run` (Sciter) and
+`tbfdesk-flutter-<v>-ubuntu24.04-install.run` (Flutter) contain the `.deb` plus every package
+it needs (the complete dependency closure from the Ubuntu 24.04 archive, ~130/180 MB). Run
+`bash ./tbfdesk-flutter-<v>-ubuntu24.04-install.run` (asks for the password via pkexec/sudo,
+shows a dialog: zenity on the desktop, whiptail/text in a terminal); `--yes` = unattended,
+`--online` = use the machine's own apt sources, `--extract DIR` = unpack only. It uses its own
+package list only for this install (the machine's apt sources and state stay as they were),
+never downgrades a library, keeps ID / keys / server settings / policy, and switches the UI if
+the other one is installed. It checks afterwards that every library resolves and the service
+runs. Build: `dist/pkg-ubuntu-offline.sh <client .deb> <out> [24.04]`.
+
+**Release upgrade 24.04 -> 26.04:** the client keeps working. Since 1.4.20 the `.deb` carries
+its own copies of the video-codec libraries whose soname changes between releases (24.04 has
+`libvpx.so.9`, 26.04 only `libvpx.so.12`; also libaom, libyuv, libjpeg8) in
+`/usr/share/rustdesk/lib`, found through RUNPATH; everything else it depends on has the same
+package name on 24.04 and 26.04. `do-release-upgrade` keeps locally installed packages (it
+only offers to remove packages from the old archive); answering "yes" to "Remove obsolete
+packages?" is fine. **Before 1.4.20** the `.deb` depended on `libvpx9`, which 26.04 does not
+have: such a client survives the upgrade only because apt keeps the 24.04 `libvpx9` (no more
+updates for it), and it cannot be installed fresh on 26.04. Update the clients to 1.4.20 before
+or after the release upgrade. The 1.4.20 `.deb` installs directly on 26.04
+(`sudo apt install ./tbfdesk-<v>-amd64.deb`).
 
 **Server 1.1.16 and later** (release tarball): unpack, then `RESTART=1 ./install.sh`. It keeps
 each unit's `ExecStart` pointed at the binary it just installed (the 1.1.15 script installed to

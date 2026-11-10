@@ -25,6 +25,7 @@ for b in "$DEB_BUNDLE" "$ARCH_BUNDLE"; do
   grep -qaF "$VER" "$b/lib/librustdesk.so" || echo "WARN: $b/lib/librustdesk.so does not contain the string $VER"
 done
 WORK="$(mktemp -d)"; trap 'rm -rf "$WORK"' EXIT
+. "$(dirname "$(readlink -f "$0")")/deb-bundle-libs.sh"
 
 stage() {  # $1 = root, $2 = bundle
   local R="$1" B="$2"
@@ -42,7 +43,13 @@ stage() {  # $1 = root, $2 = bundle
 DEB_ROOT="$WORK/deb"; stage "$DEB_ROOT" "$DEB_BUNDLE"
 mkdir -p "$DEB_ROOT/DEBIAN"
 cp -a "$C/res/DEBIAN/"* "$DEB_ROOT/DEBIAN/"
-DEPENDS="${DEB_DEPENDS:-libgtk-3-0t64 | libgtk-3-0, libglib2.0-0t64 | libglib2.0-0, libgdk-pixbuf-2.0-0, libcairo2, libpango-1.0-0, libepoxy0, libx11-6, libxfixes3, libxtst6, libxcb1, libxcb-randr0, libxcb-shm0, libxkbcommon0, libdbus-1-3, libpam0g, libpulse0, libopus0, libvpx9, libaom3, libyuv0, libgstreamer1.0-0, libgstreamer-plugins-base1.0-0, libstdc++6}"
+deb_bundle_libs "$DEB_ROOT" tbfdesk-flutter '$ORIGIN' "$DEB_ROOT/usr/share/rustdesk/lib/librustdesk.so"
+# Depends: only packages with the SAME name on Ubuntu 24.04 and 26.04 (checked 2026-11-10);
+# the codec libraries whose soname changes (libvpx9 -> libvpx12, ...) are bundled instead,
+# see deb-bundle-libs.sh. libxdo3, libXi, libXcursor, libX11-xcb, libxkbcommon-x11 and
+# wayland-client are dlopen()ed at run time (input, cursor, Wayland), gstreamer1.0-pipewire
+# is the Wayland screen capture. Flutter: the engine dlopen()s libEGL.so.1 (libegl1).
+DEPENDS="${DEB_DEPENDS:-libgtk-3-0t64 | libgtk-3-0, libglib2.0-0t64 | libglib2.0-0, libgdk-pixbuf-2.0-0, libcairo2, libpango-1.0-0, libx11-6, libx11-xcb1, libxfixes3, libxtst6, libxi6, libxcursor1, libxcb1, libxcb-randr0, libxcb-shm0, libxkbcommon0, libxkbcommon-x11-0, libxdo3, libwayland-client0, libdbus-1-3, libpam0g, libpulse0, libopus0, libgstreamer1.0-0, libgstreamer-plugins-base1.0-0, gstreamer1.0-pipewire, libstdc++6, libepoxy0, libharfbuzz0b, libatk1.0-0t64 | libatk1.0-0, libfontconfig1, zlib1g, libpangocairo-1.0-0, libcairo-gobject2, libxinerama1, libgl1, libegl1}"
 cat > "$DEB_ROOT/DEBIAN/control" <<EOF
 Package: tbfdesk-flutter
 Section: net

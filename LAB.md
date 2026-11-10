@@ -188,6 +188,17 @@ Linux "windows" placement: `cursor-lab/fakepanel.py` (a taskbar strut),
 Accepted, known: Sciter on **Linux** reports a horizontal wheel as vertical (the
 libsciter-gtk engine does), so its two horizontal-wheel steps fail; Flutter passes them.
 
+## Ubuntu packages: offline install + release upgrade (2026-11-10)
+
+`vm/scripts/install-lab/ubuntu-offline-test.sh <dir with .run/.deb> [version]` -- containers
+only, ~15 min: offline `.run` install in `ubuntu:24.04 --network none` (Sciter, then Flutter
+over it, a config marker must survive), library check + start under Xvfb
+(`ubuntu-launch-check.sh`), simulated 24.04 -> 26.04 upgrade (sources noble -> resolute,
+`full-upgrade`, `autoremove --purge`), and the `.deb` on a clean `ubuntu:26.04`. Logs in
+`vm/logs/ubuntu-offline-<v>/`. Trap: `ldd` on a Flutter plugin `.so` alone reports
+`libflutter_linux_gtk.so => not found` -- the plugins find it through the executable's
+RUNPATH; check with `LD_LIBRARY_PATH=/usr/share/rustdesk/lib`.
+
 ## Making the lab fresh again
 
 | Symptom (`lab-status.sh`) | Cause | Fix |

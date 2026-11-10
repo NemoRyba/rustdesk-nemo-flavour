@@ -29,6 +29,7 @@ for b in "$BIN" "$ARCH_BIN"; do
 done
 
 WORK="$(mktemp -d)"; trap 'rm -rf "$WORK"' EXIT
+. "$(dirname "$(readlink -f "$0")")/deb-bundle-libs.sh"
 
 # ---- common install tree (matches build.py's sciter-deb layout) --------------
 stage() {  # $1 = root, $2 = binary
@@ -45,6 +46,13 @@ stage() {  # $1 = root, $2 = binary
 
 # ---- .deb (ar + tar) ---------------------------------------------------------
 DEB_ROOT="$WORK/deb"; stage "$DEB_ROOT" "$BIN"
+deb_bundle_libs "$DEB_ROOT" tbfdesk '$ORIGIN/lib' "$DEB_ROOT/usr/share/rustdesk/rustdesk"
+# Depends: only packages with the SAME name on Ubuntu 24.04 and 26.04 (checked 2026-11-10);
+# the codec libraries whose soname changes (libvpx9 -> libvpx12, ...) are bundled instead,
+# see deb-bundle-libs.sh. libxdo3, libXi, libXcursor, libX11-xcb, libxkbcommon-x11 and
+# wayland-client are dlopen()ed at run time (input, cursor, Wayland), gstreamer1.0-pipewire
+# is the Wayland screen capture.
+DEPENDS="${DEB_DEPENDS:-libgtk-3-0t64 | libgtk-3-0, libglib2.0-0t64 | libglib2.0-0, libgdk-pixbuf-2.0-0, libcairo2, libpango-1.0-0, libx11-6, libx11-xcb1, libxfixes3, libxtst6, libxi6, libxcursor1, libxcb1, libxcb-randr0, libxcb-shm0, libxkbcommon0, libxkbcommon-x11-0, libxdo3, libwayland-client0, libdbus-1-3, libpam0g, libpulse0, libopus0, libgstreamer1.0-0, libgstreamer-plugins-base1.0-0, gstreamer1.0-pipewire, libstdc++6}"
 mkdir -p "$DEB_ROOT/DEBIAN"
 cp -a "$C/res/DEBIAN/"* "$DEB_ROOT/DEBIAN/"
 cat > "$DEB_ROOT/DEBIAN/control" <<EOF
@@ -58,7 +66,7 @@ Homepage: https://github.com/NemoRyba/rustdesk-client-nemo
 Provides: rustdesk
 Conflicts: rustdesk, tbfdesk-flutter
 Replaces: rustdesk, tbfdesk-flutter
-Depends: libgtk-3-0t64 | libgtk-3-0, libglib2.0-0t64 | libglib2.0-0, libgdk-pixbuf-2.0-0, libcairo2, libx11-6, libxfixes3, libxtst6, libxcb1, libxcb-randr0, libxcb-shm0, libxkbcommon0, libdbus-1-3, libpam0g, libpulse0, libopus0, libvpx9, libaom3, libyuv0, libgstreamer1.0-0, libgstreamer-plugins-base1.0-0
+Depends: $DEPENDS
 Recommends: libayatana-appindicator3-1
 Description: TBFDesk remote control (RustDesk-based, centrally managed).
 EOF
