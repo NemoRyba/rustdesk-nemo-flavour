@@ -31,6 +31,9 @@ numeric fourth part.
 Currently client **1.4.20** (Windows + Linux, Sciter + Flutter) and server **1.1.17**. Ready-built
 installers are published as GitHub releases, each file with a `.sha256`:
 
+- **`release-2026-11-10`** — client 1.4.20 for both UIs: Windows installers (Sciter, Flutter),
+  Ubuntu 24.04 offline `.run` installers, `.deb` / Arch / tarball per UI; server 1.1.17 `.run`
+  updater + tarball; uninstallers. Published with `dist/publish-release.sh`.
 - **`release-2026-10-29c`** — Windows `tbfdesk-1.4.19-x64-install.exe` (the unattended
   provisioning in §4, the uninstaller fix) and both uninstallers.
 - **`release-2026-10-29b`** — Debian/Ubuntu `.deb`, Arch `.pkg.tar.zst` and a generic Linux client
