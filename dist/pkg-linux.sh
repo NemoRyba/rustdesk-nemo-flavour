@@ -56,8 +56,8 @@ Architecture: amd64
 Maintainer: TBFDesk <noreply@tbfdesk.local>
 Homepage: https://github.com/NemoRyba/rustdesk-client-nemo
 Provides: rustdesk
-Conflicts: rustdesk
-Replaces: rustdesk
+Conflicts: rustdesk, tbfdesk-flutter
+Replaces: rustdesk, tbfdesk-flutter
 Depends: libgtk-3-0t64 | libgtk-3-0, libglib2.0-0t64 | libglib2.0-0, libgdk-pixbuf-2.0-0, libcairo2, libx11-6, libxfixes3, libxtst6, libxcb1, libxcb-randr0, libxcb-shm0, libxkbcommon0, libdbus-1-3, libpam0g, libpulse0, libopus0, libvpx9, libaom3, libyuv0, libgstreamer1.0-0, libgstreamer-plugins-base1.0-0
 Recommends: libayatana-appindicator3-1
 Description: TBFDesk remote control (RustDesk-based, centrally managed).
@@ -87,7 +87,8 @@ arch=('x86_64')
 url="https://github.com/NemoRyba/rustdesk-client-nemo"
 license=('AGPL3')
 provides=('rustdesk')
-conflicts=('rustdesk')
+conflicts=('rustdesk' 'tbfdesk-flutter')
+replaces=('tbfdesk-flutter')
 depends=('gtk3' 'libxcb' 'xdotool' 'libxfixes' 'alsa-lib' 'systemd-libs' 'curl' 'libva' 'pipewire' 'pam')
 options=('!strip' '!debug')
 package() { cp -a "$ARCH_ROOT/." "\$pkgdir/"; }

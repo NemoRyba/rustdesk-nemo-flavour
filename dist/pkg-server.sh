@@ -43,8 +43,8 @@ cat > "$ROOT/README.md" <<EOF
 hbbs/hbbr with the Nemo hardening (device-key gate, sealed login, mgmt API with the
 C1 pre-gate rate limit, C3 auth-before-parse, C4 Security panel).
 
-Install / upgrade: ./install.sh      (keeps the unit's ExecStart in sync with the binary
-                                       path, so upgrades never need re-pointing)
+Install / upgrade: sudo ./tbfdesk-server-$VER-install.run  (dialog; "Update -- keep
+                   configuration" is the default; backup + checks) -- or ./install.sh
 Config:            /etc/tbfdesk/hbbs.env   (NEMO_API_TOKEN, TBFDESK_RELAY, TBFDESK_MASK)
 Uninstall / reset: ./uninstall/tbfdesk-uninstall.sh server
 EOF
@@ -53,3 +53,12 @@ TARBALL="$OUT/$NAME.tar.gz"
 ( cd "$WORK" && tar --owner=0 --group=0 -czf "$TARBALL" "$NAME" )
 echo "built $TARBALL ($(du -h "$TARBALL" | cut -f1))"
 ( cd "$OUT" && sha256sum "$NAME.tar.gz" | tee "$NAME.tar.gz.sha256" )
+
+# the one-file installer / updater: dialog with "Update -- keep configuration" preselected,
+# backup first, checks after (rustdesk-server-nemo/dist/server-installer.sh)
+RUN="tbfdesk-server-$VER-install.run"
+sed "s/@VER@/$VER/g" "$S/dist/server-installer.sh" > "$OUT/$RUN"
+cat "$TARBALL" >> "$OUT/$RUN"
+chmod 755 "$OUT/$RUN"
+echo "built $OUT/$RUN ($(du -h "$OUT/$RUN" | cut -f1))"
+( cd "$OUT" && sha256sum "$RUN" | tee "$RUN.sha256" )

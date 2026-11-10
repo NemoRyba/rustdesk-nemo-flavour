@@ -14,7 +14,8 @@ Nothing here has been fielded yet. Where something is untested, it says so.
 |---|---|---|---|
 | Workstations (Windows), Sciter UI | `dist\tbfdesk-<version>-x64-install.exe` | `scripts/package-windows-client.ps1` on the Windows build host | **no** — needs a Windows host |
 | Workstations (Windows), Flutter UI | `dist\tbfdesk-flutter-<version>-x64-install.exe` | `scripts/package-windows-client.ps1 -Flutter` | **no** — needs a Windows host |
-| Server (hbbs + hbbr) | `localhost/nemo-hbbs:<version>` container, or a native build + the systemd units | `scripts/build-server-container.sh` / `scripts/build-ubuntu-server-release.sh` | container build: yes |
+| Server (hbbs + hbbr) | **`tbfdesk-server-<v>-install.run`** (one file: install / update with a dialog, keep-config default), or the tarball, or the `localhost/nemo-hbbs:<version>` container | `dist/pkg-server.sh <v> <out>` | `.run`: Ubuntu 24.04 + systemd container (update, rollback) |
+| Linux clients | `tbfdesk-<v>-amd64.deb` / `.pkg.tar.zst` / tarball (Sciter); `tbfdesk-flutter-<v>-amd64.deb` / `.pkg.tar.zst` / tarball (Flutter) | `dist/pkg-linux.sh`, `dist/pkg-linux-flutter.sh` | `.deb`: Ubuntu 24.04 install + switch both ways |
 | Technician clients | same Windows installer, or a native Linux build | as above | — |
 
 ---
@@ -27,7 +28,7 @@ splits on `-` and parses the suffix with `unwrap_or(0)`, so `1.4.6-tbf1` scores
 *identically* to `1.4.6` and the updater would never offer it. Use `1.4.7`, `1.4.8`, or a
 numeric fourth part.
 
-Currently client **1.4.19** (Windows) / **1.4.18** (Linux) and server **1.1.16**. Ready-built
+Currently client **1.4.20** (Windows + Linux, Sciter + Flutter) and server **1.1.17**. Ready-built
 installers are published as GitHub releases, each file with a `.sha256`:
 
 - **`release-2026-10-29c`** — Windows `tbfdesk-1.4.19-x64-install.exe` (the unattended
@@ -417,6 +418,45 @@ The server names every un-provisioned client in its log while it is off.
 ---
 
 ## 5. Upgrading
+
+### Server: `tbfdesk-server-<v>-install.run` (1.1.17+)
+
+Copy the file to the server and run it:
+
+```bash
+sudo ./tbfdesk-server-1.1.17-install.run            # dialog
+sudo ./tbfdesk-server-1.1.17-install.run --update   # unattended, configuration kept
+```
+
+The dialog is a desktop window (zenity / kdialog) or, over SSH, a terminal dialog (whiptail);
+**"Update -- KEEP configuration, keys and database" is preselected**, so Enter updates without
+touching anything the server is. What it does:
+
+1. Backs up `/etc/tbfdesk`, the data directory (signing keys = server identity, device database,
+   TLS certificate, policies, published client updates), the units and their drop-ins and the
+   old binaries to `/var/backups/tbfdesk/server-<date>-before-<v>.tar.gz` (0600).
+2. Installs the binaries with the release's `install.sh` (unit paths kept in sync, operator
+   changes to the units kept) and restarts both services.
+3. Checks: identity, configuration, TLS certificate and number of devices unchanged; both
+   services stay up with the new `hbbs`. If they do not come up, the previous binaries are put
+   back automatically (configuration and data were never touched).
+4. Shows the result and writes it to `/var/backups/tbfdesk/last-update-<v>.txt`.
+
+"Reset and reinstall" (new identity -- every client must be provisioned again) is a separate
+choice, needs a confirmation, and backs up first as well. Restore any backup with
+`sudo tar --absolute-names -xzf <backup> && sudo systemctl restart rustdesk-hbbr-nemo rustdesk-hbbs-nemo`.
+Tested in an Ubuntu 24.04 + systemd container: 1.1.16 -> 1.1.17 through the terminal dialog,
+the text menu and `--update` (token, relay, keys, TLS, an operator drop-in all kept), and a
+deliberately broken `hbbs` rolled back.
+
+### Linux clients: one UI each, switchable
+
+`tbfdesk` (Sciter) and `tbfdesk-flutter` (Flutter) install the same TBFDesk
+(`/usr/share/rustdesk`, `/usr/bin/rustdesk`, the `rustdesk` service, `~/.config/tbfdesk`) and
+replace each other: `sudo apt install ./tbfdesk-flutter-<v>-amd64.deb` on a Sciter machine
+switches it to Flutter and keeps its configuration (and the other way round; tested on Ubuntu
+24.04). Automatic updates stay within the UI: upload Flutter packages as "... Flutter" in the
+dashboard (`linux-deb-flutter`, `linux-arch-flutter`, `linux-rpm-flutter`; server 1.1.17+).
 
 **Server 1.1.16 and later** (release tarball): unpack, then `RESTART=1 ./install.sh`. It keeps
 each unit's `ExecStart` pointed at the binary it just installed (the 1.1.15 script installed to
