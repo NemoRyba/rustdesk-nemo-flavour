@@ -475,9 +475,11 @@ runs. Build: `dist/pkg-ubuntu-offline.sh <client .deb> <out> [24.04]`.
 its own copies of the video-codec libraries whose soname changes between releases (24.04 has
 `libvpx.so.9`, 26.04 only `libvpx.so.12`; also libaom, libyuv, libjpeg8) in
 `/usr/share/rustdesk/lib`, found through RUNPATH; everything else it depends on has the same
-package name on 24.04 and 26.04. `do-release-upgrade` keeps locally installed packages (it
-only offers to remove packages from the old archive); answering "yes" to "Remove obsolete
-packages?" is fine. **Before 1.4.20** the `.deb` depended on `libvpx9`, which 26.04 does not
+package name on 24.04 and 26.04. Tested: sources noble -> resolute, `full-upgrade`,
+`autoremove --purge` (both UIs keep starting, nothing missing). Not exercised: the "Remove
+obsolete packages?" step of `do-release-upgrade` -- if it lists `tbfdesk`/`tbfdesk-flutter`,
+answer no, or simply run the `.run` / `apt install ./….deb` again afterwards (configuration is
+kept either way). **Before 1.4.20** the `.deb` depended on `libvpx9`, which 26.04 does not
 have: such a client survives the upgrade only because apt keeps the 24.04 `libvpx9` (no more
 updates for it), and it cannot be installed fresh on 26.04. Update the clients to 1.4.20 before
 or after the release upgrade. The 1.4.20 `.deb` installs directly on 26.04

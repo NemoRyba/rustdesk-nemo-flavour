@@ -19,6 +19,7 @@ set -uo pipefail
 VER="@VER@"; UI="@UI@"; PKG="@PKG@"; REL="@REL@"; DEB="@DEB@"
 APP="TBFDesk $VER ($UI)"
 MODE=install; YES=""; ONLINE=""
+ARGS=("$@")   # the loop below shifts; the root re-exec needs them all
 while [ $# -gt 0 ]; do
   case "$1" in
     --yes|-y) YES=1 ;;
@@ -34,9 +35,9 @@ done
 if [ "$(id -u)" != 0 ] && [ "$MODE" != extract ]; then
   if command -v pkexec >/dev/null 2>&1 && [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ] && [ ! -t 0 ]; then
     exec pkexec env DISPLAY="${DISPLAY:-}" WAYLAND_DISPLAY="${WAYLAND_DISPLAY:-}" XAUTHORITY="${XAUTHORITY:-}" \
-      XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-}" bash "$(readlink -f "$0")" "$@"
+      XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-}" bash "$(readlink -f "$0")" "${ARGS[@]}"
   fi
-  exec sudo -E bash "$(readlink -f "$0")" "$@"
+  exec sudo -E bash "$(readlink -f "$0")" "${ARGS[@]}"
 fi
 
 # ---- unpack -----------------------------------------------------------------------------

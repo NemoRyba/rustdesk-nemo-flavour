@@ -24,7 +24,7 @@ rolls back the binaries if the services do not come up) or the tarball. Every fi
    `apt install ./….deb`. Automatic updates: upload each installer to its own channel in the
    dashboard (`windows-x64` / `windows-x64-flutter`, `linux-deb[-flutter]`, …); a client only
    takes its own UI's channel and the server refuses an installer uploaded to the wrong one.
-3. **Ubuntu 26.04:** 1.4.20 installs on 26.04 and survives the upgrade from 24.04 (tested: noble -> resolute full-upgrade + autoremove).
+3. **Ubuntu 26.04:** 1.4.20 installs on 26.04 and survives the upgrade from 24.04 (tested: noble -> resolute full-upgrade + autoremove; if `do-release-upgrade` offers to remove TBFDesk as obsolete, say no or reinstall afterwards -- the configuration is kept).
    Older `.deb`s depend on `libvpx9`, which 26.04 no longer has (they keep running on the stale
    24.04 copy apt leaves behind, but cannot be installed fresh there): bring clients to 1.4.20.
 
