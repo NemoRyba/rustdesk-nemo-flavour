@@ -417,7 +417,7 @@ Every phase: no merge to `nemo-tdd` until its rows here are ☑ and its lab chec
 
 ---
 
-## 9b. Android — plan only (NOT being implemented now; operator decision 2026-11-02)
+## 9b. Android (plan 2026-11-02; implementation and emulator tests since 2026-11-06)
 
 Desktop (Windows + Linux) is ported first. Android is documented here so nothing is lost;
 tracked as OPEN-TODOS #51. All file:line refs are `nemo-tdd-flutter`.
@@ -495,6 +495,24 @@ the new `main_nemo_*` FFI functions (they compile for Android; desktop-only ones
   `res/mipmap*`, the accessibility-service label (`[RustDesk Input]` string, OPEN-TODOS
   #18 note).
 - Signing key and distribution channel.
+
+**Status 2026-11-11 (emulated Pixel 7a, Android 17, client 09662c14e):**
+- Fixed (Android 17 / targetSdk 37, upstream never hit them): local-network permission
+  (asks with explanation, "ask again" / "open settings"); log in the app dir (Share log was
+  empty); screen sharing crashed (FGS mediaProjection permission + order) and never sent a
+  frame (MediaProjection callback); setup file copy with the private key left in the cache.
+- No public hosts: emulator capture + app log -- no STUN / rustdesk.com lookups; same proven
+  on the Linux desktop build (strace: only the company server).
+- Verified: standard mode = no server, no contacts; setup-string import from file -> server
+  values + device key, registered at the lab server, "allow" in the dashboard reaches the
+  phone (sealed policy, blocked list); managed server values locked after provisioning;
+  desktop -> phone through the company server + relay (screen + a click opened an app);
+  phone -> desktop (Direkt, picture); phone -> desktop console (real shell, commands answer).
+- Open: phone -> desktop mouse/keyboard input not confirmed (pointer did not move; the
+  session got an undecided permission set without a signed-in user); sealed sign-in not
+  testable in lab2 (LDAP off); on-screen keyboard duplicates characters in the terminal;
+  the app icon is still RustDesk's (needs the TBFDesk 1024 px PNG); the sign-in page shows
+  "Unsicheres TLS erlauben" pre-checked -- check against the desktop default.
 
 **A7. Verification (when implemented)**
 Emulator + one real phone: QR import → gate gone, ID server set; sealed login; AB lists

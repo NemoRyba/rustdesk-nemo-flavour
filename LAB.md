@@ -140,6 +140,27 @@ Emulator to host target = recipe A with `nemo-direct-endpoints = '<id>,10.0.2.2:
   `/sdcard/TBFDesk/Logs`, which needed all-files access, so usually no log at all). Read it with
   `adb shell run-as at.tbf.tbfdesk cat app_flutter/Logs/rs_rCURRENT.log`.
 - uiautomator: Flutter labels are `content-desc`, not `text`.
+- **Driving the app:** `vm/scripts/android/ui.py list|tap <label>|wait <label>` (taps by
+  label, `=label` = exact), `vm/scripts/android/start-share.sh` (screen sharing through the
+  scam warning, tip and capture consent, OTP hidden). uiautomator does NOT see every Flutter
+  dialog (the import dialog was "gone" in the dump but on screen) -- take a screenshot.
+- **Managed phone (fleet mode), 2026-11-11:** start sharing to get the ID, mint a device key
+  bound to it (`POST /nemo/api/device-keys` with `setup.internal` = the host's **LAN IP**
+  192.168.100.8 for id/relay/api), `adb push` the setup string to `/sdcard/Download`, import
+  it in the app ("Aus Datei laden"), delete the file, `POST /peers/<id>/allow`, input:
+  `settings put secure enabled_accessibility_services at.tbf.tbfdesk/com.carriez.flutter_hbb.InputService`.
+  Once managed, a second setup string replaces only the device key -- the servers are
+  locked; changing them = uninstall + re-provision (new ID).
+- **Relay on loopback never relays:** hbbr treats every connection from 127.0.0.1 as an admin
+  command (`check_cmd`) and returns. With `adb reverse` (phone) and a local controller both
+  arrive from 127.0.0.1 -> "Relay handshake failed: no key exchange offer from the relay".
+  Use the LAN IP for every client of a relayed lab session.
+- **Host target as session peer:** the Wayland login screen on seat0 makes a host target
+  refuse ("Anmeldebildschirm mit Wayland wird nicht unterstützt") unless started with
+  `FLATPAK_ID=… PATH=<fakebin with failing flatpak-spawn>:$PATH XDG_SESSION_TYPE=x11`.
+- Typing secrets into the phone: put them in a device file and run
+  `adb shell 'input text "$(cat /data/local/tmp/f)"'` (expanded on the device, not in the
+  host command line); `;` and `$()` inside `input text` are eaten by the device shell.
 
 ## Builds the lab runs — the inline trap
 
