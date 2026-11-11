@@ -520,8 +520,8 @@ the new `main_nemo_*` FFI functions (they compile for Android; desktop-only ones
 |---|---|---|---|---|
 | desktop -> desktop | ok (lab, both UIs) | ok (inputlog; key-combo picker both UIs) | ok (Flutter; picker: ^[[1;5A, ^[x, ^A) | not run this round (Linux target at the login screen refuses: "no active console user") |
 | desktop -> phone | ok (relay) | ok (click opened an app) | ok (since 09a797699: /system/bin/sh as the app user) | ok both ways, desktop-initiated |
-| phone -> desktop | ok (picture) | keys ok (picker Win+R); **taps arrive as right-click at 0,0, drag does not move the pointer -- OPEN** | ok | refused in the lab (login-screen host); desktop-initiated works |
-| phone -> phone | ok (Direkt) | ok (Home) | ok (picker in the console) | ok both ways |
+| phone -> desktop | ok (picture) | keys ok (picker Win+R); **taps arrive as right-click at 0,0, drag does not move the pointer -- OPEN** | ok | phone-initiated refused in the lab (desktop at its login screen, no user signed in); desktop-initiated works both ways |
+| phone -> phone | ok (Direkt) | soft keys ok (Home); **a tap arrives as right-click/long-press -- same OPEN bug: the phone controller's gesture layer, not the target** | ok (picker in the console) | ok both ways |
 
 Also open: the phone console duplicates keyboard text (xterm 4.0.0 resets the IME state
 after each commit; the IME's next update can still carry the old word -> "uununaunamuname").

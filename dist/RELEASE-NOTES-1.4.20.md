@@ -13,10 +13,11 @@ other switches the machine and keeps ID, device key, settings and policy.
 | Arch | `tbfdesk-1.4.20-x86_64.pkg.tar.zst` | `tbfdesk-flutter-1.4.20-x86_64.pkg.tar.zst` |
 | Generic Linux | `tbfdesk-client-1.4.20-linux-x86_64.tar.gz` | `tbfdesk-flutter-client-1.4.20-linux-x86_64.tar.gz` |
 
-**Arch packages: 1.4.20-2 (2026-11-11; same program, packaging only).** The first
+**Arch packages of 1.4.20 do not start on a clean Arch -- use 1.4.21** (operator decision
+2026-11-11: no 1.4.20-2 upload; the fix ships with 1.4.21). The
 upload (1.4.20-1) declared too few dependencies and did not start on a clean Arch/CachyOS
 (`libpulse-simple.so.0: cannot open shared object file`). It also never enabled the service,
-and the Sciter package lacked the `tbfdesk` command. `pacman -U` the new file; switching UI asks
+and the Sciter package lacked the `tbfdesk` command. Switching UI with `pacman -U` asks
 "Remove tbfdesk? [y/N]" — answer yes.
 
 Server: `tbfdesk-server-1.1.17-install.run` (install / update with a dialog; **"Update — keep
