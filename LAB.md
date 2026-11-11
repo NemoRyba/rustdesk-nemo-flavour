@@ -158,6 +158,15 @@ Emulator to host target = recipe A with `nemo-direct-endpoints = '<id>,10.0.2.2:
 - **Host target as session peer:** the Wayland login screen on seat0 makes a host target
   refuse ("Anmeldebildschirm mit Wayland wird nicht unterstützt") unless started with
   `FLATPAK_ID=… PATH=<fakebin with failing flatpak-spawn>:$PATH XDG_SESSION_TYPE=x11`.
+- `vm/scripts/android/provision-phone.sh <serial> [label]` does the whole fleet provisioning
+  (install, permissions, sharing, mint key for the shown ID, import, allow, input service);
+  a second phone = AVD `tbf-pixel7a-b` on `-port 5556`. One-time passwords rotate after every
+  session: for repeated tests give the target a permanent lab password (config, file).
+- A host target (no user signed in at seat0) refuses file transfer and console with "No
+  active console user logged on" -- lab limitation, not a bug.
+- Keep exactly ONE TBFDesk per uid running: a second one attaches to /tmp/TBFDesk-1000/ipc
+  and copies that process's options INTO its own config (flutter-v01 lost its server
+  settings this way -- restore from vm/backups).
 - Typing secrets into the phone: put them in a device file and run
   `adb shell 'input text "$(cat /data/local/tmp/f)"'` (expanded on the device, not in the
   host command line); `;` and `$()` inside `input text` are eaten by the device shell.

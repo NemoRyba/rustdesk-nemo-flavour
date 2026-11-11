@@ -514,6 +514,18 @@ the new `main_nemo_*` FFI functions (they compile for Android; desktop-only ones
   the app icon is still RustDesk's (needs the TBFDesk 1024 px PNG); the sign-in page shows
   "Unsicheres TLS erlauben" pre-checked -- check against the desktop default.
 
+**Direction matrix 2026-11-11 (emulated Pixel 7a x2, Linux desktop, lab server via LAN IP):**
+
+| From -> To | Remote control | Input | Console | File transfer |
+|---|---|---|---|---|
+| desktop -> desktop | ok (lab, both UIs) | ok (inputlog; key-combo picker both UIs) | ok (Flutter; picker: ^[[1;5A, ^[x, ^A) | not run this round (Linux target at the login screen refuses: "no active console user") |
+| desktop -> phone | ok (relay) | ok (click opened an app) | ok (since 09a797699: /system/bin/sh as the app user) | ok both ways, desktop-initiated |
+| phone -> desktop | ok (picture) | keys ok (picker Win+R); **taps arrive as right-click at 0,0, drag does not move the pointer -- OPEN** | ok | refused in the lab (login-screen host); desktop-initiated works |
+| phone -> phone | ok (Direkt) | ok (Home) | ok (picker in the console) | ok both ways |
+
+Also open: the phone console duplicates keyboard text (xterm 4.0.0 resets the IME state
+after each commit; the IME's next update can still carry the old word -> "uununaunamuname").
+
 **A7. Verification (when implemented)**
 Emulator + one real phone: QR import → gate gone, ID server set; sealed login; AB lists
 shared peers and not itself; outgoing session to a ticket-requiring host accepted;
