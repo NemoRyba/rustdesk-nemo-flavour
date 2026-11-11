@@ -45,7 +45,11 @@ fi
 export CC CXX
 export SODIUM_LIB_DIR="${SODIUM_LIB_DIR:-/usr/lib}"
 export SODIUM_SHARED="${SODIUM_SHARED:-1}"
-export OPENSSL_NO_VENDOR="${OPENSSL_NO_VENDOR:-1}"
+# OpenSSL is built in (vendored, openssl-src 3.5 LTS), as on Ubuntu and Android: the same
+# TLS code on every distro and no dependency on the distro's libssl soname (Arch moved to
+# OpenSSL 4 in 2026, which a system-linked build could not follow). clang builds it fine
+# since 2026-11-11 (it did not earlier, hence the old OPENSSL_NO_VENDOR=1 default).
+# OPENSSL_NO_VENDOR=1 still links the system copy if ever needed.
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 export PKG_CONFIG_PATH="$ROOT/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"

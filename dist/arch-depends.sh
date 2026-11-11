@@ -25,7 +25,9 @@ ARCH_DEPENDS_COMMON="gtk3 glib2 gdk-pixbuf2 cairo pango libx11 libxcb libxfixes 
   systemd-libs"
 ARCH_DEPENDS_FLUTTER="at-spi2-core fontconfig harfbuzz libepoxy libglvnd"
 # sonames pinned with their major version (Arch's lib provides: libvpx.so=12-64)
-ARCH_PINNED_SONAMES="libvpx libaom libopus libsodium libssl libcrypto"
+ARCH_PINNED_SONAMES="libvpx libaom libopus libsodium"
+# pinned only when the ELFs still link them (OpenSSL is built in since 1.4.21)
+ARCH_PINNED_OPTIONAL="libssl libcrypto"
 
 arch_depends() {  # $1 sciter|flutter, $2... ELF files
   local ui="$1"; shift
@@ -40,6 +42,10 @@ arch_depends() {  # $1 sciter|flutter, $2... ELF files
     s=$(grep -E "^$n\.so\.[0-9]+$" <<<"$needed" | sort -V | tail -1)
     [ -n "$s" ] || { echo "arch_depends: no $n.so.N in the ELFs" >&2; return 1; }
     out="$out '$n.so=${s##*.so.}-64'"
+  done
+  for n in $ARCH_PINNED_OPTIONAL; do
+    s=$(grep -E "^$n\.so\.[0-9]+$" <<<"$needed" | sort -V | tail -1)
+    [ -n "$s" ] && out="$out '$n.so=${s##*.so.}-64'"
   done
   # warn about a linked library whose package is not listed (ownership as on the build host)
   local owners
