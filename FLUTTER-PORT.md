@@ -39,6 +39,7 @@ Client branch `nemo-tdd-flutter`, commits after the merge `9bb5ba2f6`:
 | `527d1d62a` | Android/iOS packaging renamed (at.tbf.tbfdesk, labels, tbfdesk://, SIGNING.md) | §9b A6 |
 | `af659907b` | mobile UI: fleet gate, QR/paste/file import, settings, share log, badges | §9b A2-A5 |
 | `2f6ae1211` | key_confirmed in Flutter status (Registered badge), mobile cert/file handling, strings | A15 |
+| `018c48399` | **P-2 / 1.4.22:** Android device key wrapped at rest by an Android-Keystore AES-GCM key (`ks1:` blob); `common.rs` store/load helpers (desktop = identity, OS-isolation threat model), `scrap/android/ffi.rs` JNI, `KeystoreHelper.kt`. Hardening only (Android), no UI element — no Sciter counterpart (desktop keeps plaintext by design) | §2.1 (security) |
 
 **Span mode limits to check in the lab (V10b):** Wayland (window cannot be positioned),
 Linux GDK_SCALE ≠ 1, macOS Retina units, Windows invisible resize borders (few-px offset),
