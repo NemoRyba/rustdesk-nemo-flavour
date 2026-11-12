@@ -170,6 +170,30 @@ Emulator to host target = recipe A with `nemo-direct-endpoints = '<id>,10.0.2.2:
 - Typing secrets into the phone: put them in a device file and run
   `adb shell 'input text "$(cat /data/local/tmp/f)"'` (expanded on the device, not in the
   host command line); `;` and `$()` inside `input text` are eaten by the device shell.
+- **2026-11-12 helpers:** `vm/scripts/android/phone-ready.sh <serial>` (permanent lab password
+  from `vm/lab-clients/android/pw-<serial>`, input service, stayon, sharing),
+  `connect.sh <ctl> <id> <pwfile> [menu entry]`, `signin.sh <serial> <user> <pwfile>` (sealed
+  sign-in form, dialog or full-window gate), `gboard.py '<text>'` (types by TAPPING Gboard
+  keys -- `adb shell input text` skips the IME's composing/suggestion path, so it cannot
+  test IME bugs; `^2` = middle suggestion, `<` = backspace, `\n` = Enter).
+- **After `adb install -r` the target's sharing is OFF** although its card says "Bereit"; every
+  session is then closed at once ("Von der Gegenstelle manuell geschlossen", target log
+  "Connection closed: connection manager"). `start-share.sh` now checks for
+  "Vermittlungsdienst stoppen" and retries once.
+- **A long `adb shell input swipe` (>= ~500 ms) on the controller is a long-press + drag**
+  on the target (it moved a launcher icon); a flick is `input swipe ... 150`.
+- **LDAP for sign-in tests:** container `tbf-ldap-n` (osixia 1.5.0, LDAPS 127.0.0.1:6360,
+  certs + throwaway passwords in `vm/lab2/ldap/`, users techniker1/2 with `displayName`);
+  `PUT /nemo/api/integration/ldap` (CA pinned), allowlist via `POST
+  /nemo/api/integration/ldap/users/set`, targets via `PUT /nemo/api/integration/permissions`.
+  Changing a user's targets EVICTS their sign-in (the client signs out within ~10 s).
+  The server shows `displayName`, not `cn`.
+- **Windows VM as a relayed target:** the VM's `10.0.2.2` arrives at hbbr from 127.0.0.1
+  (slirp) -> "Relay handshake failed". Set its `relay-server = '192.168.100.8:21117'` in the
+  service's TBFDesk2.toml (service stopped). VM session launches with a password file:
+  wrapper `.cmd` (`start "" "C:\Program Files\TBFDesk\tbfdesk.exe" --connect|--terminal|--file-transfer <id> --password-file C:\src\pw.txt`)
+  through `vmctl.sh gui` (the space trap). The in-guest agent's `TYPE` sends only the first
+  word and Unicode packets; use `KEYS <text>` / `CHORD ctrl+c` for real keys into a session.
 
 ## Builds the lab runs — the inline trap
 

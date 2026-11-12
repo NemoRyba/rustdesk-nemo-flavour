@@ -514,6 +514,47 @@ the new `main_nemo_*` FFI functions (they compile for Android; desktop-only ones
   the app icon is still RustDesk's (needs the TBFDesk 1024 px PNG); the sign-in page shows
   "Unsicheres TLS erlauben" pre-checked -- check against the desktop default.
 
+**Status 2026-11-12 (night run, client f831aff40 = 1.4.21, the final APK on both phones):**
+- Fixed: a tap from a phone controller arrived as right-click/long-press and drags did
+  nothing (2a580f79d: the accessibility listener duplicated touches under pointer id +100);
+  the console duplicated keyboard text (8a9e80017: xterm 4.0.0 vendored with an IME fix --
+  verified with REAL Gboard key taps, suggestion pick, backspace into a committed word, on
+  phone->phone, phone->Linux and phone->Windows consoles); the address book never followed
+  server changes on a phone (A21 timer was desktop-only) and a revoked sign-in stayed
+  "signed in" with "Invalid token" (97d3c2e58, Sciter ab.tis too: 925d53024); German texts
+  for the server's sign-in / connect refusals.
+- Verified against the lab LDAP (osixia, LDAPS, CA pinned): sealed sign-in on the phone
+  (server requires sealed logins), display name, address book = exactly the user's allowed
+  targets, sealed AB requests (`nemo-sealed-request=v1` pushed by policy, server
+  `require_sealed_request` on), automatic reload + sign-out when the admin changes the
+  user's targets (10 s), "not on allowlist" / wrong password refused with German text,
+  "sign-in required" gate full-window on the phone (Settings stays reachable), target
+  outside the user's list refused ("Sie dürfen sich nicht mit diesem Computer verbinden").
+- Verified: dashboard cut ends a phone-hosted session (26 s, next poll); a settings save
+  keeps the device key; language picker DE/AT/EN with flags; About = TBF GmbH + RustDesk
+  line; no privacy mode / update toggle / rustdesk.com links; "Connect directly" appears
+  only with a published direct endpoint (both UIs); the insecure-TLS box pre-checked on the
+  sign-in page = Sciter's A5 default (`allow-insecure-tls-fallback=Y` when unset).
+- Key-combo picker from the phone into a Windows 11 session: Win+R opens Run,
+  Ctrl+Alt+Del reaches the secure screen, Esc closes it.
+- Observation (operator decision): with "sign-in required" the phone's Share tab is behind
+  the gate too, so a phone cannot start screen sharing until someone signs in (desktop:
+  the whole main window is gated the same way).
+- Open: QR import via the emulator camera not exercised (residual); app icon still
+  RustDesk's (needs the TBFDesk 1024 px PNG); release signing of the APK (needs the key).
+
+**Direction matrix 2026-11-12 (final builds: APK, Windows Flutter 1.4.21, Linux Flutter lab target):**
+
+| From -> To | Remote control | Input | Console | File transfer |
+|---|---|---|---|---|
+| phone -> phone | ok (Direkt) | ok: tap opens an app, flick opens the app drawer | ok (real Gboard typing) | ok both ways |
+| phone -> Linux desktop | ok (Direkt) | ok: tap = button 1, drag moves the pointer (0,0 -> 504,303) | ok (real Gboard typing) | refused by the lab target ("no active console user": Xvfb at the login screen) -- see Windows |
+| phone -> Windows 11 | ok (Relay) | ok: key-combo picker Win+R / Ctrl+Alt+Del / Esc | ok (PowerShell as the signed-in user) | ok both ways |
+| Windows 11 -> phone | ok (Relay) | ok: click opened Photos | ok (`getprop`, Ctrl+C interrupts `cat`) | ok both ways (Senden / Empfangen) |
+
+Lab note: the VM reaches the relay through slirp from 127.0.0.1, which hbbr treats as an
+admin client -- its `relay-server` must be the host LAN address (LAB.md).
+
 **Direction matrix 2026-11-11 (emulated Pixel 7a x2, Linux desktop, lab server via LAN IP):**
 
 | From -> To | Remote control | Input | Console | File transfer |
