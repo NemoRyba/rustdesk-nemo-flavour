@@ -47,4 +47,7 @@ Automatic updates: upload each installer to its own channel as for 1.4.20.
   ID / key pair / device key (hash) / server settings unchanged each time.
 - Phone <-> phone, phone <-> Linux, phone <-> Windows: remote control, input, console,
   file transfer (FLUTTER-PORT.md §9b matrix 2026-11-12).
-- Linux packages: see the staging log (`arch-pkg-test.sh`, `ubuntu-offline-test.sh`).
+- Linux packages (all PASS 2026-11-12): Ubuntu offline install on 24.04 without network,
+  Sciter↔Flutter switch keeps config, launch under Xvfb, release-upgrade 24.04→26.04, `.deb`
+  straight on 26.04 (both UIs); clean-Arch container install + launch (both UIs, OpenSSL built
+  in). Logs: `vm/logs/ubuntu-offline-test-1421.log`, `vm/logs/arch-pkg-test-1421.log`.
