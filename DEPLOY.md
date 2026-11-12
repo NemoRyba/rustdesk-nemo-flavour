@@ -93,6 +93,17 @@ tbfdesk-1.4.19-x64-install.exe --silent-install --import-setup C:\deploy\pc1.tbf
                                                  unattended AND provisioned, no GUI (§4)
 ```
 
+**Per-computer enrollment from the dashboard (no manual key import).** Settings → **Device keys**:
+type the computer **label**, optionally **bind it to a TBFDesk ID** (or leave empty for a one-shot
+claim you approve on first use), **Generate device key** → you get the **setup string with the key
+baked in** and a per-computer `<label>.tbfsetup` **Download file**. The generated box now also shows
+the exact unattended command and offers **Download install.cmd / install.sh**: drop the `.tbfsetup`
+and the script next to a TBFDesk installer on the target and run the script — it installs and
+provisions in one step (`--silent-install --import-setup` on Windows, package + `tbfdesk --import-setup`
+on Linux). The device key only ever leaves in the `.tbfsetup` file, never on a command line. The
+**Device keys** table lists every key created (label / bound ID / claim status / created), so the
+server is the record of what was provisioned for which computer.
+
 **Why a packer and not a renamed exe.** `install_me` copies the folder by filename and
 never renames the executable, while the service, shortcuts and UninstallString it
 registers all point at `RustDesk.exe`. Running `rustdesk-host=…,.exe --silent-install`
