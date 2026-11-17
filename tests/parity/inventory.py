@@ -249,17 +249,25 @@ def flutter_index(client):
     for path in files:
         rel = os.path.relpath(path, os.path.join(client, 'flutter'))
         for n, line in enumerate(open(path, encoding='utf-8', errors='replace'), 1):
+            defined = set()
             for m in cdef.finditer(line):
                 consts[m.group(1)] = m.group(3)
+                defined.add(m.group(3))
             for m in lit.finditer(line):
+                # `const kOptionX = 'x';` is not an occurrence of 'x': it counts only through
+                # a use of kOptionX (below). A const nobody reads is not a Flutter counterpart.
+                if m.group(2) in defined:
+                    continue
                 literals.setdefault(m.group(2), []).append(f"{rel}:{n}")
-    # constant uses: kOptionX referenced -> counts as the literal value present
+    # constant uses: kOptionX referenced (not on its own definition) -> the value is present
     uses = {}
     for path in files:
         rel = os.path.relpath(path, os.path.join(client, 'flutter'))
         text = open(path, encoding='utf-8', errors='replace').read()
         for name, value in consts.items():
-            if re.search(r"\b" + re.escape(name) + r"\b", text):
+            pat = re.compile(r"\b" + re.escape(name) + r"\b")
+            rest = re.sub(r"\bconst\s+(?:String\s+)?" + re.escape(name) + r"\s*=", '', text)
+            if pat.search(rest):
                 uses.setdefault(value, []).append(rel)
     ffi = set()
     for line in open(os.path.join(client, 'src', 'flutter_ffi.rs'), encoding='utf-8'):
