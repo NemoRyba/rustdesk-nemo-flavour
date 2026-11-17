@@ -5,8 +5,8 @@ UI build pipeline, and **real GUI tests that click through the client** on Linux
 the Win11 test VM, reading the screen with OCR and checking the logs.
 
 ```bash
-tests/run-all.sh                 # unit + contract + static + Linux GUI        (default)
-tests/run-all.sh --quick         # unit + contract + static only               (no display, no lab)
+tests/run-all.sh                 # unit + contract + static + parity + Linux GUI   (default)
+tests/run-all.sh --quick         # unit + contract + static + parity only      (no display, no lab)
 tests/run-all.sh --all           # + Windows VM: unattended provisioning, GUI test, #43 end-to-end
 tests/run-all.sh --only gui-windows --installer 'C:\src\dist\tbfdesk-1.4.19-x64-install.exe'
 TBF_FULL=1 tests/run-all.sh --all  # + the slow checks (#43 "stale" after 2 min offline)
@@ -26,6 +26,7 @@ from its own command line, never printed) and the Win11 test VM. Nothing touches
 | `unit-server` | `cargo test` of hbbs/hbbr (125+ tests), incl. #43: policy ref stability, report bounds, report signature (tamper / wrong peer / stale), every state transition, per-role storage, source labels | Rust |
 | `unit-client` | `cargo test --lib` of the client (130+ tests), incl. #43 report building and the server signature contract, and the **1.4.16 regression guards** (below). Run by `tests/unit/client.sh`: `test_get_cursor_pos` gets a throwaway Xvfb when the session has no display; `test_desktop_env` is skipped (printed `SKIP … reason`) when seat0 belongs to another user, e.g. the login screen while you work remotely | Rust + `tests/lib/client-env.sh`, Xvfb |
 | `contract` | client and server agree on the #43 report: every refusal code the client can send is one the server accepts; same signature domain; same fields | Python |
+| `parity` | **Sciter ⇄ Flutter parity from the source, both directions** (`tests/parity/inventory.py --check`): every Sciter menu entry / input / toggle / option key / binding has a Flutter counterpart, and every option key Flutter reads or writes and every Flutter settings row has a Sciter one; plus behaviour notes for keys both UIs use (one greys the row when the administrator fixed the option and the other does not; different store; different default). An element with no counterpart and no verdict in `tests/parity/overrides.csv` / `overrides-f2s.csv` fails; a gap logged as `MISSING: P<n>` with P<n> open in `PARITY-GAPS.md` is KNOWN (fails only with `TBF_STRICT=1`). Android-only elements and Flutter menu entries matched only by label are report-only. Output in `$TBF_OUT/parity/` (`FLUTTER-TO-SCITER-PARITY.md`, `FLUTTER-PARITY-ELEMENTS.md`, CSVs). Presence only: "works" still needs the lab | Python, client source |
 | `static-ui` | runs the real `res/inline-sciter.py` with a **non-UTF-8 platform default** and checks the embedded pages: correct UTF-8 and one script block per file; negative control: the 1.4.16 generator must fail | Python |
 | `server-installer` | the server tarball's `install.sh` in a clean Ubuntu 24.04 container: fresh install, upgrade over a customised unit that pointed elsewhere (re-pointed, customisation kept, old binary replaced, `hbbs.env` untouched), `RESTART=1`, idempotency, custom prefix | podman + `localhost/nemo-gui` |
 | `build-linux` | builds the Linux client used by the GUI stages | Rust |
@@ -75,6 +76,7 @@ tests/lib/client-env.sh                Linux client build environment
 tests/lib/ocr.py                       OCR: find UI text + coordinates in a screenshot
 tests/contracts/                       cross-repo contract checks
 tests/static/                          build-pipeline checks (no display)
+tests/parity/inventory.py              Sciter <-> Flutter parity inventory (+ overrides*.csv verdicts)
 tests/gui/sciter_parse.sh              libsciter parse + logging + mirroring
 tests/gui/linux_client.sh              Linux GUI test (clicks + OCR)
 tests/gui/windows_client.sh, win/      Windows VM GUI test + its PowerShell helpers
