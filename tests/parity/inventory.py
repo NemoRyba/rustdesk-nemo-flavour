@@ -55,7 +55,7 @@ import os
 import re
 import subprocess
 import sys
-from collections import OrderedDict
+from collections import Counter, OrderedDict
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SUPER = os.path.dirname(os.path.dirname(HERE))
@@ -264,10 +264,10 @@ def flutter_index(client):
     for path in files:
         rel = os.path.relpath(path, os.path.join(client, 'flutter'))
         text = open(path, encoding='utf-8', errors='replace').read()
+        tokens = Counter(re.findall(r"[A-Za-z0-9_]+", text))
+        defined = Counter(m.group(1) for m in cdef.finditer(text))
         for name, value in consts.items():
-            pat = re.compile(r"\b" + re.escape(name) + r"\b")
-            rest = re.sub(r"\bconst\s+(?:String\s+)?" + re.escape(name) + r"\s*=", '', text)
-            if pat.search(rest):
+            if tokens[name] > defined[name]:
                 uses.setdefault(value, []).append(rel)
     ffi = set()
     for line in open(os.path.join(client, 'src', 'flutter_ffi.rs'), encoding='utf-8'):
@@ -324,6 +324,8 @@ class Src:
         self.str_at = {s[0]: s for s in self.strings}
         self.nl = [i for i, c in enumerate(self.text) if c == '\n']
         self._defs = None
+        self._calls = None
+        self._functions = None
 
     def line(self, off):
         return bisect.bisect_left(self.nl, off) + 1
@@ -521,15 +523,20 @@ CALL_RE = re.compile(r"(?<![\w$.])((?:this\.|self\.)?" + IDENT + r"(?:\." + IDEN
 
 def calls(src):
     """[(name without this./self., start, '(' offset)] for every call-shaped token."""
-    out = []
-    for c in CALL_RE.finditer(src.masked):
-        name = re.sub(r"^(?:this|self)\.", '', c.group(1))
-        out.append((name, c.start(), c.end() - 1))
-    return out
+    if src._calls is None:
+        src._calls = [(re.sub(r"^(?:this|self)\.", '', c.group(1)), c.start(), c.end() - 1)
+                      for c in CALL_RE.finditer(src.masked)]
+    return src._calls
 
 
 def definitions(src):
     """Function definitions -> (name, [(param, positional index or None)], body start, end)."""
+    if src._functions is None:
+        src._functions = _definitions(src)
+    return src._functions
+
+
+def _definitions(src):
     m = src.masked
     out = []
     for name, start, lp in calls(src):
