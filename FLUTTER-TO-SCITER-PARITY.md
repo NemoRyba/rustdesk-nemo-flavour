@@ -5,7 +5,7 @@ put Sciter locations, decisions and gap numbers in `tests/parity/overrides-f2s.c
 open gaps in `PARITY-GAPS.md`. The other direction is `FLUTTER-PARITY-ELEMENTS.md`.
 Client: `ea7e32da8`.
 
-Flutter elements: **324** | in Sciter: **144** | n/a: 28 | **unaccounted: 0** | known gaps: 80 | report-only: Android-only 18, menu entries without option key 54 | behaviour notes: 6 (4 known gaps, 0 not triaged)
+Flutter elements: **321** | in Sciter: **158** | n/a: 30 | **unaccounted: 0** | known gaps: 116 | report-only: Android-only 17, menu entries without option key 0 | behaviour notes: 6 (4 known gaps, 0 not triaged)
 
 "In Sciter" is a presence candidate only: the key is read/written by the Sciter UI or is an
 element `#id` in `src/ui`; a settings row or menu entry without an option key matches on its
@@ -31,11 +31,15 @@ Compared: 84 keys both UIs use (desktop + shared Flutter code); fixed check 45, 
 | `behaviour:fixed:temporary-password-length` | `temporary-password-length` | Sciter greys it when the administrator fixed the option; Flutter lets the user change it with no isOptionFixed check (the Rust setter drops the write silently) -- store main | lib/models/server_model.dart:104 | index.tis:1855; index.tis:2442 | known: MISSING: P25 (Flutter does not grey it when fixed) |
 | `behaviour:fixed:verification-method` | `verification-method` | Sciter greys it when the administrator fixed the option; Flutter lets the user change it with no isOptionFixed check (the Rust setter drops the write silently) -- store main | lib/models/server_model.dart:86 | index.tis:1841; index.tis:2531 | known: MISSING: P25 (Flutter does not grey it when fixed) |
 
-## Known gaps (PARITY-GAPS.md) (80)
+## Known gaps (PARITY-GAPS.md) (116)
 
 | Element | Label | Area | Stores | Flutter | Sciter | Note |
 |---|---|---|---|---|---|---|
 | `option:allow-remote-cm-modification` |  | Connection manager (desktop) | local | lib/desktop/pages/server_page.dart:1229 | MISSING: P18 (incoming-access setting) | hbb_common OPTION_ALLOW_REMOTE_CM_MODIFICATION in KEYS_LOCAL_SETTINGS; source check 2026-11-17; read by the Flutter CM (desktop/pages/server_page.dart:1229); no setter in either UI -- to check |
+| `menu:Clear` | Clear | Desktop (other) |  | lib/desktop/pages/file_manager_page.dart:672 | MISSING: P27 (menu entry only Flutter has -- to check) | source check 2026-11-17 |
+| `menu:Search` | Search | Desktop (other) |  | lib/desktop/pages/file_manager_page.dart:645 | MISSING: P27 (menu entry only Flutter has -- to check) | source check 2026-11-17 |
+| `menu:Select All` | Select All | Desktop (other) |  | lib/desktop/pages/file_manager_page.dart:991 | MISSING: P27 (menu entry only Flutter has -- to check) | source check 2026-11-17 |
+| `menu:Unselect All` | Unselect All | Desktop (other) |  | lib/desktop/pages/file_manager_page.dart:997 | MISSING: P27 (menu entry only Flutter has -- to check) | source check 2026-11-17 |
 | `option:terminal-persistent` | Keep terminal sessions on disconnect | Desktop (other) | toggle,user-default | lib/desktop/pages/terminal_tab_page.dart:289; lib/common/widgets/setting_widgets.dart:247; lib/desktop/pages/terminal_tab_page.dart:199 | MISSING: P17 (session menu entry / dialog) | hbb_common OPTION_TERMINAL_PERSISTENT in KEYS_DISPLAY_SETTINGS; source check 2026-11-17; session toggle (terminal window) + default (P16) |
 | `option:access-mode` |  | Flutter (other) | main | lib/common.dart:3188; lib/desktop/pages/desktop_setting_page.dart:1105; lib/desktop/pages/desktop_setting_page.dart:1143 | MISSING: P18 (incoming-access setting) | hbb_common OPTION_ACCESS_MODE in KEYS_SETTINGS; source check 2026-11-17 |
 | `option:allow-deep-link-password` |  | Flutter (other) | buildin | lib/common.dart:2460 | MISSING: P24 (build-time option Sciter ignores) | hbb_common OPTION_ALLOW_DEEP_LINK_PASSWORD in KEYS_BUILDIN_SETTINGS; source check 2026-11-17 |
@@ -52,8 +56,37 @@ Compared: 84 keys both UIs use (desktop + shared Flutter code); fixed check 45, 
 | `option:privacy-mode-impl-key` |  | Models (no UI) | peer | lib/models/model.dart:1793 | MISSING: P17 (session menu entry / dialog) | source check 2026-11-17 |
 | `option:sync-ab-tags` |  | Models (no UI) | local | lib/models/ab_model.dart:24 | MISSING: P23 (address book extra) | hbb_common OPTION_SYNC_AB_TAGS in KEYS_LOCAL_SETTINGS; source check 2026-11-17 |
 | `option:sync-ab-with-recent-sessions` |  | Models (no UI) | local | lib/models/ab_model.dart:19; lib/models/ab_model.dart:631 | MISSING: P23 (address book extra) | hbb_common OPTION_SYNC_AB_WITH_RECENT_SESSIONS in KEYS_LOCAL_SETTINGS; source check 2026-11-17 |
+| `menu:Add to address book` | Add to address book | Peer card menu |  | lib/common/widgets/peer_card.dart:1101 | MISSING: P27 (menu entry only Flutter has -- to check) | source check 2026-11-17 |
+| `menu:Edit note` | Edit note | Peer card menu |  | lib/common/widgets/peer_card.dart:1407 | MISSING: P27 (menu entry only Flutter has -- to check) | source check 2026-11-17 |
+| `menu:Exist in` | Exist in | Peer card menu |  | lib/common/widgets/peer_card.dart:1443 | MISSING: P27 (menu entry only Flutter has -- to check) | source check 2026-11-17 |
 | `option:hide-username-on-card` |  | Peer card menu | buildin | lib/common/widgets/peer_card.dart:328; lib/common/widgets/peer_card.dart:362 | MISSING: P24 (build-time option Sciter ignores) | hbb_common OPTION_HIDE_USERNAME_ON_CARD in KEYS_BUILDIN_SETTINGS; source check 2026-11-17 |
+| `menu:Apps` | Apps | Remote toolbar (desktop) |  | lib/desktop/widgets/remote_toolbar.dart:2113; lib/mobile/pages/remote_page.dart:666; lib/mobile/pages/view_camera_page.dart:429 | MISSING: P27 (menu entry only Flutter has -- to check) | source check 2026-11-17 |
+| `menu:End call` | End call | Remote toolbar (desktop) |  | lib/desktop/widgets/remote_toolbar.dart:2247 | MISSING: P27 (menu entry only Flutter has -- to check) | source check 2026-11-17 |
+| `menu:Mobile Actions` | Mobile Actions | Remote toolbar (desktop) |  | lib/desktop/widgets/remote_toolbar.dart:577 | MISSING: P27 (menu entry only Flutter has -- to check) | source check 2026-11-17 |
+| `menu:Power` | Power | Remote toolbar (desktop) |  | lib/desktop/widgets/remote_toolbar.dart:2125; lib/mobile/pages/remote_page.dart:678; lib/mobile/pages/view_camera_page.dart:441 | MISSING: P27 (menu entry only Flutter has -- to check) | source check 2026-11-17 |
+| `menu:Resolution` | Resolution | Remote toolbar (desktop) |  | lib/desktop/widgets/remote_toolbar.dart:1603; lib/mobile/pages/remote_page.dart:1379 | MISSING: P27 (menu entry only Flutter has -- to check) | source check 2026-11-17 |
+| `menu:ScrollAuto` | ScrollAuto | Remote toolbar (desktop) |  | lib/desktop/widgets/remote_toolbar.dart:1241 | MISSING: P17 (session menu entry / dialog) | source check 2026-11-17; session scroll style |
+| `menu:ScrollEdge` | ScrollEdge | Remote toolbar (desktop) |  | lib/desktop/widgets/remote_toolbar.dart:1262 | MISSING: P17 (session menu entry / dialog) | source check 2026-11-17; session scroll style |
+| `menu:Scrollbar` | Scrollbar | Remote toolbar (desktop) |  | lib/desktop/widgets/remote_toolbar.dart:1251 | MISSING: P17 (session menu entry / dialog) | source check 2026-11-17; session scroll style |
+| `menu:Select Monitor` | Select Monitor | Remote toolbar (desktop) |  | lib/desktop/widgets/remote_toolbar.dart:618 | MISSING: P27 (menu entry only Flutter has -- to check) | source check 2026-11-17 |
+| `menu:Trackpad speed` | Trackpad speed | Remote toolbar (desktop) |  | lib/desktop/widgets/remote_toolbar.dart:1909 | MISSING: P17 (session menu entry / dialog) | source check 2026-11-17; session trackpad speed |
+| `menu:Virtual display` | Virtual display | Remote toolbar (desktop) |  | lib/desktop/widgets/remote_toolbar.dart:1087; lib/mobile/pages/remote_page.dart:1350 | MISSING: P27 (menu entry only Flutter has -- to check) | source check 2026-11-17 |
+| `menu:Voice call` | Voice call | Remote toolbar (desktop) |  | lib/desktop/widgets/remote_toolbar.dart:2198; lib/desktop/widgets/remote_toolbar.dart:2261 | MISSING: P27 (menu entry only Flutter has -- to check) | source check 2026-11-17 |
+| `menu:Volume down` | Volume down | Remote toolbar (desktop) |  | lib/desktop/widgets/remote_toolbar.dart:2121; lib/mobile/pages/remote_page.dart:674; lib/mobile/pages/view_camera_page.dart:437 | MISSING: P27 (menu entry only Flutter has -- to check) | source check 2026-11-17 |
+| `menu:Volume up` | Volume up | Remote toolbar (desktop) |  | lib/desktop/widgets/remote_toolbar.dart:2117; lib/mobile/pages/remote_page.dart:670; lib/mobile/pages/view_camera_page.dart:433 | MISSING: P27 (menu entry only Flutter has -- to check) | source check 2026-11-17 |
 | `option:show-my-cursor` | View Mode / Show my cursor | Remote toolbar (desktop) | toggle | lib/desktop/widgets/remote_toolbar.dart:2052; lib/desktop/widgets/remote_toolbar.dart:2073; lib/desktop/widgets/remote_toolbar.dart:2062 | MISSING: P17 (session menu entry / dialog) | source check 2026-11-17 |
+| `menu:Copy Fingerprint` | Copy Fingerprint | Remote toolbar menus (shared) |  | lib/common/widgets/toolbar.dart:365; lib/desktop/pages/remote_tab_page.dart:323; lib/desktop/pages/view_camera_tab_page.dart:284 | MISSING: P27 (menu entry only Flutter has -- to check) | source check 2026-11-17 |
+| `menu:Plug out all` | Plug out all | Remote toolbar menus (shared) |  | lib/common/widgets/toolbar.dart:1023; lib/common/widgets/toolbar.dart:1067 | MISSING: P27 (menu entry only Flutter has -- to check) | source check 2026-11-17 |
+| `menu:Relative mouse mode` | Relative mouse mode | Remote toolbar menus (shared) |  | lib/common/widgets/toolbar.dart:930 | MISSING: P27 (menu entry only Flutter has -- to check) | source check 2026-11-17 |
+| `menu:Request Elevation` | Request Elevation | Remote toolbar menus (shared) |  | lib/common/widgets/toolbar.dart:110 | MISSING: P27 (menu entry only Flutter has -- to check) | source check 2026-11-17 |
+| `menu:Reset canvas` | Reset canvas | Remote toolbar menus (shared) |  | lib/common/widgets/toolbar.dart:161 | MISSING: P27 (menu entry only Flutter has -- to check) | source check 2026-11-17 |
+| `menu:Reverse mouse wheel` | Reverse mouse wheel | Remote toolbar menus (shared) |  | lib/common/widgets/toolbar.dart:958 | MISSING: P17 (session menu entry / dialog) | source check 2026-11-17 |
+| `menu:Scale custom` | Scale custom | Remote toolbar menus (shared) |  | lib/common/widgets/toolbar.dart:407 | MISSING: P17 (session menu entry / dialog) | source check 2026-11-17 |
+| `menu:Send clipboard keystrokes` | Send clipboard keystrokes | Remote toolbar menus (shared) |  | lib/common/widgets/toolbar.dart:149 | MISSING: P27 (menu entry only Flutter has -- to check) | source check 2026-11-17 |
+| `menu:Show displays as individual windows` | Show displays as individual windows | Remote toolbar menus (shared) |  | lib/common/widgets/toolbar.dart:726; lib/desktop/widgets/remote_toolbar.dart:650 | MISSING: P27 (menu entry only Flutter has -- to check) | source check 2026-11-17 |
+| `menu:Switch Sides` | Switch Sides | Remote toolbar menus (shared) |  | lib/common/widgets/toolbar.dart:295 | MISSING: P27 (menu entry only Flutter has -- to check) | source check 2026-11-17 |
+| `menu:Use all my displays for the remote session` | Use all my displays for the remote session | Remote toolbar menus (shared) |  | lib/common/widgets/toolbar.dart:741 | MISSING: P27 (menu entry only Flutter has -- to check) | source check 2026-11-17 |
+| `menu:swap-left-right-mouse` | swap-left-right-mouse | Remote toolbar menus (shared) |  | lib/common/widgets/toolbar.dart:975 | MISSING: P17 (session menu entry / dialog) | source check 2026-11-17 |
 | `option:view-only` | View Mode / Show my cursor | Remote toolbar menus (shared) | toggle | lib/common/widgets/toolbar.dart:774; lib/desktop/widgets/remote_toolbar.dart:2052; lib/desktop/widgets/remote_toolbar.dart:2073 | MISSING: P17 (session menu entry / dialog) | source check 2026-11-17 |
 | `option:zoom-cursor` | Zoom cursor | Remote toolbar menus (shared) | toggle,user-default | lib/common/widgets/toolbar.dart:611; lib/common/widgets/setting_widgets.dart:227; lib/common/widgets/toolbar.dart:616 | MISSING: P17 (session menu entry / dialog) | hbb_common OPTION_ZOOM_CURSOR in KEYS_DISPLAY_SETTINGS; source check 2026-11-17 |
 | `option:allow-ask-for-note` | note-at-conn-end-tip | Settings (desktop) | custom,local | lib/desktop/pages/desktop_setting_page.dart:623; lib/mobile/pages/settings_page.dart:838; lib/common/widgets/dialog.dart:1600 | MISSING: P20 (general / network toggle) | hbb_common OPTION_ALLOW_ASK_FOR_NOTE in KEYS_LOCAL_SETTINGS; source check 2026-11-17 |
@@ -111,75 +144,18 @@ Compared: 84 keys both UIs use (desktop + shared Flutter code); fixed check 45, 
 | `option:swap-left-right-mouse` | swap-left-right-mouse | Settings widgets (shared) | toggle,user-default | lib/common/widgets/setting_widgets.dart:236; lib/common/widgets/toolbar.dart:968; lib/common/widgets/toolbar.dart:971 | MISSING: P17 (session menu entry / dialog) | hbb_common OPTION_SWAP_LEFT_RIGHT_MOUSE in KEYS_DISPLAY_SETTINGS; source check 2026-11-17; session toggle + default (P16) |
 | `option:use_all_my_displays_for_the_remote_session` | Use all my displays for the remote session | Settings widgets (shared) | user-default | lib/common/widgets/setting_widgets.dart:244; lib/desktop/pages/desktop_setting_page.dart:2202; lib/mobile/pages/settings_page.dart:1242 | MISSING: P16 (no defaults for new sessions in Sciter) | hbb_common OPTION_USE_ALL_MY_DISPLAYS_FOR_THE_REMOTE_SESSION in KEYS_DISPLAY_SETTINGS; source check 2026-11-17 |
 | `option:view_only` | View Mode | Settings widgets (shared) | user-default | lib/common/widgets/setting_widgets.dart:219; lib/desktop/pages/desktop_setting_page.dart:2202; lib/mobile/pages/settings_page.dart:1242 | MISSING: P16 (no defaults for new sessions in Sciter) | hbb_common OPTION_VIEW_ONLY in KEYS_DISPLAY_SETTINGS; source check 2026-11-17 |
+| `menu:Filter by intersection` | Filter by intersection | Shared widgets |  | lib/common/widgets/address_book.dart:418 | MISSING: P23 (address book extra) | source check 2026-11-17 |
+| `menu:Sort tags` | Sort tags | Shared widgets |  | lib/common/widgets/address_book.dart:399 | MISSING: P23 (address book extra) | source check 2026-11-17 |
+| `menu:Sync with recent sessions` | Sync with recent sessions | Shared widgets |  | lib/common/widgets/address_book.dart:382 | MISSING: P23 (address book extra) | source check 2026-11-17 |
 | `option:bot` |  | Shared widgets | main | lib/common/widgets/dialog.dart:2143 | MISSING: P19 (2FA extra) | source check 2026-11-17 |
 | `option:custom-fps` |  | Shared widgets | peer,user-default | lib/common/widgets/dialog.dart:1890; lib/common/widgets/setting_widgets.dart:160; lib/common/widgets/setting_widgets.dart:162 | MISSING: P17 (session menu entry / dialog) | hbb_common OPTION_CUSTOM_FPS in KEYS_DISPLAY_SETTINGS; source check 2026-11-17; session custom-quality dialog + default (P16); Sciter header.tis:561 sets the bitrate only |
 | `option:hideAbTagsPanel` |  | Shared widgets | local | lib/common/widgets/peer_tab_page.dart:88; lib/common/widgets/peer_tab_page.dart:571 | MISSING: P23 (address book extra) | hbb_common OPTION_HIDE_AB_TAGS_PANEL in KEYS_LOCAL_SETTINGS; source check 2026-11-17 |
 | `option:os-username` |  | Shared widgets | peer | lib/common/widgets/dialog.dart:909; lib/common/widgets/dialog.dart:1443; lib/common/widgets/dialog.dart:1454 | MISSING: P17 (session menu entry / dialog) | source check 2026-11-17 |
 
-## Menu entries without an option key, label not in Sciter (report-only) (54)
+## Android-only (report-only) (17)
 
 | Element | Label | Area | Stores | Flutter | Sciter | Note |
 |---|---|---|---|---|---|---|
-| `menu:Back` | Back | Desktop (other) |  | lib/desktop/pages/file_manager_page.dart:560; lib/desktop/widgets/remote_toolbar.dart:2105; lib/mobile/pages/remote_page.dart:658 | **MISSING** |  |
-| `menu:Clear` | Clear | Desktop (other) |  | lib/desktop/pages/file_manager_page.dart:672 | **MISSING** |  |
-| `menu:Home` | Home | Desktop (other) |  | lib/desktop/pages/file_manager_page.dart:714; lib/desktop/widgets/remote_toolbar.dart:2109; lib/mobile/pages/remote_page.dart:662 | **MISSING** |  |
-| `menu:Move tab to new window` | Move tab to new window | Desktop (other) |  | lib/desktop/pages/remote_tab_page.dart:277; lib/desktop/pages/view_camera_tab_page.dart:265 | **MISSING** |  |
-| `menu:New tab` | New tab | Desktop (other) |  | lib/desktop/pages/terminal_tab_page.dart:254 | **MISSING** |  |
-| `menu:Parent directory` | Parent directory | Desktop (other) |  | lib/desktop/pages/file_manager_page.dart:580 | **MISSING** |  |
-| `menu:Refresh File` | Refresh File | Desktop (other) |  | lib/desktop/pages/file_manager_page.dart:688 | **MISSING** |  |
-| `menu:Resume` | Resume | Desktop (other) |  | lib/desktop/pages/file_manager_page.dart:297 | **MISSING** |  |
-| `menu:Search` | Search | Desktop (other) |  | lib/desktop/pages/file_manager_page.dart:645 | **MISSING** |  |
-| `menu:Select All` | Select All | Desktop (other) |  | lib/desktop/pages/file_manager_page.dart:991 | **MISSING** |  |
-| `menu:Unselect All` | Unselect All | Desktop (other) |  | lib/desktop/pages/file_manager_page.dart:997 | **MISSING** |  |
-| `menu:Add to address book` | Add to address book | Peer card menu |  | lib/common/widgets/peer_card.dart:1101 | **MISSING** |  |
-| `menu:Delete` | Delete | Peer card menu |  | lib/common/widgets/peer_card.dart:952; lib/desktop/pages/file_manager_page.dart:310; lib/desktop/pages/file_manager_page.dart:816 | **MISSING** |  |
-| `menu:Edit note` | Edit note | Peer card menu |  | lib/common/widgets/peer_card.dart:1407 | **MISSING** |  |
-| `menu:Exist in` | Exist in | Peer card menu |  | lib/common/widgets/peer_card.dart:1443 | **MISSING** |  |
-| `menu:RDP` | RDP | Peer card menu |  | lib/common/widgets/peer_card.dart:799 | **MISSING** |  |
-| `menu:Successful` | Successful | Peer card menu |  | lib/common/widgets/peer_card.dart:869 | **MISSING** |  |
-| `menu:Apps` | Apps | Remote toolbar (desktop) |  | lib/desktop/widgets/remote_toolbar.dart:2113; lib/mobile/pages/remote_page.dart:666; lib/mobile/pages/view_camera_page.dart:429 | **MISSING** |  |
-| `menu:Codec` | Codec | Remote toolbar (desktop) |  | lib/desktop/widgets/remote_toolbar.dart:1312 | **MISSING** |  |
-| `menu:Control Actions` | Control Actions | Remote toolbar (desktop) |  | lib/desktop/widgets/remote_toolbar.dart:854 | **MISSING** |  |
-| `menu:Display Settings` | Display Settings | Remote toolbar (desktop) |  | lib/desktop/widgets/remote_toolbar.dart:1133 | **MISSING** |  |
-| `menu:End call` | End call | Remote toolbar (desktop) |  | lib/desktop/widgets/remote_toolbar.dart:2247 | **MISSING** |  |
-| `menu:Image Quality` | Image Quality | Remote toolbar (desktop) |  | lib/desktop/widgets/remote_toolbar.dart:1290 | **MISSING** |  |
-| `menu:Insert Ctrl + Alt + Del` | Insert Ctrl + Alt + Del | Remote toolbar (desktop) |  | lib/desktop/widgets/remote_toolbar.dart:211 | **MISSING** |  |
-| `menu:Keyboard Settings` | Keyboard Settings | Remote toolbar (desktop) |  | lib/desktop/widgets/remote_toolbar.dart:1881 | **MISSING** |  |
-| `menu:Mobile Actions` | Mobile Actions | Remote toolbar (desktop) |  | lib/desktop/widgets/remote_toolbar.dart:577 | **MISSING** |  |
-| `menu:Power` | Power | Remote toolbar (desktop) |  | lib/desktop/widgets/remote_toolbar.dart:2125; lib/mobile/pages/remote_page.dart:678; lib/mobile/pages/view_camera_page.dart:441 | **MISSING** |  |
-| `menu:Resolution` | Resolution | Remote toolbar (desktop) |  | lib/desktop/widgets/remote_toolbar.dart:1603; lib/mobile/pages/remote_page.dart:1379 | **MISSING** |  |
-| `menu:ScrollAuto` | ScrollAuto | Remote toolbar (desktop) |  | lib/desktop/widgets/remote_toolbar.dart:1241 | **MISSING** |  |
-| `menu:ScrollEdge` | ScrollEdge | Remote toolbar (desktop) |  | lib/desktop/widgets/remote_toolbar.dart:1262 | **MISSING** |  |
-| `menu:Scrollbar` | Scrollbar | Remote toolbar (desktop) |  | lib/desktop/widgets/remote_toolbar.dart:1251 | **MISSING** |  |
-| `menu:Select Monitor` | Select Monitor | Remote toolbar (desktop) |  | lib/desktop/widgets/remote_toolbar.dart:618 | **MISSING** |  |
-| `menu:Text chat` | Text chat | Remote toolbar (desktop) |  | lib/desktop/widgets/remote_toolbar.dart:2167; lib/desktop/widgets/remote_toolbar.dart:2178 | **MISSING** |  |
-| `menu:Trackpad speed` | Trackpad speed | Remote toolbar (desktop) |  | lib/desktop/widgets/remote_toolbar.dart:1909 | **MISSING** |  |
-| `menu:Virtual display` | Virtual display | Remote toolbar (desktop) |  | lib/desktop/widgets/remote_toolbar.dart:1087; lib/mobile/pages/remote_page.dart:1350 | **MISSING** |  |
-| `menu:Voice call` | Voice call | Remote toolbar (desktop) |  | lib/desktop/widgets/remote_toolbar.dart:2198; lib/desktop/widgets/remote_toolbar.dart:2261 | **MISSING** |  |
-| `menu:Volume down` | Volume down | Remote toolbar (desktop) |  | lib/desktop/widgets/remote_toolbar.dart:2121; lib/mobile/pages/remote_page.dart:674; lib/mobile/pages/view_camera_page.dart:437 | **MISSING** |  |
-| `menu:Volume up` | Volume up | Remote toolbar (desktop) |  | lib/desktop/widgets/remote_toolbar.dart:2117; lib/mobile/pages/remote_page.dart:670; lib/mobile/pages/view_camera_page.dart:433 | **MISSING** |  |
-| `menu:Copy Fingerprint` | Copy Fingerprint | Remote toolbar menus (shared) |  | lib/common/widgets/toolbar.dart:365; lib/desktop/pages/remote_tab_page.dart:323; lib/desktop/pages/view_camera_tab_page.dart:284 | **MISSING** |  |
-| `menu:Plug out all` | Plug out all | Remote toolbar menus (shared) |  | lib/common/widgets/toolbar.dart:1023; lib/common/widgets/toolbar.dart:1067 | **MISSING** |  |
-| `menu:Relative mouse mode` | Relative mouse mode | Remote toolbar menus (shared) |  | lib/common/widgets/toolbar.dart:930 | **MISSING** |  |
-| `menu:Request Elevation` | Request Elevation | Remote toolbar menus (shared) |  | lib/common/widgets/toolbar.dart:110 | **MISSING** |  |
-| `menu:Reset canvas` | Reset canvas | Remote toolbar menus (shared) |  | lib/common/widgets/toolbar.dart:161 | **MISSING** |  |
-| `menu:Reverse mouse wheel` | Reverse mouse wheel | Remote toolbar menus (shared) |  | lib/common/widgets/toolbar.dart:958 | **MISSING** |  |
-| `menu:Scale custom` | Scale custom | Remote toolbar menus (shared) |  | lib/common/widgets/toolbar.dart:407 | **MISSING** |  |
-| `menu:Scale original` | Scale original | Remote toolbar menus (shared) |  | lib/common/widgets/toolbar.dart:385 | **MISSING** |  |
-| `menu:Send clipboard keystrokes` | Send clipboard keystrokes | Remote toolbar menus (shared) |  | lib/common/widgets/toolbar.dart:149 | **MISSING** |  |
-| `menu:Show displays as individual windows` | Show displays as individual windows | Remote toolbar menus (shared) |  | lib/common/widgets/toolbar.dart:726; lib/desktop/widgets/remote_toolbar.dart:650 | **MISSING** |  |
-| `menu:Switch Sides` | Switch Sides | Remote toolbar menus (shared) |  | lib/common/widgets/toolbar.dart:295 | **MISSING** |  |
-| `menu:Use all my displays for the remote session` | Use all my displays for the remote session | Remote toolbar menus (shared) |  | lib/common/widgets/toolbar.dart:741 | **MISSING** |  |
-| `menu:swap-left-right-mouse` | swap-left-right-mouse | Remote toolbar menus (shared) |  | lib/common/widgets/toolbar.dart:975 | **MISSING** |  |
-| `menu:Filter by intersection` | Filter by intersection | Shared widgets |  | lib/common/widgets/address_book.dart:418 | **MISSING** |  |
-| `menu:Sort tags` | Sort tags | Shared widgets |  | lib/common/widgets/address_book.dart:399 | **MISSING** |  |
-| `menu:Sync with recent sessions` | Sync with recent sessions | Shared widgets |  | lib/common/widgets/address_book.dart:382 | **MISSING** |  |
-
-## Android-only (report-only) (18)
-
-| Element | Label | Area | Stores | Flutter | Sciter | Note |
-|---|---|---|---|---|---|---|
-| `setting:Delete` | Delete | Android (other) |  | lib/mobile/pages/file_manager_page.dart:476 | **MISSING** |  |
 | `setting:Paste or load from file` | Paste or load from file | Android (other) |  | lib/mobile/widgets/nemo_mobile.dart:52 | **MISSING** |  |
 | `setting:Scan QR code` | Scan QR code | Android (other) |  | lib/mobile/widgets/nemo_mobile.dart:57 | **MISSING** |  |
 | `option:enable-show-terminal-extra-keys` | Show terminal extra keys | Settings (Android) | local | lib/mobile/pages/settings_page.dart:589; lib/mobile/pages/settings_page.dart:144; lib/mobile/pages/settings_page.dart:595 | **MISSING** |  |
@@ -198,10 +174,12 @@ Compared: 84 keys both UIs use (desktop + shared Flutter code); fixed check 45, 
 | `setting:Version:` | Version: | Settings (Android) |  | lib/mobile/pages/settings_page.dart:975 | **MISSING** |  |
 | `option:show-scam-warning` |  | Share screen (Android) | local | lib/mobile/pages/server_page.dart:259; lib/mobile/pages/server_page.dart:411; lib/mobile/pages/server_page.dart:624 | **MISSING** |  |
 
-## Not applicable to Sciter (28)
+## Not applicable to Sciter (30)
 
 | Element | Label | Area | Stores | Flutter | Sciter | Note |
 |---|---|---|---|---|---|---|
+| `menu:Move tab to new window` | Move tab to new window | Desktop (other) |  | lib/desktop/pages/remote_tab_page.dart:277; lib/desktop/pages/view_camera_tab_page.dart:265 | n/a: Flutter tab windows; Sciter runs every session in its own window/process (ui_interface.rs new_remote -> run_me), no tabs | source check 2026-11-17 |
+| `menu:New tab` | New tab | Desktop (other) |  | lib/desktop/pages/terminal_tab_page.dart:254 | n/a: Flutter tab windows; Sciter runs every session in its own window/process (ui_interface.rs new_remote -> run_me), no tabs | source check 2026-11-17 |
 | `option:upload-folder-button` |  | Desktop (other) | local | lib/desktop/pages/file_manager_page.dart:514; lib/desktop/pages/file_manager_page.dart:879 | n/a: Flutter WEB upload button (file_manager_page.dart:879 webselectFiles) | source check 2026-11-17 |
 | `setting:Confirm before closing multiple tabs` | Confirm before closing multiple tabs | Desktop (other) |  | lib/desktop/widgets/tabbar_widget.dart:895 | n/a: Flutter tab windows; Sciter runs every session in its own window/process (ui_interface.rs new_remote -> run_me), no tabs | source check 2026-11-17 |
 | `option:enable-flutter-http-on-rust` |  | Flutter (other) | local | lib/utils/http_service.dart:30 | n/a: switch for Flutter's own HTTP client (utils/http_service.dart:30) | hbb_common OPTION_ENABLE_FLUTTER_HTTP_ON_RUST in KEYS_LOCAL_SETTINGS; source check 2026-11-17 |
@@ -231,16 +209,21 @@ Compared: 84 keys both UIs use (desktop + shared Flutter code); fixed check 45, 
 | `option:peer-tab-index` |  | Shared widgets |  | lib/common/widgets/peer_tab_page.dart:172 | n/a: Flutter UI state (hbb_common OPTION_FLUTTER_PEER_TAB_INDEX in KEYS_LOCAL_SETTINGS) | hbb_common OPTION_FLUTTER_PEER_TAB_INDEX in KEYS_LOCAL_SETTINGS |
 | `option:peer-tab-visible` |  | Shared widgets |  | lib/common/widgets/peer_tab_page.dart:72 | n/a: Flutter UI state (hbb_common OPTION_FLUTTER_PEER_TAB_VISIBLE in KEYS_LOCAL_SETTINGS) | hbb_common OPTION_FLUTTER_PEER_TAB_VISIBLE in KEYS_LOCAL_SETTINGS |
 
-## Present in Sciter (144)
+## Present in Sciter (158)
 
 | Element | Label | Area | Stores | Flutter | Sciter | Note |
 |---|---|---|---|---|---|---|
 | `option:temporary-password-length` |  | Android (other) | main | lib/mobile/widgets/dialog.dart:19; lib/mobile/widgets/dialog.dart:30; lib/models/server_model.dart:104 | index.tis:1853; index.tis:1855; index.tis:1936 | hbb_common OPTION_TEMPORARY_PASSWORD_LENGTH in KEYS_SETTINGS |
 | `setting:Enable management control` | Enable management control | Android (other) |  | lib/mobile/widgets/nemo_mobile.dart:329 | label: index.tis:634 |  |
 | `option:enable-perm-change-in-accept-window` |  | Connection manager (desktop) | buildin | lib/desktop/pages/server_page.dart:652; lib/mobile/pages/server_page.dart:599 | cm.tis:510; cm.tis:9 | hbb_common OPTION_ENABLE_PERM_CHANGE_IN_ACCEPT_WINDOW in KEYS_BUILDIN_SETTINGS |
+| `menu:Back` | Back | Desktop (other) |  | lib/desktop/pages/file_manager_page.dart:560; lib/desktop/widgets/remote_toolbar.dart:2105; lib/mobile/pages/remote_page.dart:658 | file_transfer.tis:371 .goback (icon) | source check 2026-11-17; the same label is also the Android-peer action in remote_toolbar.dart (P27) |
 | `menu:Close` | Close | Desktop (other) |  | lib/desktop/pages/remote_tab_page.dart:333; lib/desktop/pages/view_camera_tab_page.dart:294; lib/desktop/widgets/remote_toolbar.dart:2321 | label: cm.tis:90; msgbox.tis:194 |  |
 | `menu:Create Folder` | Create Folder | Desktop (other) |  | lib/desktop/pages/file_manager_page.dart:730 | label: file_transfer.tis:544 |  |
+| `menu:Home` | Home | Desktop (other) |  | lib/desktop/pages/file_manager_page.dart:714; lib/desktop/widgets/remote_toolbar.dart:2109; lib/mobile/pages/remote_page.dart:662 | file_transfer.tis:370 .home (icon) | source check 2026-11-17; the same label is also the Android-peer action in remote_toolbar.dart (P27) |
 | `menu:More` | More | Desktop (other) |  | lib/desktop/pages/file_manager_page.dart:1011 | label: header.tis:567 |  |
+| `menu:Parent directory` | Parent directory | Desktop (other) |  | lib/desktop/pages/file_manager_page.dart:580 | file_transfer.tis:372 .goup (icon) | source check 2026-11-17 |
+| `menu:Refresh File` | Refresh File | Desktop (other) |  | lib/desktop/pages/file_manager_page.dart:688 | file_transfer.tis:374 .refresh (icon) | source check 2026-11-17 |
+| `menu:Resume` | Resume | Desktop (other) |  | lib/desktop/pages/file_manager_page.dart:297 | file_transfer.tis:104 svg.continue (job resume) | source check 2026-11-17 |
 | `menu:Show Hidden Files` | Show Hidden Files | Desktop (other) |  | lib/desktop/pages/file_manager_page.dart:979 | label: file_transfer.tis:429 |  |
 | `option:nemo-policy-problem` |  | Desktop (other) | main | lib/desktop/pages/connection_page.dart:679 | index.tis:180; index.tis:2953 |  |
 | `option:api-server` |  | Flutter (other) | main | lib/common.dart:3712; lib/common/widgets/nemo_login.dart:255; lib/common/widgets/nemo_login.dart:279 | index.tis:1269; index.tis:1319; index.tis:1321 | hbb_common OPTION_API_SERVER in KEYS_SETTINGS |
@@ -262,8 +245,10 @@ Compared: 84 keys both UIs use (desktop + shared Flutter code); fixed check 45, 
 | `menu:Add to Favorites` | Add to Favorites | Peer card menu |  | lib/common/widgets/peer_card.dart:1032 | label: ab.tis:385 |  |
 | `menu:Connect via relay` | Connect via relay | Peer card menu |  | lib/common/widgets/peer_card.dart:688 | label: ab.tis:371 |  |
 | `menu:Create desktop shortcut` | Create desktop shortcut | Peer card menu |  | lib/common/widgets/peer_card.dart:853 | label: ab.tis:383 |  |
+| `menu:Delete` | Delete | Peer card menu |  | lib/common/widgets/peer_card.dart:952; lib/desktop/pages/file_manager_page.dart:310; lib/desktop/pages/file_manager_page.dart:816 | ab.tis:382 #remove ("Remove"); file transfer: file_transfer.tis:515 .trash | source check 2026-11-17 |
 | `menu:Edit Tag` | Edit Tag | Peer card menu |  | lib/common/widgets/peer_card.dart:1390 | label: ab.tis:387 |  |
 | `menu:Forget Password` | Forget Password | Peer card menu |  | lib/common/widgets/peer_card.dart:1008 | label: ab.tis:384 |  |
+| `menu:RDP` | RDP | Peer card menu |  | lib/common/widgets/peer_card.dart:799 | ab.tis:378 #rdp (label "RDP", not translated) | source check 2026-11-17 |
 | `menu:Remove from Favorites` | Remove from Favorites | Peer card menu |  | lib/common/widgets/peer_card.dart:1067 | label: ab.tis:386 |  |
 | `menu:Rename` | Rename | Peer card menu |  | lib/common/widgets/peer_card.dart:923 | label: ab.tis:381 |  |
 | `menu:Reset preferences` | Reset preferences | Peer card menu |  | lib/common/widgets/peer_card.dart:705 | label: ab.tis:377; ab.tis:517 |  |
@@ -276,6 +261,13 @@ Compared: 84 keys both UIs use (desktop + shared Flutter code); fixed check 45, 
 | `setting:Privacy mode` | Privacy mode | Remote session (Android) |  | lib/mobile/pages/remote_page.dart:1294 | label: header.tis:779 |  |
 | `menu:Adjust Window` | Adjust Window | Remote toolbar (desktop) |  | lib/desktop/widgets/remote_toolbar.dart:897 | label: header.tis:271 |  |
 | `menu:Chat` | Chat | Remote toolbar (desktop) |  | lib/desktop/widgets/remote_toolbar.dart:2155 | label: header.tis:186 |  |
+| `menu:Codec` | Codec | Remote toolbar (desktop) |  | lib/desktop/widgets/remote_toolbar.dart:1312 | header.tis:284-289 codec-preference items of the display menu | source check 2026-11-17 |
+| `menu:Control Actions` | Control Actions | Remote toolbar (desktop) |  | lib/desktop/widgets/remote_toolbar.dart:854 | header.tis:187 #action ("Actions") | source check 2026-11-17 |
+| `menu:Display Settings` | Display Settings | Remote toolbar (desktop) |  | lib/desktop/widgets/remote_toolbar.dart:1133 | header.tis:188 #display ("Display") | source check 2026-11-17 |
+| `menu:Image Quality` | Image Quality | Remote toolbar (desktop) |  | lib/desktop/widgets/remote_toolbar.dart:1290 | header.tis:278-281 image-quality items of the display menu | source check 2026-11-17 |
+| `menu:Insert Ctrl + Alt + Del` | Insert Ctrl + Alt + Del | Remote toolbar (desktop) |  | lib/desktop/widgets/remote_toolbar.dart:211 | header.tis:315 #ctrl-alt-del ("Insert" + " Ctrl + Alt + Del") | source check 2026-11-17 |
+| `menu:Keyboard Settings` | Keyboard Settings | Remote toolbar (desktop) |  | lib/desktop/widgets/remote_toolbar.dart:1881 | header.tis:189 #keyboard ("Keyboard") | source check 2026-11-17 |
+| `menu:Text chat` | Text chat | Remote toolbar (desktop) |  | lib/desktop/widgets/remote_toolbar.dart:2167; lib/desktop/widgets/remote_toolbar.dart:2178 | header.tis:186 #chat ("Chat") | source check 2026-11-17 |
 | `menu:Waiting` | Waiting | Remote toolbar (desktop) |  | lib/desktop/widgets/remote_toolbar.dart:2277 | label: file_transfer.tis:232; file_transfer.tis:235 |  |
 | `menu:nemo_pick_all` | nemo_pick_all | Remote toolbar (desktop) |  | lib/desktop/widgets/remote_toolbar.dart:3623 | label: header.tis:234 |  |
 | `option:nemo-display-mode` |  | Remote toolbar (desktop) | peer | lib/desktop/widgets/remote_toolbar.dart:3167; lib/desktop/widgets/remote_toolbar.dart:3421; lib/desktop/widgets/remote_toolbar.dart:3491 | header.tis:697; remote.tis:422; remote.tis:443 |  |
@@ -289,6 +281,7 @@ Compared: 84 keys both UIs use (desktop + shared Flutter code); fixed check 45, 
 | `menu:Refresh` | Refresh | Remote toolbar menus (shared) |  | lib/common/widgets/toolbar.dart:302 | label: header.tis:321 |  |
 | `menu:Restart remote device` | Restart remote device | Remote toolbar menus (shared) |  | lib/common/widgets/toolbar.dart:257; lib/desktop/pages/remote_tab_page.dart:298 | label: header.tis:317; header.tis:488 |  |
 | `menu:Scale adaptive` | Scale adaptive | Remote toolbar menus (shared) |  | lib/common/widgets/toolbar.dart:390 | label: header.tis:274 |  |
+| `menu:Scale original` | Scale original | Remote toolbar menus (shared) |  | lib/common/widgets/toolbar.dart:385 | header.tis:273 #original ("Original") | source check 2026-11-17 |
 | `menu:Shrink` | Shrink | Remote toolbar menus (shared) |  | lib/common/widgets/toolbar.dart:396 | label: header.tis:275 |  |
 | `menu:Stretch` | Stretch | Remote toolbar menus (shared) |  | lib/common/widgets/toolbar.dart:402 | label: header.tis:276 |  |
 | `menu:Swap control-command key` | Swap control-command key | Remote toolbar menus (shared) |  | lib/common/widgets/toolbar.dart:910 | label: header.tis:301 |  |
@@ -312,7 +305,6 @@ Compared: 84 keys both UIs use (desktop + shared Flutter code); fixed check 45, 
 | `option:allow-websocket` | Use WebSocket | Settings (Android) | main | lib/mobile/pages/settings_page.dart:744; lib/desktop/pages/desktop_setting_page.dart:1903; lib/mobile/pages/settings_page.dart:114 | index.tis:1014; index.tis:1017; index.tis:1795 | hbb_common OPTION_ALLOW_WEBSOCKET in KEYS_SETTINGS |
 | `option:disable-udp` | Disable UDP | Settings (Android) | main | lib/mobile/pages/settings_page.dart:775; lib/desktop/pages/desktop_setting_page.dart:1928; lib/desktop/pages/desktop_setting_page.dart:1930 | index.tis:1014; index.tis:1017; index.tis:1032 | hbb_common OPTION_DISABLE_UDP in KEYS_SETTINGS |
 | `option:nemo-alias` | Alias | Settings (Android) | main | lib/mobile/pages/settings_page.dart:729; lib/desktop/pages/desktop_setting_page.dart:493; lib/desktop/pages/desktop_setting_page.dart:505 | index.tis:1014; index.tis:1017; index.tis:659 |  |
-| `setting:Based on the open-source RustDesk project.` | Based on the open-source RustDesk project. | Settings (Android) |  | lib/mobile/pages/settings_page.dart:1002 | label: index.tis:1002 |  |
 | `setting:ID/Relay Server` | ID/Relay Server | Settings (Android) |  | lib/mobile/pages/settings_page.dart:700 | label: index.tis:909; index.tis:1784 |  |
 | `setting:Import setup string or device key` | Import setup string or device key | Settings (Android) |  | lib/mobile/pages/settings_page.dart:720; lib/mobile/widgets/nemo_mobile.dart:48 | label: index.tis:685; index.tis:691; index.tis:726 |  |
 | `setting:Language` | Language | Settings (Android) |  | lib/mobile/pages/settings_page.dart:817 | label: index.tis:379; index.tis:1734 |  |
