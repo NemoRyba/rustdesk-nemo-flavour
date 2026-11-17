@@ -33,14 +33,21 @@ left open across the update keeps running the old program.
   header now moves it like any other window, across monitors; double-click maximizes/restores.
 
 ## Verified (Ubuntu 26.04 desktop VM, GNOME Wayland, two monitors, as a user)
-- Keyboard: typed into a remote terminal through the session — arrives (did not on 1.4.23).
-- Windows TBFDesk → Ubuntu: dialog offers both monitors, both selected, session shows 2 displays.
+- Keyboard: typed into a remote terminal through the session — arrives (did not on 1.4.23), also after
+  reconnecting and after the pointer left and re-entered; Ctrl+C / Ctrl+V reach the remote too (so copy /
+  paste with the keyboard inside a session works again — likely the "clipboard broken" report).
+- Windows TBFDesk → Ubuntu (release build): "Share Screen" offers both monitors, both selected, session shows
+  2 displays; the next connection starts without the question; mouse and keyboard from Windows work.
+- Span mode now covers both monitors (the window could not be placed before).
 - Drag: session window from monitor 2 to monitor 1 and back (also maximized); the first toolbar
   click afterwards works; double-click on the header maximizes.
 - Clipboard, both directions and with Ctrl+C / Ctrl+V pressed inside the session, Windows ↔
   Ubuntu: works (as it did on 1.4.23 in the lab).
 
 ## Known, not in this release
+- The FIRST screen-sharing question must be answered within about 30 seconds, or the connecting side
+  sees "remote desktop offline" (later connections do not ask).
+- HiDPI / fractional scaling under XWayland not tested yet (`TBFDESK_NATIVE_WAYLAND=1` reverts to native Wayland).
 - Flutter Linux 1.4.24 follows after its own Wayland check (keyboard, drag).
 - Windows installers: the shared changes follow with the next Windows build.
 - Fullscreen toolbar: could not be reproduced (drops down in single / all / span / window-per-display

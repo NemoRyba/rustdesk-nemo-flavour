@@ -36,7 +36,7 @@ from the investigating session. Run a command once on the VM before you put it i
 | [FT-11](#ft-11) | Connect fails after upgrading with the window open ("run_me No such file") | known (1.4.23 release notes), UX fix OPEN | manual |
 | [FT-12](#ft-12) | Operator cannot use the TBFDesk window on the controlled machine | OPEN feature request (P4) | n/a |
 | [FT-13](#ft-13) | Keyboard does not work in a session from Ubuntu (also after reconnect / restart) | **FIXED in 1.4.24**: keys go to a native Wayland window, the keyboard grab is X11; Sciter now runs under XWayland. Workaround for 1.4.23: `GDK_BACKEND=x11 rustdesk` | manual (lab: remote `xterm` → `tee /tmp/typed.txt`) |
-| [FT-14](#ft-14) | Incoming session dies ("remote desktop offline" / Timeout) while GNOME's share question is open | FOUND in lab: the connection loop blocks on the portal; ~45 s unanswered → `Connection closed: Timeout`. 1.4.24 remembers the selection, so only the first session asks | manual |
+| [FT-14](#ft-14) | Incoming session dies ("remote desktop offline" / Timeout) while GNOME's share question is open | FOUND in lab: the connection loop blocks on the portal; ~30 s unanswered → `Connection closed: Timeout` (the rendezvous link is reset too). 1.4.24 remembers the selection, so only the first session asks | manual |
 
 ---
 
@@ -498,19 +498,21 @@ stays blocked.
 ## FT-13 Keyboard does not work in a remote session from Ubuntu 26.04
 
 - **Reported:** "keyboard didn't work after a reconnect to the remote Windows machine"; still after restarting the client. From Windows it works.
-- **Platforms:** Ubuntu 26.04 GNOME Wayland Sciter (controller) = affected (1.4.23) · Flutter Linux = not run (P14) · Windows = not affected.
+- **Platforms:** Ubuntu 26.04 GNOME Wayland Sciter (controller) = affected (1.4.23) · Flutter Linux = not affected (checked) · Windows = not affected.
 - **Root cause:** the Linux client reads the keyboard through an X11 grab (`src/keyboard.rs`, logs `[grab] Run … mode=map`); the Sciter windows ran as native Wayland windows, whose keys never reach X11. Same keys from an XWayland window arrive.
 - **Steps (as a user):** connect from the Ubuntu window to a target, click into a text field of the remote, type. Disconnect, reconnect, type again.
 - **Lab check:** target container `podman exec -d tbf2604 bash -c "DISPLAY=:1 xterm -e sh -c 'stty -icanon -echo; tee /tmp/typed.txt'"`, type via `uvm-lab.sh mon "sendkey …"`, then `podman exec tbf2604 cat /tmp/typed.txt`.
 - **Expected:** the typed text is in the file. 1.4.23 native Wayland: empty; `GDK_BACKEND=x11`: arrives.
-- **Fix:** 1.4.24 `ui.rs prefer_xwayland_for_sciter()` (GDK_BACKEND=x11 when XWayland is there; `TBFDESK_NATIVE_WAYLAND=1` opts out).
+- **Fix:** 1.4.24 `ui.rs prefer_xwayland_for_sciter()` (GDK_BACKEND=x11 when XWayland is there; `TBFDESK_NATIVE_WAYLAND=1` opts out). Verified on the release build: first connect, reconnect, pointer out/in, and Ctrl+C / Ctrl+V arrive as `\003` / `\026` in a raw-mode remote terminal.
+- **Also explains FT-08 (likely):** with dead keys, Ctrl+C / Ctrl+V pressed inside the session never reached the remote — "clipboard broken both ways".
+- **Open edge case:** a session window that stayed open while the same Ubuntu machine was ALSO being controlled from Windows stopped forwarding keys (X11 focus and grab looked right); a new session window worked. Not the field scenario; to investigate.
 
 <a id="ft-14"></a>
 ## FT-14 Incoming session dies while GNOME's share question is open
 
 - **Found:** lab 2026-11-17 (Windows → Ubuntu 26.04). Probably what the field saw as "couldn't capture display" / "remote desktop offline" (FT-06).
 - **Mechanism:** the server's connection loop blocks until the portal answers; the controller times out meanwhile. Server log: the portal `Start` response, then `Connection closed: Timeout` in the same second.
-- **Steps:** connect from Windows to Ubuntu, wait ~45 s before clicking Share → Windows shows "Entfernter Desktop ist offline". Click Share within a few seconds → session starts.
+- **Steps:** connect from Windows to Ubuntu, wait ~30 s before clicking Share → Windows shows "Entfernter Desktop ist offline". Click Share within a few seconds → session starts.
 - **Mitigation 1.4.24:** "Remember this selection" (restore token) — later sessions start without the question. Open: keep the connection alive while the question waits.
 
 ## Lab recipe
