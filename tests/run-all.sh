@@ -43,7 +43,7 @@ stage_cmd() {
     contract)     python3 "$HERE/contracts/check_policy_report_contract.py";;
     static-ui)    bash "$HERE/static/check_inline_generator.sh";;
     # Sciter <-> Flutter parity, both directions, from the source (no build, no display):
-    # 1 = an element without a counterpart and without a verdict, 2 = no client source (SKIP)
+    # 1 = an element or behaviour note without a counterpart / valid verdict, 2 = no client source (SKIP)
     parity)       python3 -I "$HERE/parity/inventory.py" --client "$TBF_CLIENT" --out "$TBF_OUT/parity" --check;;
     server-installer) bash "$HERE/static/check_server_installer.sh";;
     build-linux)  (cd "$TBF_CLIENT" && source "$HERE/lib/client-env.sh" && cargo build --release --features "$TBF_CLIENT_FEATURES" 2>&1 | tee "$TBF_OUT/build-linux.log" | grep -E '^error|Finished' ; exit "${PIPESTATUS[0]}");;

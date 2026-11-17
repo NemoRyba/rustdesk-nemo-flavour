@@ -43,7 +43,8 @@ Open table there is KNOWN (printed every run; fails only with --strict or TBF_ST
 MISSING row without an open P-number still fails. For behaviour notes: "ok: <reason>" (the
 difference is intended / not real) or "MISSING: P<n>".
 
---check exits 1 if any element is unaccounted for (either direction), 0 otherwise.
+--check exits 1 if any element is unaccounted for (either direction), or if a behaviour note
+has no valid verdict (none, or a MISSING: P<n> that is not open), 0 otherwise.
 F->S elements found only under flutter/lib/mobile/ (Android-only) and F->S MENU entries
 without an option key (matched on their label only) are listed but never fail the check
 (report-only): Sciter has no Android build, and menu wording differs too often for a label to
@@ -1541,8 +1542,13 @@ def main():
         if v == 'known':
             n['status'] = 'known'
             known.append(('behaviour', n['id'], n['key'], '', why))
+        elif v == 'ok':   # a verdict that is neither "ok: ..." nor "MISSING: P<n>"
+            n['status'] = 'open'
+            n['_why'] = f"verdict {n['verdict']!r} is neither 'ok: <reason>' nor 'MISSING: P<n>'"
+            open_notes.append(n)
         else:
             n['status'] = 'open'
+            n['_why'] = why
             open_notes.append(n)
     ncsv = os.path.join(a.out, 'parity-behaviour-notes.csv')
     with open(ncsv, 'w', newline='', encoding='utf-8') as f:
@@ -1623,8 +1629,11 @@ def main():
             shown = ', '.join(ids[:6]) + (f", ... (+{len(ids) - 6})" if len(ids) > 6 else '')
             print(f"  KNOWN   {pn} {direction}: {len(ids)} -- {shown}")
         for n in open_notes[:40]:
-            print(f"  NOTE    {n['id']}: {n['note']} [F {n['flutter']} | S {n['sciter']}]")
-        if missing or fmissing or (strict and known):
+            why = f" -- {n['_why']}" if n.get('_why') else ' -- no verdict in overrides-f2s.csv'
+            print(f"  NOTE    {n['id']}: {n['note']} [F {n['flutter']} | S {n['sciter']}]{why}")
+        # an untriaged behaviour note, or one whose MISSING: P<n> is not open, fails like an
+        # unaccounted element: a new gating / store / default difference must not pass silently
+        if missing or fmissing or open_notes or (strict and known):
             sys.exit(1)
 
 

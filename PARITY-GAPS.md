@@ -8,9 +8,10 @@ and either fixes the gap in the same change or adds a row here. Close a row by m
 `tests/parity/inventory.py` (test stage `parity`, part of `tests/run-all.sh --quick`) checks
 both directions from the source: `FLUTTER-PARITY-ELEMENTS.md` (every Sciter element -> Flutter)
 and `FLUTTER-TO-SCITER-PARITY.md` (every Flutter option key and settings row -> Sciter, plus
-behaviour notes: admin-fixed greying, store, default). An element it finds missing is either
-fixed or recorded here and linked from `tests/parity/overrides*.csv` as `MISSING: P<n>`; the
-stage then shows it as KNOWN instead of failing. It still cannot see wording, live updates,
+behaviour notes: admin-fixed greying, store, default). An element it finds missing, or a
+behaviour note it raises, is either fixed, accepted (`ok: <reason>` for a note), or recorded here
+and linked from `tests/parity/overrides*.csv` as `MISSING: P<n>`; the stage then shows it as
+KNOWN instead of failing. Closing a row here while its gap is still in the source fails the stage. It still cannot see wording, live updates,
 multi-display behaviour or anything that only the lab shows -- that stays a hand-made row.
 
 Direction: **F→S** = Flutter has it, Sciter lacks/differs; **S→F** = the reverse;
