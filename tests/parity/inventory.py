@@ -26,9 +26,11 @@ Automatic match (= PRESENT candidate, "works" still has to be verified):
   S->F label       -> the same translate() string in flutter/lib
   S->F binding     -> main_<name> / session_<name> / <name> in src/flutter_ffi.rs
   F->S option key  -> read/written by the Sciter UI (handler.*option* call, a helper such as
-                      pEnable, a toggleMenuState loop over a menu's <li> ids), or a literal / #id
-                      in src/ui/*.tis|html. A hit only in src/ui.rs / src/ui/remote.rs is
-                      reported as "Rust only" -- no Sciter control -- and does not count.
+                      pEnable, a toggleMenuState loop over a menu's <li> ids, a get_options()
+                      map), or an element #id in src/ui/*.tis|html. A bare string literal, the
+                      same label on another key, or a hit only in src/ui.rs / src/ui/remote.rs
+                      ("Rust only" -- no Sciter control) is a hint, not a match.
+                      Settings rows / menu entries that carry an option key match on the key.
   F->S label       -> the same translate() string in src/ui/*.tis|html (case/punctuation folded)
 
 Verdicts the script cannot know come from two CSV files (same mechanism, one per direction):
@@ -1261,15 +1263,16 @@ def flutter_to_sciter(client, hbb, consts_dart):
                 sciter, how = '; '.join(sorted({a.loc for a in s_keys[k]})[:3]), 'auto'
             elif k in s_ids:
                 sciter, how = '#id: ' + '; '.join(s_ids[k][:3]), 'auto'
-            elif k in s_lits:
-                sciter, how = 'literal: ' + '; '.join(s_lits[k][:3]), 'auto-literal'
+            elif k in s_lits:   # a bare string ('theme' as a data-kind, a CM field ...): a hint only
+                hint = 'string in Sciter, not used as an option: ' + '; '.join(s_lits[k][:2])
         for lab in el['labels']:
             if sciter or fold(lab) not in s_labels:
                 continue
             if k is None:
                 sciter, how = 'label: ' + '; '.join(s_labels[fold(lab)][:3]), 'auto-label'
             else:   # same wording, but Sciter never uses this key: a different setting
-                hint = 'same label in Sciter (another key?): ' + '; '.join(s_labels[fold(lab)][:2])
+                hint = ((hint + '; ') if hint else '') + 'same label in Sciter (another key?): ' + \
+                    '; '.join(s_labels[fold(lab)][:2])
             break
         if not sciter and k is not None and k in s_rust:
             hint = ('Rust only, no Sciter control: ' + '; '.join(s_rust[k][:2]) + ('; ' + hint if hint else ''))
@@ -1308,17 +1311,22 @@ def gated_stores(fixed, accs):
     return out
 
 
-def behaviour_notes(facc, sacc, canon_lists):
-    """Candidates only: keys both UIs use whose gating, store or default differs."""
+def behaviour_notes(facc, sacc, canon_lists, stats=None):
+    """Candidates only: keys both UIs use whose gating, store or default differs.
+    stats (dict, optional) gets how many keys each check could compare."""
     notes = []
+    stats = {} if stats is None else stats
     fby, sby = {}, {}
     for a in facc:
         if a.shared:          # Sciter is desktop: compare with what desktop Flutter reaches
             fby.setdefault(a.key, []).append(a)
     for a in sacc:
         sby.setdefault(a.key, []).append(a)
+    stats['keys'] = len(set(fby) & set(sby))
     for key in sorted(set(fby) & set(sby)):
         fa, sa = fby[key], sby[key]
+        if any(a.op == 'fixed' for a in fa + sa):
+            stats['fixed'] = stats.get('fixed', 0) + 1
         f_gate = gated_stores([a for a in fa if a.op == 'fixed'], fa)
         s_gate = gated_stores([a for a in sa if a.op == 'fixed'], sa)
         f_set = [a for a in fa if a.op == 'set' and a.store in STORES]
@@ -1341,6 +1349,8 @@ def behaviour_notes(facc, sacc, canon_lists):
                           'sciter': '; '.join(sorted({a.loc for a in sa if a.op == 'fixed'})[:2])})
         fst = {a.store for a in fa if a.store in STORES}
         sst = {a.store for a in sa if a.store in STORES}
+        if fst and sst:
+            stats['store'] = stats.get('store', 0) + 1
         if fst and sst and not (fst & sst):
             lists = '/'.join(canon_lists.get(key, [])) or 'no hbb_common KEYS_* list'
             notes.append({'id': f'behaviour:store:{key}', 'check': 'store', 'key': key,
@@ -1350,6 +1360,8 @@ def behaviour_notes(facc, sacc, canon_lists):
                           'sciter': '; '.join(sorted({a.loc for a in sa if a.store in sst})[:2])})
         fp = {a.polarity for a in fa if a.op == 'get' and a.polarity and a.store in STORES}
         sp = {a.polarity for a in sa if a.op == 'get' and a.polarity and a.store in STORES}
+        if fp and sp:
+            stats['default'] = stats.get('default', 0) + 1
         if len(fp) == 1 and len(sp) == 1 and fp != sp:
             notes.append({'id': f'behaviour:default:{key}', 'check': 'default', 'key': key,
                           'note': f"unset value reads as {'on' if fp == {'empty=on'} else 'off'} in Flutter, "
@@ -1511,7 +1523,8 @@ def main():
         w.writeheader()
         w.writerows(frows)
 
-    notes = behaviour_notes(facc, sacc, canon_lists)
+    nstats = {}
+    notes = behaviour_notes(facc, sacc, canon_lists, nstats)
     open_notes = []
     for n in notes:
         o = ovf.get(n['id'], {})
@@ -1522,6 +1535,7 @@ def main():
         v, why = verdict(n['verdict'], opened, closed) if n['verdict'] else ('missing', '')
         if v == 'known':
             n['status'] = 'known'
+            known.append(('behaviour', n['id'], n['key'], '', why))
         else:
             n['status'] = 'open'
             open_notes.append(n)
@@ -1533,6 +1547,7 @@ def main():
         w.writerows(notes)
 
     fk = [k for k in known if k[0] == 'F->S']
+    nk = [k for k in known if k[0] == 'behaviour']
 
     def fcount(st):
         return sum(1 for r in frows if r['status'] == st)
@@ -1544,24 +1559,29 @@ def main():
         f"Client: `{rev}`.\n",
         f"Flutter elements: **{len(frows)}** | in Sciter: **{fcount('present')}** | n/a: {fcount('n/a')} "
         f"| **unaccounted: {len(fmissing)}** | known gaps: {len(fk)} | report-only: Android-only "
-        f"{fcount('android-only')}, label without option key {fcount('label-only')} "
-        f"| behaviour notes: {len(notes)} ({len(open_notes)} not triaged)\n",
-        '"In Sciter" is a presence candidate only: the key is read/written by the Sciter UI, or appears',
-        'as a literal / `#id` in `src/ui`; a settings row or menu entry without an option key matches on',
-        'its translate() label. *Rust only* = the key is in `src/ui.rs` / `src/ui/remote.rs` but no',
-        'Sciter page uses it. Stores: main = RustDesk2.toml options, local = RustDesk_local.toml,',
-        'user-default = default per-session settings, peer = one peer\'s options, toggle = session toggle.\n',
+        f"{fcount('android-only')}, menu entries without option key {fcount('label-only')} "
+        f"| behaviour notes: {len(notes)} ({len(nk)} known gaps, {len(open_notes)} not triaged)\n",
+        '"In Sciter" is a presence candidate only: the key is read/written by the Sciter UI or is an',
+        'element `#id` in `src/ui`; a settings row or menu entry without an option key matches on its',
+        'translate() label. Hints next to a MISSING row: the same label on another key, a bare string',
+        'that is not an option use, or *Rust only* (in `src/ui.rs` / `src/ui/remote.rs`, no Sciter page',
+        'uses it). Stores: main = RustDesk2.toml options, local = RustDesk_local.toml, user-default =',
+        'defaults for new sessions, peer = one peer\'s options, toggle = session toggle.\n',
         '## Behaviour notes (both UIs have the key)\n',
         'Candidates from the source, not lab results. `fixed` = one UI greys the row when the',
         'administrator fixed the option and the other does not; `store` = the two UIs keep the key in',
         'different places; `default` = an unset value reads as on in one UI and off in the other.',
-        'Accept one with `ok: <reason>` or link it to a gap with `MISSING: P<n>` in overrides-f2s.csv.\n',
+        'Accept one with `ok: <reason>` or link it to a gap with `MISSING: P<n>` in overrides-f2s.csv.',
+        f"Compared: {nstats.get('keys', 0)} keys both UIs use (desktop + shared Flutter code); fixed check "
+        f"{nstats.get('fixed', 0)}, store {nstats.get('store', 0)}, default {nstats.get('default', 0)} of them "
+        'had enough evidence on both sides.\n',
         '| Note | Key | What differs | Flutter | Sciter | Status |', '|---|---|---|---|---|---|',
     ]
     for n in notes:
-        st = n.get('status') or ('ok' if n['verdict'].lower().startswith('ok') else '')
+        st = n.get('status') or ''
+        shown = n['verdict'] if not st else (st + (': ' + n['verdict'] if n['verdict'] else ''))
         md.append(f"| `{n['id']}` | `{n['key']}` | {mdcell(n['note'])} | {n['flutter']} | {n['sciter']} "
-                  f"| {mdcell(st + (': ' + n['verdict'] if n['verdict'] else ''))} |")
+                  f"| {mdcell(shown)} |")
     order = ['missing', 'known', 'label-only', 'android-only', 'n/a', 'present']
     titles = {'missing': 'Unaccounted (fails --check)', 'known': 'Known gaps (PARITY-GAPS.md)',
               'label-only': 'Menu entries without an option key, label not in Sciter (report-only)',
@@ -1575,8 +1595,8 @@ def main():
         md.append('|---|---|---|---|---|---|---|')
         for r in sorted(sel, key=lambda r: (r['area'], r['id'])):
             sc = r['sciter'] or ('**MISSING**' + (f" ({r['hint']})" if r['hint'] else ''))
-            note = ' '.join(x for x in (r['hbb_common'] and f"hbb_common {r['hbb_common']}", r['verified_by'],
-                                        r['note']) if x)
+            note = '; '.join(x for x in (r['hbb_common'] and f"hbb_common {r['hbb_common']}", r['hint'] if r['sciter'] else '',
+                                         r['verified_by'], r['note']) if x)
             md.append(f"| `{mdcell(r['id'])}` | {mdcell(r['label'])} | {r['area']} | {r['stores']} | {r['flutter']} "
                       f"| {mdcell(sc)} | {mdcell(note)} |")
     with open(os.path.join(a.out, 'FLUTTER-TO-SCITER-PARITY.md'), 'w', encoding='utf-8') as f:
@@ -1589,8 +1609,14 @@ def main():
             print(f"  MISSING S->F {r['id']} ({r['area']}, {r['sciter']}) {r['label']} {r.get('_why', '')}".rstrip())
         for r in fmissing[:60]:
             print(f"  MISSING F->S {r['id']} ({r['area']}, {r['flutter']}) {r['label']} {r.get('_why', '')}".rstrip())
+        groups = OrderedDict()   # one line per PARITY-GAPS row
         for k in known:
-            print(f"  KNOWN   {k[0]} {k[1]} ({k[2]}) {k[4]}")
+            pn = re.search(r"\bP\d+\b", k[4])
+            groups.setdefault((pn.group(0) if pn else '?', k[0]), []).append(k[1])
+        for (pn, direction), ids in sorted(groups.items(), key=lambda g: (int(g[0][0][1:]) if g[0][0][1:].isdigit()
+                                                                          else 1 << 30, g[0][1])):
+            shown = ', '.join(ids[:6]) + (f", ... (+{len(ids) - 6})" if len(ids) > 6 else '')
+            print(f"  KNOWN   {pn} {direction}: {len(ids)} -- {shown}")
         for n in open_notes[:40]:
             print(f"  NOTE    {n['id']}: {n['note']} [F {n['flutter']} | S {n['sciter']}]")
         if missing or fmissing or (strict and known):
