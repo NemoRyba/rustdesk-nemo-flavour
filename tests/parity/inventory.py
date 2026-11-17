@@ -979,22 +979,27 @@ def sciter_dict_accesses(srcs, consts):
 # ---- Flutter UI elements: settings rows and menu entries -----------------------------------
 
 # constructor -> (where the label is, kind). int = positional argument, 'name' = named
-# argument, 'translate' = the first translate('...') inside the call.
+# argument: its literal, else the first translate('...') INSIDE that argument (a later
+# translate() in a callback -- a toast, an error -- is not the label).
 # Section headings (_Card title, SettingsSection) are not elements: wording of a group, and a
 # key inside belongs to the row that holds it.
 LABEL_CTORS = {
     '_OptionCheckBox': (1, 'setting'), '_Radio': ('label', 'setting'),
     '_Button': (0, 'setting'), '_SubButton': (0, 'setting'), '_SubLabeledWidget': (1, 'setting'),
-    'SettingsTile': ('translate', 'setting'), 'SettingsTile.switchTile': ('translate', 'setting'),
-    'SettingsTile.navigation': ('translate', 'setting'),
-    'ListTile': ('translate', 'setting'), 'CheckboxListTile': ('translate', 'setting'),
-    'SwitchListTile': ('translate', 'setting'),
-    'TTextMenu': ('translate', 'menu'), 'TToggleMenu': ('translate', 'menu'), 'TRadioMenu': ('translate', 'menu'),
-    'CkbMenuButton': ('translate', 'menu'), 'RdoMenuButton': ('translate', 'menu'),
-    'MenuButton': ('translate', 'menu'), '_SubmenuButton': ('translate', 'menu'),
+    'SettingsTile': ('title', 'setting'), 'SettingsTile.switchTile': ('title', 'setting'),
+    'SettingsTile.navigation': ('title', 'setting'),
+    'ListTile': ('title', 'setting'), 'CheckboxListTile': ('title', 'setting'),
+    'SwitchListTile': ('title', 'setting'),
+    'TTextMenu': ('child', 'menu'), 'TToggleMenu': ('child', 'menu'), 'TRadioMenu': ('child', 'menu'),
+    'CkbMenuButton': ('child', 'menu'), 'RdoMenuButton': ('child', 'menu'),
+    # two classes share the name: remote_toolbar.dart (label in child) and
+    # desktop/widgets/menu_button.dart (icon child, label in tooltip)
+    'MenuButton': (('child', 'tooltip'), 'menu'), '_SubmenuButton': ('child', 'menu'),
     '_IconMenuButton': ('tooltip', 'menu'), '_IconSubmenuButton': ('tooltip', 'menu'),
-    'MenuEntryButton': ('translate', 'menu'), 'MenuEntrySwitch': ('translate', 'menu'),
-    'MenuEntrySwitch2': ('translate', 'menu'), 'MenuEntryRadios': ('translate', 'menu'),
+    'MenuEntryButton': ('childBuilder', 'menu'), 'MenuEntrySwitch': ('text', 'menu'),
+    'MenuEntrySwitchSync': ('text', 'menu'), 'MenuEntrySwitch2': ('text', 'menu'),
+    'MenuEntryRadios': ('text', 'menu'), 'MenuEntrySubRadios': ('text', 'menu'),
+    'MenuEntrySubMenu': ('text', 'menu'),
 }
 TRANSLATE_AT = re.compile(r"\btranslate\s*\(\s*(?=r?['\"])")
 
@@ -1018,12 +1023,12 @@ def flutter_ui_elements(srcs, accesses):
             args, rp = split_args(src, lp)
             where, kind = spec
             label = None
-            if where == 'translate':
-                label = first_translate(src, lp, rp)
-            else:
-                a = pick(args, where)
+            for w in (where if isinstance(where, tuple) else (where,)):
+                a = pick(args, w)
                 if a:
                     label = literal(src, a[1], a[2]) or first_translate(src, a[1], a[2])
+                if label:
+                    break
             if not label or '${' in label or '{$' in label:
                 continue
             els.append({'kind': kind, 'label': norm(label), 'src': src, 'start': start, 'end': rp,
