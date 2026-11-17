@@ -45,6 +45,22 @@ from its own command line, never printed) and the Win11 test VM. Nothing touches
 | A script failure left no trace in the log | sciter-rs printed script errors to a console the GUI exe does not have | `sciter-parse` (error must be in the log file), `gui-*` (log checks) |
 | Starting the client from a shell showed no output | no console + log only in the file | `sciter-parse` (stderr mirroring), `gui-windows` (redirected stderr + live console) |
 
+## Ubuntu 26.04 / Wayland field bugs (2026-11), and what catches them
+
+Test cases (user steps, platform/UI matrix, check commands, status), the Ubuntu desktop VM recipe
+and its traps: **[CROSS-PLATFORM-FIELD-TESTS.md](CROSS-PLATFORM-FIELD-TESTS.md)**. Why the suite
+missed them: every Linux GUI stage runs on X11 (Xvfb / Xvnc + openbox), and none runs the per-user
+`--server` inside a real GNOME Wayland session or uses its screen-share portal.
+
+| Bug (Ubuntu 26.04, 1.4.21–1.4.23) | Root cause | Caught by |
+|---|---|---|
+| FT-01 Connect greyed ("outgoing connections disabled"), Windows fine; fixed 1.4.23 | a window save sent the whole option map over per-uid IPC, so a policy-only key got stored as a setting | `unit-client` (`a_window_save_never_stores_what_only_the_policy_may_set`); GUI manual |
+| FT-02 blank Sciter main window (dev build, never released) | TIScript does not hoist: `App.render` called a function defined below `class App` | nothing proven yet. TODO: `sciter-parse` negative control with `9fcb5c2fe^`, plus a static "defined above `class App`" check |
+| FT-03 clock 1 h ahead: policy refused silently | server refused sealed requests outside +60 s / −300 s; client policy age 600 s | `unit-client` (2 clock tests), `unit-server` (`the_clock_tolerance_is_symmetric_configurable_and_leaves_no_replay_gap`); GUI manual |
+| FT-08 clipboard both ways | not reproduced (1.4.23 Sciter passes all 4 directions); GNOME needs the X11 fallback | manual; TODO script |
+| FT-10 session window will not drag to monitor 2 | `window-frame="extended"` Sciter window runs native Wayland | manual (`uvm-lab.sh drag` + per-head shot); TODO script |
+| FT-04–07, FT-09, FT-11, FT-12 | not yet investigated / open | manual cases in the file |
+
 ## Prerequisites (one-time)
 - Rust toolchain; the client build env is in `tests/lib/client-env.sh` (clang, system libsodium, `pkgconfig/libyuv.pc`, a vcpkg for hwcodec).
 - `Xvfb`, `openbox`, `xdotool`, ImageMagick `import`, `tesseract` with `vm/tessdata` (deu+eng), Python 3 + Pillow, `node`, `brave`.
