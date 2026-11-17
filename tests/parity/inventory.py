@@ -16,7 +16,8 @@ Three passes:
   behaviour notes    for keys both UIs use: one UI greys the row when the administrator fixed
                      the option (is_option_fixed) and the other lets it be changed; the two UIs
                      store the key in different places (main / local / user-default / peer /
-                     session toggle); an empty value means "on" in one UI and "off" in the other
+                     session toggle), or one UI also writes it to a store the other never
+                     touches; an empty value means "on" in one UI and "off" in the other
                      -> parity-behaviour-notes.csv (+ a section in FLUTTER-TO-SCITER-PARITY.md)
 (default out = the superproject root; the test stage writes to its artifact dir instead).
 
@@ -1364,6 +1365,23 @@ def behaviour_notes(facc, sacc, canon_lists, stats=None):
                                   f"the two UIs do not see each other's value (hbb_common: {lists})",
                           'flutter': '; '.join(sorted({a.loc for a in fa if a.store in fst})[:2]),
                           'sciter': '; '.join(sorted({a.loc for a in sa if a.store in sst})[:2])})
+        elif fst and sst:
+            # same store in both, but one UI also WRITES the key to a store the other never
+            # touches (e.g. a session toggle that Flutter can also set as a default for new
+            # sessions): that setting exists in one UI only, though the key matched
+            f_only = {a.store for a in f_set} - sst
+            s_only = {a.store for a in s_set} - fst
+            if f_only or s_only:
+                both = '+'.join(sorted(fst & sst))
+                parts = [f"{ui} also writes it to {'+'.join(sorted(extra))}, a store {other} never reads or writes"
+                         for ui, extra, other in (('Flutter', f_only, 'Sciter'), ('Sciter', s_only, 'Flutter'))
+                         if extra]
+                notes.append({'id': f'behaviour:store:{key}', 'check': 'store', 'key': key,
+                              'note': '; '.join(parts) + f" (both use {both})",
+                              'flutter': '; '.join(sorted({a.loc for a in f_set if a.store in f_only} or
+                                                          {a.loc for a in fa if a.store in fst})[:2]),
+                              'sciter': '; '.join(sorted({a.loc for a in s_set if a.store in s_only} or
+                                                         {a.loc for a in sa if a.store in sst})[:2])})
         fp = {a.polarity for a in fa if a.op == 'get' and a.polarity and a.store in STORES}
         sp = {a.polarity for a in sa if a.op == 'get' and a.polarity and a.store in STORES}
         if fp and sp:
@@ -1581,7 +1599,9 @@ def main():
         '## Behaviour notes (both UIs have the key)\n',
         'Candidates from the source, not lab results. `fixed` = one UI greys the row when the',
         'administrator fixed the option and the other does not; `store` = the two UIs keep the key in',
-        'different places; `default` = an unset value reads as on in one UI and off in the other.',
+        'different places, or one UI also writes it to a store the other never touches (e.g. a session',
+        'toggle that only Flutter can also set as a default for new sessions); `default` = an unset',
+        'value reads as on in one UI and off in the other.',
         'Accept one with `ok: <reason>` or link it to a gap with `MISSING: P<n>` in overrides-f2s.csv.',
         f"Compared: {nstats.get('keys', 0)} keys both UIs use (desktop + shared Flutter code); fixed check "
         f"{nstats.get('fixed', 0)}, store {nstats.get('store', 0)}, default {nstats.get('default', 0)} of them "

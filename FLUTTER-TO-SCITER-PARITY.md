@@ -5,7 +5,7 @@ put Sciter locations, decisions and gap numbers in `tests/parity/overrides-f2s.c
 open gaps in `PARITY-GAPS.md`. The other direction is `FLUTTER-PARITY-ELEMENTS.md`.
 Client: `ea7e32da8`.
 
-Flutter elements: **321** | in Sciter: **146** | n/a: 31 | **unaccounted: 0** | known gaps: 127 | report-only: Android-only 17, menu entries without option key 0 | behaviour notes: 6 (4 known gaps, 0 not triaged)
+Flutter elements: **321** | in Sciter: **146** | n/a: 31 | **unaccounted: 0** | known gaps: 127 | report-only: Android-only 17, menu entries without option key 0 | behaviour notes: 9 (7 known gaps, 0 not triaged)
 
 "In Sciter" is a presence candidate only: the key is read/written by the Sciter UI or is an
 element `#id` in `src/ui`; a settings row or menu entry without an option key matches on its
@@ -18,12 +18,17 @@ defaults for new sessions, peer = one peer's options, toggle = session toggle.
 
 Candidates from the source, not lab results. `fixed` = one UI greys the row when the
 administrator fixed the option and the other does not; `store` = the two UIs keep the key in
-different places; `default` = an unset value reads as on in one UI and off in the other.
+different places, or one UI also writes it to a store the other never touches (e.g. a session
+toggle that only Flutter can also set as a default for new sessions); `default` = an unset
+value reads as on in one UI and off in the other.
 Accept one with `ok: <reason>` or link it to a gap with `MISSING: P<n>` in overrides-f2s.csv.
 Compared: 84 keys both UIs use (desktop + shared Flutter code); fixed check 45, store 75, default 26 of them had enough evidence on both sides.
 
 | Note | Key | What differs | Flutter | Sciter | Status |
 |---|---|---|---|---|---|
+| `behaviour:store:codec-preference` | `codec-preference` | Flutter also writes it to user-default, a store Sciter never reads or writes (both use peer) | lib/desktop/pages/desktop_setting_page.dart:2118 | header.tis:542; header.tis:596 | known: MISSING: P16 (no defaults for new sessions in Sciter) |
+| `behaviour:store:enable-file-copy-paste` | `enable-file-copy-paste` | Flutter also writes it to user-default, a store Sciter never reads or writes (both use toggle) | lib/desktop/pages/desktop_setting_page.dart:2202 | header.tis:526; header.tis:528 | known: MISSING: P16 (no defaults for new sessions in Sciter) |
+| `behaviour:store:i444` | `i444` | Flutter also writes it to user-default, a store Sciter never reads or writes (both use toggle) | lib/desktop/pages/desktop_setting_page.dart:2202 | header.tis:526; header.tis:528 | known: MISSING: P16 (no defaults for new sessions in Sciter) |
 | `behaviour:store:nemo-key-combo-recent` | `nemo-key-combo-recent` | Flutter keeps it in local, Sciter in peer: the two UIs do not see each other's value (hbb_common: no hbb_common KEYS_* list) | lib/common/widgets/nemo_key_combo.dart:221; lib/common/widgets/nemo_key_combo.dart:235 | header.tis:958; header.tis:973 | known: MISSING: P26 (per peer in Sciter, global local JSON in Flutter) |
 | `behaviour:fixed:nemo-management-public-key` | `nemo-management-public-key` | Flutter greys it when the administrator fixed the option; Sciter lets the user change it with no is_option_fixed check (the Rust setter drops the write silently) -- store main | lib/desktop/pages/desktop_setting_page.dart:3556 | index.tis:652 | ok: see behaviour:fixed:nemo-management-server |
 | `behaviour:fixed:nemo-management-server` | `nemo-management-server` | Flutter greys it when the administrator fixed the option; Sciter lets the user change it with no is_option_fixed check (the Rust setter drops the write silently) -- store main | lib/desktop/pages/desktop_setting_page.dart:3555 | index.tis:1322; index.tis:651 | ok: the three management keys are locked together (ui_interface.rs:126 NEMO_MANAGEMENT_LOCKED_KEYS + nemo_management_locked); Sciter checks nemo-management-enabled and disables every field (index.tis:626). Differs only if a build OVERWRITE_SETTINGS fixes one key alone |
