@@ -229,6 +229,12 @@ both columns) and check it at the dialog's two widths.
   password / ticket / Accept step.
 
 ## FUTURE (operator requests, 2026-11-17/18)
+- **Rust 1.100** for client and server builds (after the 1.4.25 release; container image + VM toolchain).
+- **`cargo update` with a minimum release age** (supply-chain protection): only crate versions published at
+  least 31 days (or 113 days -- operator to choose) before the update; client, server, hbb_common.
+- 2FA: the authenticator entry says "RustDesk Connection" (otpauth issuer) -- rename to TBFDesk; the 2FA
+  dialog titles "2FA Required" / "Wrong 2FA Code" are not translated (de).
+- Block: hbbr kill-by-label so relayed sessions end at once instead of on the target's next poll.
 - **2FA coupled with the LDAP login** (server option): require a second factor for LDAP sign-ins.
 - **Private (controller-only) devices without the global policy**: design in
   `PRIVATE-DEVICE-POLICY-DESIGN.md` (recommended Option C). Operator decisions needed first:

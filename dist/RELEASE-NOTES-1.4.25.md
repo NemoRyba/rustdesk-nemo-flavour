@@ -1,6 +1,6 @@
 # TBFDesk 1.4.25 (Linux + Windows, Sciter + Flutter) and server 1.1.19 — 2026-11-18
 
-Client commit `f795c1ded` (branch `nemo-tdd-flutter`), server commit `a6614ea` (branch `nemo-tdd`).
+Client commit `4f593f3e0` (branch `nemo-tdd-flutter`), server commit `a6614ea` (branch `nemo-tdd`).
 The new machine policies below need **server 1.1.19 and client 1.4.25**; everything else works with
 server 1.1.18 too. Update the server first, then the clients.
 
@@ -18,7 +18,7 @@ device key. Linux: an update with the TBFDesk window open no longer breaks "Verb
 
 ## New
 - **"Transfer file" from inside a session**: a folder button in the session toolbar (Sciter, Flutter
-  desktop); Android: ⋮ → "Zur Dateiübertragung wechseln". It opens file transfer to the same computer
+  desktop); Android (next APK): ⋮ → "Zur Dateiübertragung wechseln". It opens file transfer to the same computer
   **without asking for the password again**, and is hidden where file transfer is not allowed.
 - **Two machine policies** (dashboard → policy editors / global client defaults):
   - *Signed-in users need no password*: a technician signed in to TBFDesk whom the ACL allows on the
@@ -26,6 +26,8 @@ device key. Linux: an update with the TBFDesk window open no longer breaks "Verb
   - *Disable the machine's password*: one-time and permanent passwords are refused; **only signed-in
     technicians whom the ACL allows get in**, in every approval mode — nobody who only knows the ID
     can even raise an Accept popup. Approval mode "Click" still asks the person at the machine.
+  - **Turn it on for ONE machine first** and connect to it as a signed-in technician before rolling it
+    out: a machine with this policy and no working sign-in path cannot be reached remotely.
 - **Allowed clock difference** is set in the dashboard (Settings, default 5 min both ways); clients use it.
 - **One-time password**: copy icon and double-click copy (Sciter, Flutter, Android).
 - Dashboard: an editor for a machine's own policy in the device details; the reason why a direct
@@ -53,19 +55,32 @@ device key. Linux: an update with the TBFDesk window open no longer breaks "Verb
 
 ## Security
 - A 2FA code alone no longer admits a session — the password / sign-in / Accept step must come first.
-- "Switch sides" (Flutter desktop) now passes the same management checks as a normal login.
+- "Switch sides" (Flutter desktop) now passes the same management checks as a normal login
+  (unit-tested; not run in the lab).
+- **Block / Cut now really end a running session on Linux machines with the TBFDesk window open**
+  (before, the window could swallow the server's revocation).
 - Server: *Block* also ends the blocked device's running sessions; the relay/punch gate enforces
   outgoing restrictions from the global, named and user policies (not only the device's own);
   the control ticket names its user from the verified sign-in only.
 
 ## Verified in the lab (Ubuntu 26.04 GNOME Wayland with two monitors, Windows 11)
 Upgrade over a running window; OTP copy; waiting message + session survives a 50 s share question;
+2FA: password + wrong code refused, correct code admitted; *Disable the machine's password*: a
+signed-in LDAP technician gets in without a password, a not-signed-in controller is refused;
+two concurrent sessions, ending one from the popup keeps the other; reconnect 3 s after a session end;
 popup back on the next connection and closes cleanly; remembered selection → 2 displays; Transfer file
 Ubuntu → Windows without password prompt; "disable the machine's password" refuses a not-signed-in
 controller with the policy text and no popup; Flutter: outbound policy greys Connect and lifts live;
-keyboard into sessions (1.4.24 fix) still works. Unit tests: client 111, server 158 + 3.
+keyboard into sessions (1.4.24 fix) still works; Windows: Flutter installer over 1.4.21, toolbar
+transfer button. Unit tests: server 158 + 3; client see the release commit.
+
+## Good to know
+- Linux: when the last session ends and the connection popup closes, TBFDesk restarts its background
+  server (stock RustDesk behaviour, at most once a minute); the one-time password changes then.
+- Ubuntu: the first "Share Screen" question must be answered within the waiting time shown; tick
+  "Remember this selection" so later connections do not ask.
 
 ## Not in this release
-- Android APK (unchanged, release-2026-11-12).
+- Android APK (unchanged, release-2026-11-12); the Android changes above ship with the next APK.
 - Private (controller-only) devices and 2FA for LDAP sign-ins: planned (`PRIVATE-DEVICE-POLICY-DESIGN.md`,
   OPEN-TODOS).
