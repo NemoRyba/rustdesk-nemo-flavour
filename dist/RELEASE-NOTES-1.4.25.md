@@ -1,4 +1,4 @@
-# TBFDesk 1.4.25 (Linux + Windows, Sciter + Flutter) and server 1.1.19 — 2026-11-18
+# TBFDesk 1.4.25 (Linux, Sciter + Flutter) and server 1.1.19 — 2026-11-18
 
 Client commit `4f593f3e0` (branch `nemo-tdd-flutter`), server commit `a6614ea` (branch `nemo-tdd`).
 The new machine policies below need **server 1.1.19 and client 1.4.25**; everything else works with
@@ -7,7 +7,6 @@ server 1.1.18 too. Update the server first, then the clients.
 ## Files
 | | Sciter | Flutter |
 |---|---|---|
-| Windows (x64) installer | `tbfdesk-1.4.25-x64-install.exe` | `tbfdesk-flutter-1.4.25-x64-install.exe` |
 | Ubuntu 26.04, offline | `tbfdesk-1.4.25-ubuntu26.04-install.run` | `tbfdesk-flutter-1.4.25-ubuntu26.04-install.run` |
 | Ubuntu 24.04, offline | `tbfdesk-1.4.25-ubuntu24.04-install.run` | `tbfdesk-flutter-1.4.25-ubuntu24.04-install.run` |
 | Debian/Ubuntu package | `tbfdesk-1.4.25-amd64.deb` | `tbfdesk-flutter-1.4.25-amd64.deb` |
@@ -81,6 +80,7 @@ transfer button. Unit tests: server 158 + 3; client see the release commit.
   "Remember this selection" so later connections do not ask.
 
 ## Not in this release
+- Windows installers 1.4.25: built, follow after their own lab test (same code).
 - Android APK (unchanged, release-2026-11-12); the Android changes above ship with the next APK.
 - Private (controller-only) devices and 2FA for LDAP sign-ins: planned (`PRIVATE-DEVICE-POLICY-DESIGN.md`,
   OPEN-TODOS).
