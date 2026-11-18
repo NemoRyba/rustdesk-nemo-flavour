@@ -82,3 +82,7 @@ session-binding:set_write_override,n/a,n/a,n/a,triage 2026-11-09,internal Sciter
 session-binding:save_keyboard_mode,n/a,n/a,n/a,triage 2026-11-09,internal Sciter<->Rust binding; Flutter reaches the same Rust through flutter_ffi.rs / its Dart models
 session-binding:update_supported_decodings,n/a,n/a,n/a,triage 2026-11-09,internal Sciter<->Rust binding; Flutter reaches the same Rust through flutter_ffi.rs / its Dart models
 session-binding:is_recording,n/a,n/a,n/a,triage 2026-11-09,internal Sciter<->Rust binding; Flutter reaches the same Rust through flutter_ffi.rs / its Dart models
+input:vk,"lib/common/widgets/nemo_key_combo.dart:303 (keys as grouped chips, same combo dialog)",,,source check 2026-11-17,
+session-binding:nemo_input_key,flutter_ffi.rs:644 session_input_key (same Session::input_key),,,source check 2026-11-17,
+session-binding:leave_fullscreen,lib/desktop/widgets/remote_toolbar.dart:263 _setFullscreen (window manager); every Flutter display window has the full toolbar,,,source check 2026-11-17,Sciter: display-window bar button (ui/remote.rs:461)
+session-binding:main_action,"lib/desktop/widgets/remote_toolbar.dart:3508 _NemoDisplayModeMenu (mode ""all"") + the full toolbar in every display window",,,source check 2026-11-17,"Sciter: display-window bar ""all"" / ""toolbar"" buttons (ui/remote.rs:474-475)"
