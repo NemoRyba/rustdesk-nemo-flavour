@@ -208,6 +208,33 @@ both columns) and check it at the dialog's two widths.
 ---
 
 ## SECURITY
+### 2026-11-18 findings (design review of the private-device idea + policy-toggles review)
+- **S-1 Switch sides skips the management ticket** (client): the `SwitchSidesResponse` arm in
+  `src/server/connection.rs` (~2824-2849) authorises the connect-back without
+  `apply_management_authorization`. hbbs brokers the connect-back, so server-side refusals still apply.
+  *(round-2 fix in progress)*
+- **S-2 Block does not end a blocked controller's running sessions** (server): `block_peer` stamps the id only
+  as a target; targets check `nemo-blocked-ids` at logon only. Deleting a device key already calls
+  `terminate_sessions_from_controllers` -- Block should too. *(round-2 fix in progress)*
+- **S-3 Rendezvous controller gate reads only the INLINE per-peer policy** (server): `nemo-outbound-enabled` /
+  `nemo-outbound-targets` from the global, a named device or a user policy are not enforced at punch / relay
+  (only in tickets, endpoint/knock maps and by the cooperating client). *(round-2 fix in progress)*
+- **S-4 Dashboard cannot set the inline per-peer outbound policy** (`managementOptions` / `advancedOptions`
+  are built but never rendered); only `PUT /nemo/api/peers/:id/management-policy` works. *(round-2)*
+- **S-5 Endpoint and knock-key maps are not filtered by the user ACL** (`direct_endpoint_map`, `knock_key_map`):
+  every device gets the SPA keys of every allowed workstation. By design today; matters for private devices.
+- FIXED (server `d15daf7`, client 1.4.25): the control ticket named its user from the policy option
+  `nemo-logged-in-user`, which an operator could type into any policy layer.
+- FIXED (client `2b7999a69`, 1.4.25): with 2FA on, a correct 2FA code alone admitted a session without the
+  password / ticket / Accept step.
+
+## FUTURE (operator requests, 2026-11-17/18)
+- **2FA coupled with the LDAP login** (server option): require a second factor for LDAP sign-ins.
+- **Private (controller-only) devices without the global policy**: design in
+  `PRIVATE-DEVICE-POLICY-DESIGN.md` (recommended Option C). Operator decisions needed first:
+  Q1 default class for new devices (company / private-until-approved), Q2 always require LDAP sign-in on
+  private devices, Q3 may the server switch private -> company by itself; Q11-Q14 in the doc.
+
 
 > **2026-09-27:** This file is history. The live open-items register is `../OPEN-POINTS-2026-09-21.md` (see README *Known gaps*). On 2026-09-25 three items landed: H11/H20/H22 ACL version check and H23/M13 session eviction (server `0231ccd`, completed by `897a00b` — as first committed the admin UI emptied its allowlist after a save), and H24 main-IPC authorization (client `9e18fa9e1`, reverted in `feaf523f9`: the socket was already 0600 in a 0700 dir, and the check broke root CLI commands). S-B sealing, M1, S-C, A4 and the L-items are the **2026-09-03** work below, not new.
 >
