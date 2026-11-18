@@ -79,7 +79,7 @@ else
   if [ -n "$menu" ]; then
     ok "the '...' menu opens ($(echo "$menu" | cut -d' ' -f3-))"
     set -- $menu; vin "CLICK $1 $2" >/dev/null; sleep 2; shot "$T/settings.png"
-    if $OCR has "$T/settings.png" 'Allgemein|General'; then ok "Settings opens from the menu"
+    if $OCR has "$T/settings.png" 'Allgemein|General|Berechtigungen|Permissions'; then ok "Settings opens from the menu"
     else bad "Settings did not open -- see $T/settings.png"; fail=1; fi
     vin "TYPE {ESC}" >/dev/null
   else bad "the '...' menu did not open -- see $T/menu.png"; fail=1; fi

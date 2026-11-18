@@ -1,4 +1,4 @@
-# TBFDesk 1.4.25 (Linux, Sciter + Flutter) and server 1.1.19 — 2026-11-18
+# TBFDesk 1.4.25 (Linux + Windows, Sciter + Flutter) and server 1.1.19 — 2026-11-18
 
 Client commit `4f593f3e0` (branch `nemo-tdd-flutter`), server commit `a6614ea` (branch `nemo-tdd`).
 The new machine policies below need **server 1.1.19 and client 1.4.25**; everything else works with
@@ -7,6 +7,7 @@ server 1.1.18 too. Update the server first, then the clients.
 ## Files
 | | Sciter | Flutter |
 |---|---|---|
+| Windows (x64) installer | `tbfdesk-1.4.25-x64-install.exe` | `tbfdesk-flutter-1.4.25-x64-install.exe` |
 | Ubuntu 26.04, offline | `tbfdesk-1.4.25-ubuntu26.04-install.run` | `tbfdesk-flutter-1.4.25-ubuntu26.04-install.run` |
 | Ubuntu 24.04, offline | `tbfdesk-1.4.25-ubuntu24.04-install.run` | `tbfdesk-flutter-1.4.25-ubuntu24.04-install.run` |
 | Debian/Ubuntu package | `tbfdesk-1.4.25-amd64.deb` | `tbfdesk-flutter-1.4.25-amd64.deb` |
@@ -33,6 +34,9 @@ device key. Linux: an update with the TBFDesk window open no longer breaks "Verb
   connection failed is shown next to "direct-failed".
 
 ## Fixed — Ubuntu / Wayland (field reports)
+- **The fullscreen toolbar did not come down any more after switching to another program** (e.g.
+  Webex) and back: Sciter forgot that its window was fullscreen on every focus change. 1.4.25 takes
+  the state from GTK.
 - **The remote user's "Share Screen" question no longer kills the session**: the connecting side shows
   "Waiting for the remote user to allow screen sharing" and the session starts when they click Share
   (before: "remote desktop offline" after ~30 s).
@@ -70,8 +74,11 @@ two concurrent sessions, ending one from the popup keeps the other; reconnect 3 
 popup back on the next connection and closes cleanly; remembered selection → 2 displays; Transfer file
 Ubuntu → Windows without password prompt; "disable the machine's password" refuses a not-signed-in
 controller with the policy text and no popup; Flutter: outbound policy greys Connect and lifts live;
-keyboard into sessions (1.4.24 fix) still works; Windows: Flutter installer over 1.4.21, toolbar
-transfer button. Unit tests: server 158 + 3; client see the release commit.
+keyboard into sessions (1.4.24 fix) still works; fullscreen toolbar comes back after a focus switch;
+numpad (NumLock on: digits) into Windows and Linux.
+Windows 11: Sciter installer passes the automated GUI test (install over the existing version, registers,
+⋮ menu, Settings, no script errors, policy in sync); Sciter and Flutter sessions to Ubuntu (2 displays,
+keyboard, Transfer file opens without a password prompt); ID and settings kept across installs. Unit tests: server 158 + 3; client see the release commit.
 
 ## Good to know
 - Linux: when the last session ends and the connection popup closes, TBFDesk restarts its background
@@ -80,7 +87,6 @@ transfer button. Unit tests: server 158 + 3; client see the release commit.
   "Remember this selection" so later connections do not ask.
 
 ## Not in this release
-- Windows installers 1.4.25: built, follow after their own lab test (same code).
 - Android APK (unchanged, release-2026-11-12); the Android changes above ship with the next APK.
 - Private (controller-only) devices and 2FA for LDAP sign-ins: planned (`PRIVATE-DEVICE-POLICY-DESIGN.md`,
   OPEN-TODOS).
