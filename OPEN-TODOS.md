@@ -212,15 +212,15 @@ both columns) and check it at the dialog's two widths.
 - **S-1 Switch sides skips the management ticket** (client): the `SwitchSidesResponse` arm in
   `src/server/connection.rs` (~2824-2849) authorises the connect-back without
   `apply_management_authorization`. hbbs brokers the connect-back, so server-side refusals still apply.
-  *(round-2 fix in progress)*
+  *(FIXED client 1.4.25: the connect-back passes the same management checks; only desktop sessions)*
 - **S-2 Block does not end a blocked controller's running sessions** (server): `block_peer` stamps the id only
   as a target; targets check `nemo-blocked-ids` at logon only. Deleting a device key already calls
-  `terminate_sessions_from_controllers` -- Block should too. *(round-2 fix in progress)*
+  `terminate_sessions_from_controllers` -- Block should too. *(FIXED server 1.1.19; open follow-up: hbbr kill-by-label for instant relay teardown)*
 - **S-3 Rendezvous controller gate reads only the INLINE per-peer policy** (server): `nemo-outbound-enabled` /
   `nemo-outbound-targets` from the global, a named device or a user policy are not enforced at punch / relay
-  (only in tickets, endpoint/knock maps and by the cooperating client). *(round-2 fix in progress)*
+  (only in tickets, endpoint/knock maps and by the cooperating client). *(FIXED server 1.1.19: the gate uses the effective policy; the inline policy stays a floor)*
 - **S-4 Dashboard cannot set the inline per-peer outbound policy** (`managementOptions` / `advancedOptions`
-  are built but never rendered); only `PUT /nemo/api/peers/:id/management-policy` works. *(round-2)*
+  are built but never rendered); only `PUT /nemo/api/peers/:id/management-policy` works. *(FIXED server 1.1.19: editor in the device details)*
 - **S-5 Endpoint and knock-key maps are not filtered by the user ACL** (`direct_endpoint_map`, `knock_key_map`):
   every device gets the SPA keys of every allowed workstation. By design today; matters for private devices.
 - FIXED (server `d15daf7`, client 1.4.25): the control ticket named its user from the policy option

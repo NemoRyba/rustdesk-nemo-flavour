@@ -26,17 +26,17 @@ from the investigating session. Run a command once on the VM before you put it i
 | [FT-01](#ft-01) | Connect greyed, "outgoing connections disabled" on Linux | **FIXED in 1.4.23** | unit test; GUI manual |
 | [FT-02](#ft-02) | Blank Sciter main window (1.4.23 dev build) | **FIXED before release** (9fcb5c2fe) | TODO guard |
 | [FT-03](#ft-03) | Clock 1 h ahead: policy refused, no reason shown | **PARTLY FIXED**: message in 1.4.23; configurable tolerance unreleased | unit tests; GUI manual |
-| [FT-04](#ft-04) | Copying the one-time password refreshes it | NOT YET INVESTIGATED | manual |
-| [FT-05](#ft-05) | Connection-manager popup: missing on the next session, stays after the end | NOT YET INVESTIGATED | manual |
-| [FT-06](#ft-06) | "couldn't capture display" on Ubuntu | LIKELY = FT-14 (session dies while GNOME's share question waits); 1.4.24 remembers the choice | manual |
-| [FT-07](#ft-07) | Only one screen shared from Ubuntu | **FIXED in 1.4.24**: `is_server_running` looked for "tbfdesk --server" (binary is `rustdesk`) → fallback portal, one source, no restore token; verified 2 displays from Windows | manual |
+| [FT-04](#ft-04) | Copying the one-time password refreshes it | **FIXED in 1.4.25** (copy icon / double-click in Sciter + Flutter; copying never changes the OTP; every OTP rotation is logged with its cause -- on Linux a restart of the user --server makes a new OTP, kept by operator decision) | manual |
+| [FT-05](#ft-05) | Connection-manager popup: missing on the next session, stays after the end | **FIXED in 1.4.25**: the CM window is back on Linux desktop sessions and returns on the next connection; it closes at the session end without the abort ("TBFDesk closed unexpectedly") -- lab-verified | manual |
+| [FT-06](#ft-06) | "couldn't capture display" on Ubuntu | LIKELY = FT-14, **fixed in 1.4.25** (portal wait no longer kills the session) | manual |
+| [FT-07](#ft-07) | Only one screen shared from Ubuntu | **FIXED in 1.4.24 + 1.4.25** (1.4.25: a remembered two-monitor selection keeps both -- GNOME restores every stream at (0,0); lab-verified) | manual |
 | [FT-08](#ft-08) | Clipboard not working in either direction | NOT REPRODUCED: Windows 1.4.21 Flutter ↔ Ubuntu 1.4.23 Sciter, local Ctrl+C/V both ways and Ctrl+C/V pressed inside the session both ways all pass; awaiting logs | manual; TODO script |
 | [FT-09](#ft-09) | Fullscreen: toolbar does not come down at the top middle | NOT REPRODUCED: drops down in single / all / span / window-per-display fullscreen, slow hover and flick; found instead: span did not span on native Wayland (fixed by XWayland in 1.4.24), first fullscreen click on an unfocused window swallowed, display windows keep the GTK title bar in fullscreen; need the user's monitor layout | manual |
 | [FT-10](#ft-10) | Session window cannot be dragged to the other monitor | **FIXED in 1.4.24**: Sciter's caption moved the window client-side (ignored on Wayland, kept on one monitor on X11); now `gtk_window_begin_move_drag`; verified across monitors, maximized, first click after, double-click | manual; TODO script |
-| [FT-11](#ft-11) | Connect fails after upgrading with the window open ("run_me No such file") | known (1.4.23 release notes), UX fix OPEN | manual |
+| [FT-11](#ft-11) | Connect fails after upgrading with the window open ("run_me No such file") | **FIXED in 1.4.25**: children start the installed binary when the running one was replaced (lab: Verbinden after `apt install --reinstall` under the open window) | manual |
 | [FT-12](#ft-12) | Operator cannot use the TBFDesk window on the controlled machine | OPEN feature request (P4) | n/a |
 | [FT-13](#ft-13) | Keyboard does not work in a session from Ubuntu (also after reconnect / restart) | **FIXED in 1.4.24**: keys go to a native Wayland window, the keyboard grab is X11; Sciter now runs under XWayland. Workaround for 1.4.23: `GDK_BACKEND=x11 rustdesk` | manual (lab: remote `xterm` → `tee /tmp/typed.txt`) |
-| [FT-14](#ft-14) | Incoming session dies ("remote desktop offline" / Timeout) while GNOME's share question is open | FOUND in lab: the connection loop blocks on the portal; ~30 s unanswered → `Connection closed: Timeout` (the rendezvous link is reset too). 1.4.24 remembers the selection, so only the first session asks | manual |
+| [FT-14](#ft-14) | Incoming session dies ("remote desktop offline" / Timeout) while GNOME's share question is open | **FIXED in 1.4.25**: the portal handshake runs off the session task; the controller sees "Waiting for the remote user to allow screen sharing"; lab: session survived a 50 s wait | manual |
 
 ---
 
